@@ -197,7 +197,8 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .timer .tl{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 .timer b{font-variant-numeric:tabular-nums;font-size:18px;min-width:56px;text-align:right}
 .timer .icon-btn{width:40px;height:40px;border:0}
-.timer.ring{background:var(--accent);color:var(--on-accent);animation:pulse 1s ease-in-out infinite}
+.timer.ring{background:var(--accent);color:var(--on-accent);animation:pulse 1s ease-in-out infinite;border:0;font:inherit;padding:10px 10px 10px 18px;cursor:pointer}
+.timer.ring .stop{background:var(--on-accent);color:var(--accent);font-weight:700;border-radius:20px;padding:8px 16px;font-size:15px}
 .timer.ring .tl{color:var(--on-accent)}
 @keyframes pulse{50%{transform:scale(1.04)}}
 @media (prefers-reduced-motion:reduce){.timer.ring{animation:none}}
@@ -408,16 +409,48 @@ function paintTimers(rebuild){
   const sig = T.list.map(t => t.id + (t.done ? 'd' : '')).join();
   if (rebuild || el.dataset.sig !== sig){
     el.dataset.sig = sig; el.hidden = !T.list.length;
-    el.innerHTML = T.list.map(t => `<div class="timer${t.done ? ' ring' : ''}"><span class="tl">${esc(t.label)}</span><b data-left="${t.id}">${left(t)}</b><button class="icon-btn" data-act="killtimer" data-id="${t.id}" aria-label="${t.done ? 'Dismiss' : 'Cancel'} timer">${I.close}</button></div>`).join('');
+    el.innerHTML = T.list.map(t => t.done
+      ? `<button class="timer ring" data-act="killtimer" data-id="${t.id}"><span class="tl">${esc(t.label)}</span><b>Time’s up</b><span class="stop">Stop</span></button>`
+      : `<div class="timer"><span class="tl">${esc(t.label)}</span><b data-left="${t.id}">${left(t)}</b><button class="icon-btn" data-act="killtimer" data-id="${t.id}" aria-label="Cancel timer">${I.close}</button></div>`).join('');
   } else el.querySelectorAll('[data-left]').forEach(b => { const t = T.list.find(x => x.id === b.dataset.left); if (t) b.textContent = left(t); });
 }
-let actx = null;
-document.addEventListener('pointerdown', () => { try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume?.(); } catch {} });
-function beep(){ try { if (!actx) return; let t = actx.currentTime; for (let i = 0; i < 4; i++){ const o = actx.createOscillator(), g = actx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(actx.destination); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.35, t + .02); g.gain.exponentialRampToValueAtTime(.0001, t + .35); o.start(t); o.stop(t + .4); t += .55; } } catch {} }
+let actx = null, out = null;
+// phones only allow sound after a tap, so the sound system is woken on the first tap anywhere
+document.addEventListener('pointerdown', () => {
+  try {
+    if (!actx){
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      // a compressor lets the alarm run close to full volume without crackling
+      const comp = actx.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 8; comp.attack.value = 0.002; comp.release.value = 0.1;
+      out = actx.createGain(); out.gain.value = 1; out.connect(comp); comp.connect(actx.destination);
+    }
+    actx.resume?.();
+  } catch {}
+});
+function burst(){
+  // one burst: three quick high-low pips, like a kitchen timer
+  try {
+    if (!actx || !out) return; actx.resume?.();
+    let t = actx.currentTime + 0.02;
+    for (let i = 0; i < 6; i++){
+      const o = actx.createOscillator(), g = actx.createGain();
+      o.type = 'square'; o.frequency.value = i % 2 ? 1568 : 1175;
+      o.connect(g); g.connect(out);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.9, t + 0.01);
+      g.gain.setValueAtTime(0.9, t + 0.11); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      o.start(t); o.stop(t + 0.14); t += i % 2 ? 0.22 : 0.15;
+    }
+  } catch {}
+}
+let ringTick = 0;
 setInterval(() => {
-  let rang = false;
-  for (const t of T.list) if (!t.done && t.end <= Date.now()){ t.done = true; rang = true; }
-  if (rang){ saveTimers(); beep(); try { navigator.vibrate?.([300,150,300]); } catch {} }
+  let changed = false;
+  for (const t of T.list) if (!t.done && t.end <= Date.now()){ t.done = true; t.rangAt = Date.now(); changed = true; }
+  if (changed) saveTimers();
+  // keep ringing every couple of seconds until Stop is tapped (gives up after 5 minutes)
+  const ringing = T.list.filter(t => t.done && Date.now() - (t.rangAt || t.end) < 5 * 60000);
+  if (ringing.length && ringTick++ % 2 === 0){ burst(); try { navigator.vibrate?.([400, 120, 400, 120, 400]); } catch {} }
+  if (!ringing.length) ringTick = 0;
   if (T.list.length) paintTimers();
 }, 1000);
 
