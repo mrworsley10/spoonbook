@@ -69,7 +69,7 @@ svg{flex:none}
 .hello em{color:var(--accent)}
 .search{display:flex;align-items:center;gap:10px;height:50px;padding:0 16px;border:1px solid var(--line);border-radius:25px;background:var(--surface);color:var(--muted)}
 .search input{flex:1;min-width:0;border:0;background:transparent;outline:none;color:var(--fg);font-size:16px}
-.picks{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;margin:20px -16px 0;padding:0 16px 6px;scrollbar-width:none}
+.picks{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:16px;margin:20px -16px 0;padding:0 16px 6px;scrollbar-width:none}
 .picks::-webkit-scrollbar{display:none}
 .pick{flex:none;width:min(240px,66vw);scroll-snap-align:start;text-decoration:none;color:var(--fg);display:flex;flex-direction:column;gap:10px}
 .pick .img{height:280px;border-radius:4px;overflow:hidden;position:relative;font-size:96px}
@@ -168,9 +168,14 @@ svg{flex:none}
 .group h3{margin:22px 0 4px;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
 
 /* nav */
-nav.tabbar{position:fixed;z-index:30;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(528px,calc(100% - 32px));height:62px;border-radius:31px;background:var(--surface);border:1px solid var(--line);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.25)}
-nav.tabbar a{display:flex;align-items:center;justify-content:center;gap:6px;height:100%;text-decoration:none;color:var(--muted);font-size:14px;font-weight:600}
+/* bottom bar: full width, fixed to the screen edge, four equal tabs with an icon over each label */
+nav.tabbar{position:fixed;z-index:30;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(8px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(8px,env(safe-area-inset-left,0px))}
+nav.tabbar .in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+nav.tabbar a{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;text-decoration:none;color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.2px}
+nav.tabbar a svg{width:24px;height:24px}
 nav.tabbar a[aria-current="page"]{color:var(--accent)}
+nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;height:18px;font-size:11px;padding:0 5px}
 .badge{min-width:20px;height:20px;border-radius:10px;background:var(--accent);color:var(--on-accent);font-size:12px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 /* additions: fridge, sort, ratings, story, timers, plan */
 .fridge-link{display:inline-block;margin-top:12px;font-size:15px;font-weight:500;text-decoration:none}
@@ -187,7 +192,7 @@ nav.tabbar a[aria-current="page"]{color:var(--accent)}
 .need{margin-top:22px;background:var(--surface);border-radius:12px;padding:14px 16px}
 .need ul{margin:6px 0 0;padding-left:18px}
 .need li{font-size:17px;padding:2px 0}
-#timers{position:fixed;z-index:45;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(92px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:flex-end;max-width:calc(100% - 32px)}
+#timers{position:fixed;z-index:45;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(84px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px;align-items:flex-end;max-width:calc(100% - 32px)}
 .timer{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--accent);border-radius:26px;padding:4px 4px 4px 16px;box-shadow:0 6px 20px rgba(0,0,0,.3);min-width:0}
 .timer .tl{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
 .timer b{font-variant-numeric:tabular-nums;font-size:18px;min-width:56px;text-align:right}
@@ -233,12 +238,12 @@ nav.tabbar a[aria-current="page"]{color:var(--accent)}
   <div class="top"><p class="brand">Spoonbook</p></div>
   <div class="empty"><div class="spin" style="margin:0 auto 14px"></div>Opening your cookbook…</div>
 </div>
-<nav class="tabbar" id="nav" aria-label="Main">
-  <a href="#book" data-tab="book">Book</a>
-  <a href="#plan" data-tab="plan">Plan</a>
-  <a href="#favourites" data-tab="favourites">Favourites</a>
-  <a href="#shopping" data-tab="shopping">Shopping</a>
-</nav>
+<nav class="tabbar" id="nav" aria-label="Main"><div class="in">
+  <a href="#book" data-tab="book"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5V5.5M8 7h8"/></svg><span>Book</span></a>
+  <a href="#plan" data-tab="plan"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg><span>Plan</span></a>
+  <a href="#favourites" data-tab="favourites"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.4-9.3-8.8A5.2 5.2 0 0 1 12 6a5.2 5.2 0 0 1 9.3 5.2C19 15.6 12 20 12 20z"/></svg><span>Favourites</span></a>
+  <a href="#shopping" data-tab="shopping"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.4 11.2a1 1 0 0 1-1 .8H7.4a1 1 0 0 1-1-.8z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg><span>Shopping</span><span class="badge" hidden></span></a>
+</div></nav>
 <div id="timers" aria-live="polite" hidden></div>
 <div id="overlay"></div>
 <div id="toast" class="toast" role="status" hidden></div>
@@ -829,7 +834,7 @@ function render(force){
   nav.hidden = ['cook','edit','add','recipe'].includes(v);
   nav.querySelectorAll('a').forEach(a => {
     a.setAttribute('aria-current', a.dataset.tab === (v === 'fridge' ? 'book' : v) ? 'page' : 'false');
-    if (a.dataset.tab === 'shopping') a.innerHTML = 'Shopping' + (left ? ` <span class="badge">${left}</span>` : '');
+    if (a.dataset.tab === 'shopping'){ const bd = a.querySelector('.badge'); bd.textContent = left; bd.hidden = !left; a.setAttribute('aria-label', 'Shopping' + (left ? `, ${left} to buy` : '')); }
   });
 }
 document.addEventListener('focusout', () => setTimeout(() => { if (S.pending && !busy()) render(); }, 0));
