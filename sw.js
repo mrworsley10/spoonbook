@@ -1,6 +1,6 @@
 // Keeps the app itself on the phone so it opens instantly and survives a patchy signal.
 // Recipes and photos always come fresh from Supabase; only the app's own files are cached here.
-const CACHE = 'spoonbook-v2';
+const CACHE = 'spoonbook-v3';
 const SHELL = ['./', './index.html', './backend.js', './local.js', './nutrition.js', './config.js', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {

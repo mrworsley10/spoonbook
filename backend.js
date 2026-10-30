@@ -245,7 +245,18 @@ function householdScreen(){
 
 /* ---------- start-up ---------- */
 let booted = false, onReady = null;
-async function start(){
+let starting = null;
+function start(){ return starting = starting || run().finally(() => { starting = null; }); }
+async function run(){
+  const stuck = setTimeout(() => {
+    if (booted) return;
+    screen(`<div class="empty"><h2>Still opening…</h2>This is taking longer than usual. Check your internet connection.<div class="actions" style="justify-content:center;margin-top:16px"><button class="btn small" id="retryBtn">Try again</button><button class="btn small" id="resetBtn">Sign out and start again</button></div></div>`);
+    document.getElementById('retryBtn').onclick = () => location.reload();
+    document.getElementById('resetBtn').onclick = () => { try { Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k)); } catch {} location.reload(); };
+  }, 12000);
+  try { await runInner(); } finally { clearTimeout(stuck); }
+}
+async function runInner(){
   if (!CFG.supabaseUrl || /YOUR_/.test(CFG.supabaseUrl)){ screen(`<div class="empty"><h2>Almost ready</h2>Spoonbook needs its Supabase details in config.js.</div>`); return; }
   const { data } = await sb.auth.getSession(); session = data.session;
   if (!session) return signInScreen();
@@ -255,14 +266,16 @@ async function start(){
   household = m.data[0].households;
   const all = await sb.from('members').select('user_id, display_name').eq('household_id', household.id);
   members = all.data || [];
-  if (booted) return location.reload();
+  if (booted) return;
   booted = true; document.getElementById('nav').hidden = false;
   onReady?.({ db: makeDb(household.id), assets: makeAssets(household.id), user: makeUser(), downloads });
 }
+// Supabase locks up if its own functions are called from inside this event, so anything that needs
+// Supabase is queued with setTimeout to run just after the event has finished.
 sb.auth.onAuthStateChange((event, s) => {
-  if (event === 'PASSWORD_RECOVERY'){ session = s; return newPasswordScreen(); }
-  if (event === 'SIGNED_IN' && !booted && s?.user?.id !== session?.user?.id){ session = s; start(); }
-  if (event === 'SIGNED_OUT'){ session = null; if (booted) location.reload(); else signInScreen(); }
+  if (event === 'PASSWORD_RECOVERY'){ session = s; setTimeout(newPasswordScreen, 0); return; }
+  if (event === 'SIGNED_IN' && !booted && s?.user?.id !== session?.user?.id){ session = s; setTimeout(start, 0); }
+  if (event === 'SIGNED_OUT'){ session = null; if (booted) location.reload(); else setTimeout(signInScreen, 0); }
 });
 
 window.Backend = {
