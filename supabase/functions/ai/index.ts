@@ -3,6 +3,13 @@
 // It stays switched off until you add a secret called ANTHROPIC_API_KEY in Supabase.
 import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
+// New Supabase projects may only have the new-style keys, so fall back to the publishable one.
+function anonKey(): string {
+  const legacy = Deno.env.get("SUPABASE_ANON_KEY");
+  if (legacy) return legacy;
+  try { const keys = JSON.parse(Deno.env.get("SUPABASE_PUBLISHABLE_KEYS") ?? "{}"); return keys.default ?? Object.values(keys)[0] ?? ""; } catch { return ""; }
+}
+
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -33,7 +40,7 @@ Deno.serve(async (req) => {
   if (!key) return json({ error: "not_configured" }, 501);
 
   // Only signed-in people may spend the household's Claude credit.
-  const supa = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+  const supa = createClient(Deno.env.get("SUPABASE_URL")!, anonKey(), {
     global: { headers: { Authorization: req.headers.get("Authorization") ?? "" } },
   });
   const { data: { user } } = await supa.auth.getUser();

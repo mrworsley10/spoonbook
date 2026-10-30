@@ -2,5 +2,5 @@
 // Never put the service_role / secret key here.
 window.SPOONBOOK_CONFIG = {
   supabaseUrl: 'https://gviqqwnajwglygwrcwla.supabase.co',
-  supabaseAnonKey: 'YOUR_SUPABASE_ANON_KEY'
+  supabaseAnonKey: 'sb_publishable_G0tIVFSShm88bctxOeFL1Q_p1xnbIrt'
 };
