@@ -4,7 +4,7 @@ Our shared cookbook: recipes, photos, meal plans and the shopping list. It insta
 
 - **App:** the files in this folder, hosted free by GitHub Pages
 - **Data, sign-in and photos:** Supabase (free plan)
-- **Claude features** (reading recipes from pasted text or photos, sorting the shopping list by aisle, calorie estimates): optional, switched on by adding an Anthropic API key
+- **No AI and no per-use costs.** Reading pasted recipes, reading cookbook photos, sorting the shopping list and calorie estimates all run on the phone itself.
 
 ---
 
@@ -21,10 +21,8 @@ Our shared cookbook: recipes, photos, meal plans and the shopping list. It insta
 
 New accounts get a "confirm your email" message by default. To skip that step for a household app, turn off **Confirm email** under **Authentication → Providers → Email**.
 
-### 3. Supabase functions
-In **Edge Functions → Deploy a new function → Via Editor**:
-1. Name it `clip`, replace the example code with [`supabase/functions/clip/index.ts`](supabase/functions/clip/index.ts), and press **Deploy**.
-2. Do the same with the name `ai` and [`supabase/functions/ai/index.ts`](supabase/functions/ai/index.ts).
+### 3. Supabase function (for adding recipes from a link)
+In **Edge Functions → Deploy a new function → Via Editor**, name it `clip`, replace the example code with [`supabase/functions/clip/index.ts`](supabase/functions/clip/index.ts), and press **Deploy**.
 
 ### 4. GitHub Pages
 In this repository on GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/ (root)` → Save**. After a minute the app is live at `https://YOUR-GITHUB-USERNAME.github.io/spoonbook/`.
@@ -44,13 +42,6 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 
 ---
 
-## Turning on the Claude features (optional)
-1. Create an API key at console.anthropic.com (you pay per use, typically pennies a week for a household).
-2. In Supabase: **Edge Functions → Secrets → Add new secret**, name `ANTHROPIC_API_KEY`, paste the key, and save.
-3. Close and reopen Spoonbook. "Paste a recipe", "Snap a page", "Combine & sort by aisle" and "Estimate calories" appear.
-
-"From a link" works without a key on most recipe sites (BBC Good Food, etc.). With a key, it can also read sites that don't publish their recipe in the standard format.
-
 ## Things to know
 - **Free Supabase projects pause after a week with no use.** If the app ever says it can't reach the cookbook after a long break, open supabase.com and press **Restore** on the project.
 - **Back up now and then:** **⋯ → Back up all recipes** saves everything to a file.
@@ -60,7 +51,14 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 | File | What it is |
 |---|---|
 | `index.html` | The app |
-| `backend.js` | Connects the app to Supabase (data, sign-in, photos, Claude) |
+| `backend.js` | Connects the app to Supabase (data, sign-in, photos) |
+| `local.js` | Reads pasted recipes and photos, sorts the shopping list, works out calories, all on the phone |
+| `nutrition.js` | Nutrition values for about 150 everyday ingredients, from UK government data |
 | `config.js` | Your Supabase address and public key |
 | `manifest.webmanifest`, `sw.js`, `icons/` | What makes it installable and quick to open |
-| `supabase/` | Database setup and the two server functions |
+| `supabase/` | Database setup and the link-clipping function |
+
+## Credits
+Calorie and nutrient estimates use McCance and Widdowson's *The Composition of Foods Integrated Dataset* 2021 (Public Health England). Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
+
+Reading cookbook photos uses [Tesseract.js](https://github.com/naptha/tesseract.js) (Apache 2.0), which runs on the phone. It downloads its English reading data (about 10MB) the first time you snap a page, then works offline.

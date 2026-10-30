@@ -15,6 +15,8 @@
 <script src="config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script src="nutrition.js"></script>
+<script src="local.js"></script>
 <script src="backend.js"></script>
 </head>
 <body>
@@ -561,8 +563,8 @@ function recipeView(){
     ${ings.length ? `<ul class="ings">${ings.map((l, i) => `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`
   : (steps.length ? `<ol class="steps">${steps.map((s, i) => `<li><span class="n">${i+1}</span><div><p>${esc(showLine(s))}</p>${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`).join('')}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`)}
   ${r.nutrition ? (() => { const n = r.nutrition; return `<div class="kcal" id="kcalBox"><div class="kc"><b>${n.kcal}</b><span>kcal</span></div><div class="kc"><b>${n.protein}g</b><span>protein</span></div><div class="kc"><b>${n.carbs}g</b><span>carbs</span></div><div class="kc"><b>${n.fat}g</b><span>fat</span></div>
-      <p class="hint">Per portion${n.portions ? ', if it makes ' + n.portions : ''}. Claude’s estimate from the ingredients, so treat it as a rough guide. ${S.sampleOk ? '<button class="linkbtn" data-act="kcal">Re-estimate</button>' : ''}</p></div>`; })()
-    : S.sampleOk && (r.ingredients || []).length ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Estimate calories per portion</button></div>` : ''}
+      <p class="hint">Per portion, ${n.portionsAssumed ? 'assuming it makes ' + n.portions + ' (add “Serves” to the recipe to be exact)' : 'if it makes ' + n.portions}. A rough guide worked out from UK government food data${n.total ? `, counting ${n.counted} of ${n.total} ingredients` : ''}${n.missed?.length ? ` (not counted: ${esc(n.missed.slice(0, 4).join('; '))}${n.missed.length > 4 ? '…' : ''})` : ''}. <button class="linkbtn" data-act="kcal">Work it out again</button></p></div>`; })()
+    : (r.ingredients || []).length ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
   <div class="actions">
     <button class="btn small ${madeToday(r) ? 'on' : ''}" data-act="made" aria-pressed="${madeToday(r)}">${madeToday(r) ? '✓ Made today' : 'We made this'}</button>
     <button class="btn small" data-act="planpick">Add to plan</button>
@@ -623,7 +625,7 @@ function shopView(){
   return topBar() + `<h1 class="hello">Shopping<br><em>list.</em></h1>
   <form class="shop-add" data-act="noop" onsubmit="return false"><label class="sr" for="shopIn">Add an item</label><input id="shopIn" placeholder="Add an item, e.g. milk" autocomplete="off"><button class="btn primary" data-act="additem" type="button">Add</button></form>
   ${items.length ? `<div class="actions" style="margin-top:14px">
-      ${S.sampleOk ? `<button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>` : ''}
+      <button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>
       ${done ? `<button class="btn small" data-act="clearDone">Clear ${done} ticked</button>` : ''}
       <button class="btn small danger" data-act="clearAll">${S.confirmClear ? 'Tap again to empty' : 'Empty list'}</button></div>
     <div id="aisleMsg"></div>
@@ -700,6 +702,7 @@ function moreSheet(){
     <label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
     <div id="importMsg"></div>
+    <p class="hint" style="font-size:12px">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>
     <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
     <button class="btn" data-act="closesheet">Close</button>`);
 }
@@ -709,29 +712,21 @@ function recipeText(r){
     ...(r.steps || []).map((s, i) => (i+1) + '. ' + showLine(s)), r.note ? '\nOur note: ' + r.note : '', r.source ? '\nOriginal: ' + r.source : '', '\nFrom our Spoonbook'].filter((x, i, a) => x !== '' || a[i-1] !== '').join('\n');
 }
 async function sortAisles(statusEl){
-  const open = (S.shop.items || []).filter(i => !i.done); if (!open.length || !sample) return;
-  if (statusEl) statusEl.innerHTML = `<div class="thinking" style="margin-top:12px"><span class="spin"></span>Combining and sorting…</div>`;
-  try {
-    const out = await sample.json(`Here is a UK shopping list. Combine duplicates into one line (add the amounts up when the units match), drop words like "chopped" or "to serve" that do not matter in a shop, leave out water, and group the lines by supermarket aisle in the order a shop is usually walked. Reply with only JSON: [{"aisle": string, "items": [string]}].\n\n` + open.map(i => '- ' + i.text).join('\n'), { modelTier: 'quick', cache: false });
-    if (!Array.isArray(out)) throw { code: 'invalid_json' };
-    const items = [];
-    out.forEach(g => (g.items || []).forEach(t => items.push({ id: rid(), text: String(t), aisle: String(g.aisle || 'Other'), done: false })));
-    if (!items.length) throw { code: 'invalid_json' };
-    await setShop([...items, ...(S.shop.items || []).filter(i => i.done)]); toast('Sorted by aisle');
-  } catch (e) { const m = document.getElementById('aisleMsg') || statusEl; if (m) m.innerHTML = `<p class="hint" style="color:var(--danger);margin-top:12px">${e?.code === 'not_granted' ? 'Claude wasn’t allowed to sort the list.' : 'Couldn’t sort the list just now. Try again.'}</p>`; }
+  const open = (S.shop.items || []).filter(i => !i.done); if (!open.length) return;
+  const merged = Local.combine(open).map(i => ({ id: rid(), text: i.text, aisle: i.aisle, done: false }));
+  await setShop([...merged, ...(S.shop.items || []).filter(i => i.done)]);
+  toast(merged.length < open.length ? `Combined into ${merged.length} items and sorted by aisle` : 'Sorted by aisle');
 }
 
 /* ---------- clip sheet ---------- */
 function clipSheet(mode){
   S.sheet = mode || 'menu';
-  const ai = S.sampleOk;
   let body = '';
   if (S.sheet === 'menu') body = `<h2>Add a recipe</h2>
     <button class="opt" data-act="sheet" data-mode="link"><span class="ic">${I.link}</span><span><b>From a link</b><span>Paste the address of a recipe page. The recipe and its photo come in together.</span></span></button>
-    ${ai ? `<button class="opt" data-act="sheet" data-mode="paste"><span class="ic">${I.text}</span><span><b>Paste a recipe</b><span>Copy the recipe from a website or message and Claude tidies it up.</span></span></button>` : ''}
-    ${ai && S.imgOk ? `<button class="opt" data-act="sheet" data-mode="photo"><span class="ic">${I.cam}</span><span><b>Snap a page or screenshot</b><span>A cookbook page, handwritten card or screenshot. Claude reads it in.</span></span></button>` : ''}
+    <button class="opt" data-act="sheet" data-mode="paste"><span class="ic">${I.text}</span><span><b>Paste a recipe</b><span>Copy a recipe from a website or message and Spoonbook sorts out the ingredients and method.</span></span></button>
+    <button class="opt" data-act="sheet" data-mode="photo"><span class="ic">${I.cam}</span><span><b>Snap a cookbook page</b><span>Take a photo of a printed recipe or a screenshot, and Spoonbook reads the words in.</span></span></button>
     <button class="opt" data-act="typein"><span class="ic">${I.pen}</span><span><b>Type it in</b><span>Start from a blank recipe.</span></span></button>
-    ${!ai ? `<p class="hint">Reading recipes from pasted text or photos uses Claude, which is switched off until an Anthropic key is added in Supabase.</p>` : ''}
     <button class="btn" data-act="closesheet">Cancel</button>`;
   else if (S.sheet === 'link') body = `<h2>From a link</h2>
     <p class="hint">Copy the address of the recipe page from your browser or the app you found it in, then paste it here.</p>
@@ -739,15 +734,15 @@ function clipSheet(mode){
     <div id="aiMsg"></div>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="cliplink">Get recipe</button><button class="btn" data-act="sheet" data-mode="menu">Back</button></div>`;
   else if (S.sheet === 'paste') body = `<h2>Paste a recipe</h2>
-    <p class="hint">Open the recipe page, select all, copy, and paste it here. Messy is fine. Ads and comments get dropped.</p>
+    <p class="hint">Copy the recipe (the title, ingredients and method) and paste it here. Extra bits like ratings and adverts are dropped.</p>
     <label class="sr" for="pasteIn">Recipe text</label><textarea id="pasteIn" placeholder="Paste the recipe here"></textarea>
     <label class="sr" for="pasteUrl">Link</label><input id="pasteUrl" type="url" placeholder="Link to the original (optional)" style="width:100%;height:46px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px">
     <div id="aiMsg"></div>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="readpaste">Read recipe</button><button class="btn" data-act="sheet" data-mode="menu">Back</button></div>`;
   else if (S.sheet === 'photo') body = `<h2>Snap a page</h2>
-    <p class="hint">Take a photo of a cookbook page or recipe card, or pick a screenshot. Up to ${S.imgMax || 1} picture${(S.imgMax || 1) > 1 ? 's' : ''}.</p>
+    <p class="hint">Take a photo of a printed recipe, or pick a screenshot. Hold the phone straight above the page in good light. If the recipe runs over two pages, pick both photos. Handwriting doesn’t read well.</p>
     <label class="opt" for="snapIn"><span class="ic">${I.cam}</span><span><b>Choose photo</b><span>Camera or photo library</span></span></label>
-    <input id="snapIn" type="file" accept="${esc(S.imgTypes || 'image/*')}" ${S.imgMax > 1 ? 'multiple' : ''} class="sr" data-chg="snap">
+    <input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
     <label style="display:flex;gap:10px;align-items:center;font-size:15px"><input type="checkbox" id="snapKeep" style="width:20px;height:20px;accent-color:var(--accent)"> Use the picture as the recipe photo</label>
     <div id="aiMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
@@ -756,40 +751,45 @@ function clipSheet(mode){
 }
 function closeSheet(){ S.sheet = null; S.aiCtl?.abort(); overlay.innerHTML = ''; }
 
-const AI_RULES = `You turn recipes into clean structured data for a home cookbook app.
-Reply with only JSON, exactly this shape:
-{"title": string, "category": one of ${JSON.stringify(CATS)}, "serves": string or null, "totalMins": number or null, "ingredients": [string], "steps": [string]}
-Rules: keep each ingredient's wording and quantity as written, one ingredient per item. One instruction step per item, in order. Use UK spelling. Leave out adverts, comments, ratings, nutrition, author names and anything that is not part of the recipe. If there is no recipe, reply {"error": "a short reason"}.`;
-async function readWithClaude(prompt, images, srcUrl, keepPhoto){
+function guessCategory(title, ings){
+  const t = (title + ' ' + ings.join(' ')).toLowerCase(), n = title.toLowerCase();
+  const rules = [['Curries', /curry|korma|madras|masala|biryani|balti|tikka|massaman|rogan|jalfrezi|dhal|dal\b|tagine/], ['Soups & stews', /soup|stew|casserole|chowder|broth/],
+    ['Puddings & treats', /cake|cheesecake|crumble|brownie|cookie|biscuit|pudding|tart|trifle|mousse|ice cream|pavlova|scone|muffin|flapjack/], ['Bread & dough', /bread|dough|loaf|focaccia|bun/],
+    ['Sauces & pastes', /sauce|paste|gravy|marinade|dressing|pesto|chutney|dip\b/], ['Pies & bakes', /pie\b|bake\b|lasagne|pasty|quiche|empanada|wellington/],
+    ['Pasta & rice', /pasta|spaghetti|penne|risotto|paella|noodle|rice\b|gnocchi|jambalaya|pad thai/], ['Sides & starters', /bhaji|salad|potatoes|yorkshire|wings|starter|side/]];
+  for (const [c, re] of rules) if (re.test(n)) return c;
+  if (/chicken/.test(t)) return 'Chicken';
+  if (/beef|pork|lamb|sausage|bacon|mince|steak|ham\b/.test(t)) return 'Beef & pork';
+  return 'Mains';
+}
+async function readLocally({ text, files, srcUrl, keepPhoto }){
   const msg = overlay.querySelector('#aiMsg');
-  const ctl = new AbortController(); S.aiCtl = ctl;
-  msg.innerHTML = `<div class="thinking"><span class="spin"></span>Claude is reading the recipe… <button class="btn small" data-act="stopai">Stop</button></div>`;
   overlay.querySelectorAll('[data-act="readpaste"],#snapIn').forEach(b => b.disabled = true);
   try {
-    const out = await sample.json(prompt, { signal: ctl.signal, ...(images ? { images } : {}) });
-    if (!out || out.error || !out.title) throw { code:'norecipe', message: out?.error || '' };
+    if (files){
+      msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
+      text = await Local.readPhotos(files, pct => { const el = document.getElementById('ocrPct'); if (el) el.textContent = `Reading the words… ${pct}%`; });
+    }
+    const out = Local.parseRecipe(text);
+    if (!out.ingredients.length && !out.steps.length) throw { code: 'norecipe' };
     const d = blankDraft();
-    d.title = String(out.title).slice(0, 140);
-    d.category = CATS.includes(out.category) ? out.category : 'Mains';
-    d.serves = out.serves ? String(out.serves) : '';
-    d.totalMins = Number(out.totalMins) || null;
-    d.ingredients = (Array.isArray(out.ingredients) ? out.ingredients : []).map(String).filter(Boolean);
-    d.steps = (Array.isArray(out.steps) ? out.steps : []).map(String).filter(Boolean);
+    d.title = out.title.slice(0, 140);
+    d.serves = out.serves || '';
+    d.totalMins = out.totalMins || null;
+    d.ingredients = out.ingredients;
+    d.steps = out.steps;
+    d.category = guessCategory(d.title, d.ingredients);
     d.source = srcUrl || '';
-    if (keepPhoto && images && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo…</div>`; d.photo = await uploadPhoto(images[0]); }
+    if (keepPhoto && files && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo…</div>`; d.photo = await uploadPhoto(files[0]); }
     S.draft = d; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
-    toast('Check it over, then save');
+    toast(out.warnings.length ? out.warnings[0] + '. Fill in what’s missing, then save' : 'Check it over, then save');
   } catch (e) {
     overlay.querySelectorAll('[data-act="readpaste"],#snapIn').forEach(b => b.disabled = false);
     if (!overlay.querySelector('#aiMsg')) return;
-    const c = e?.code;
-    msg.innerHTML = c === 'cancelled' ? '' : `<p class="hint" style="color:var(--danger)">${
-      c === 'norecipe' ? 'Claude couldn’t find a recipe in that. ' + esc(e.message || '') :
-      c === 'not_granted' ? 'Claude wasn’t allowed to read it. You can type the recipe in instead.' :
-      c === 'rate_limited' ? 'Too many requests just now. Try again in a minute.' :
-      c === 'prompt_too_large' ? 'That’s a lot of text. Paste just the recipe part.' :
-      c === 'image_rejected' ? 'That picture couldn’t be read. Try a clearer photo or a different file.' :
-      'Something went wrong reading it. Try again.'}</p>`;
+    msg.innerHTML = `<p class="hint" style="color:var(--danger)">${
+      e?.code === 'norecipe' ? 'Couldn’t find a recipe in that. Make sure the ingredients and method are included.' :
+      e?.message === 'load' ? 'The photo reader needs an internet connection the first time. Try again when you’re online.' :
+      'Couldn’t read that. Try a clearer, straighter photo in good light, or type it in.'}</p>`;
   }
 }
 
@@ -846,7 +846,7 @@ const A = {
   readpaste(){
     const t = overlay.querySelector('#pasteIn').value.trim(); const u = overlay.querySelector('#pasteUrl').value.trim();
     if (t.length < 40){ overlay.querySelector('#aiMsg').innerHTML = '<p class="hint" style="color:var(--danger)">Paste the whole recipe first, including ingredients and method.</p>'; return; }
-    readWithClaude(AI_RULES + '\n\nThe recipe text:\n"""\n' + t.slice(0, 40000) + '\n"""', null, /^https?:\/\//.test(u) ? u : '', false);
+    readLocally({ text: t, srcUrl: /^https?:\/\//.test(u) ? u : '' });
   },
   cat(b){ S.cat = b.dataset.cat; render(); },
   tab(b){ S.tab = b.dataset.tab; render(); },
@@ -941,21 +941,15 @@ const A = {
       toast(r.photo ? 'Got it, photo too. Check it over, then save' : 'Got it. Check it over, then save');
     } catch (e) {
       b.disabled = false;
-      if (e.code === 'no_recipe_data' && S.sampleOk && e.text){ readWithClaude(AI_RULES + '\n\nThe recipe page text:\n"""\n' + String(e.text).slice(0, 40000) + '\n"""', null, u, false); return; }
+      if (e.code === 'no_recipe_data' && e.text){ const guess = Local.parseRecipe(String(e.text).replace(/\s{2,}/g, '\n')); if (guess.ingredients.length >= 3 && guess.steps.length){ readLocally({ text: String(e.text).replace(/\s{2,}/g, '\n'), srcUrl: u }); return; } }
       m.innerHTML = `<p class="hint" style="color:var(--danger)">${e.code === 'no_recipe_data' ? 'That page doesn’t share its recipe in the usual way. Copy the recipe text and use “Paste a recipe” instead, or type it in.' : e.code === 'page_unreachable' ? 'Couldn’t open that page. Check the address, or the site may block apps.' : 'Something went wrong fetching that page. Try again.'}</p>`;
     }
   },
   units(){ S.metric = !S.metric; ls.set('sb-units', S.metric ? 'metric' : 'us'); render(); },
-  async kcal(b){
-    const r = byId(S.id); if (!sample || !r) return;
-    const box = document.getElementById('kcalBox'); b.disabled = true;
-    box.innerHTML = `<div class="thinking"><span class="spin"></span>Working out the calories…</div>`;
-    try {
-      const out = await sample.json(`Estimate the nutrition of this home recipe, per portion, using typical UK supermarket values. ${r.serves ? 'It serves ' + r.serves + '; use the first number as the portion count.' : 'It does not say how many it serves: pick a sensible number of portions and say how many.'} Ignore anything listed only "to serve" (rice, naan and so on) unless it is clearly part of the dish. Reply with only JSON: {"portions": number, "kcal": number, "protein": number, "carbs": number, "fat": number} where the last four are per portion, in kcal and grams, rounded to whole numbers.\n\nTitle: ${r.title}\nIngredients:\n` + (r.ingredients || []).map(l => '- ' + toMetric(l)).join('\n'), { cache: false });
-      const n = k => Math.max(0, Math.round(Number(out?.[k]) || 0));
-      if (!n('kcal')) throw { code: 'invalid_json' };
-      await patch(r.id, { nutrition: { portions: n('portions') || null, kcal: n('kcal'), protein: n('protein'), carbs: n('carbs'), fat: n('fat'), estimatedAt: Date.now() } });
-    } catch (e) { b.disabled = false; box.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_granted' ? 'Claude wasn’t allowed to estimate this.' : 'Couldn’t work it out just now. Try again.'}</p>`; }
+  async kcal(){
+    const r = byId(S.id); if (!r) return;
+    const n = Local.nutrition(r);
+    await patch(r.id, { nutrition: { portions: n.portions, portionsAssumed: n.portionsAssumed, kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat, counted: n.counted, total: n.total, missed: n.missed.slice(0, 12), source: 'CoFID', estimatedAt: Date.now() } });
   },
   async awake(){
     S.awakeOn = !S.awakeOn; ls.set('sb-awake', S.awakeOn ? 'on' : 'off');
@@ -1004,8 +998,7 @@ const A = {
     await setShop([...(S.shop.items || []), ...add]);
     S.shop = { ...S.shop, items: [...(S.shop.items || []), ...add] };
     go('shopping');
-    if (sample){ toast('Added ' + add.length + ' items. Sorting by aisle…'); setTimeout(() => sortAisles(document.getElementById('aisleMsg')), 300); }
-    else toast('Added ' + add.length + ' items to shopping');
+    setTimeout(() => sortAisles(), 300);
   }
 };
 document.addEventListener('click', e => {
@@ -1056,7 +1049,7 @@ document.addEventListener('change', async e => {
   }
   if (k === 'snap' && t.files.length){
     const files = [...t.files].slice(0, S.imgMax || 1);
-    readWithClaude(AI_RULES + '\n\nThe attached picture shows a recipe (a cookbook page, handwritten card or screenshot). Read it.', files, '', overlay.querySelector('#snapKeep')?.checked);
+    readLocally({ files: [...t.files].slice(0, 4), keepPhoto: overlay.querySelector('#snapKeep')?.checked });
   }
 });
 
@@ -1102,10 +1095,10 @@ paintTimers(true);
 lockScreen();
 window.__spoonbookRender = () => render();
 Backend.start(async caps => {
-  ({ db, assets, user, sample, downloads } = caps);
+  ({ db, assets, user, downloads } = caps);
   S.canPhoto = !!assets; S.canSave = !!downloads;
   S.me = await user.id();
-  if (sample){ S.sampleOk = true; const lim = await sample.limits(); S.imgOk = true; S.imgMax = lim.images.maxCount; S.imgTypes = lim.images.mediaTypes.join(','); }
+
   db.collection('recipes').onSnapshot(snap => {
     S.recipes = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'en', { sensitivity: 'base' }));
     S.status = 'ok';

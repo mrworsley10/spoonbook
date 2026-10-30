@@ -1,7 +1,7 @@
 /* Spoonbook ↔ Supabase.
-   The app was first built inside Claude, where storage, photos, people and AI came from Claude's runtime.
-   This file gives the app the same small interfaces (db, assets, user, sample, downloads), backed by
-   Supabase instead, plus the sign-in and "join a cookbook" screens. */
+   The app was first built inside Claude, where storage, photos and people came from Claude's runtime.
+   This file gives the app the same small interfaces (db, assets, user, downloads), backed by
+   Supabase instead, plus the sign-in and "join a cookbook" screens. Nothing here uses AI. */
 (() => {
 const CFG = window.SPOONBOOK_CONFIG || {};
 const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, {
@@ -124,41 +124,6 @@ function makeUser(){
     id: async () => session?.user?.id ?? null,
     profiles: async ids => Object.fromEntries([].concat(ids).map(id => [id, { id, name: members.find(m => m.user_id === id)?.display_name || '' }]))
   };
-}
-
-/* ---------- Claude, through the "ai" function (off until a key is added) ---------- */
-let aiEnabled = false;
-async function toBase64(blob){
-  let b = blob;
-  try {
-    const bmp = await createImageBitmap(blob, { imageOrientation: 'from-image' });
-    const k = Math.min(1, 1568 / Math.max(bmp.width, bmp.height));
-    const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
-    b = await new Promise(r => c.toBlob(x => r(x || blob), 'image/jpeg', .85));
-  } catch {}
-  const buf = new Uint8Array(await b.arrayBuffer()); let s = '';
-  for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
-  return { type: b.type || 'image/jpeg', data: btoa(s) };
-}
-function makeSample(){
-  const call = async (prompt, opts = {}) => {
-    const imgs = opts.images ? await Promise.all([...opts.images].slice(0, 4).map(toBase64)) : undefined;
-    const work = sb.functions.invoke('ai', { body: { prompt, images: imgs, tier: opts.modelTier } }).then(async ({ data, error }) => {
-      if (error){
-        let body = {}; try { body = await error.context?.json?.(); } catch {}
-        const code = body?.error === 'rate_limited' ? 'rate_limited' : body?.error === 'invalid_json' ? 'invalid_json' : body?.error === 'not_configured' ? 'not_granted' : 'upstream_error';
-        throw { code, message: body?.error || error.message };
-      }
-      return data.result;
-    });
-    if (!opts.signal) return work;
-    return Promise.race([work, new Promise((_, rej) => opts.signal.addEventListener('abort', () => rej({ code: 'cancelled' }), { once: true }))]);
-  };
-  const s = (prompt, opts) => call(prompt, opts).then(r => ({ text: JSON.stringify(r), truncated: false }));
-  s.json = call;
-  s.limits = async () => ({ maxPromptBytes: 60000, images: { maxCount: 4, maxInputBytes: 20e6, mediaTypes: ['image/jpeg', 'image/png', 'image/webp'] } });
-  return s;
 }
 
 /* ---------- files to save ---------- */
@@ -290,10 +255,9 @@ async function start(){
   household = m.data[0].households;
   const all = await sb.from('members').select('user_id, display_name').eq('household_id', household.id);
   members = all.data || [];
-  try { const r = await sb.functions.invoke('ai', { method: 'GET' }); aiEnabled = !!r.data?.enabled; } catch { aiEnabled = false; }
   if (booted) return location.reload();
   booted = true; document.getElementById('nav').hidden = false;
-  onReady?.({ db: makeDb(household.id), assets: makeAssets(household.id), user: makeUser(), sample: aiEnabled ? makeSample() : null, downloads });
+  onReady?.({ db: makeDb(household.id), assets: makeAssets(household.id), user: makeUser(), downloads });
 }
 sb.auth.onAuthStateChange((event, s) => {
   if (event === 'PASSWORD_RECOVERY'){ session = s; return newPasswordScreen(); }
@@ -304,7 +268,7 @@ sb.auth.onAuthStateChange((event, s) => {
 window.Backend = {
   start(cb){ onReady = cb; start(); },
   photoUrl, clip, importBackup,
-  get household(){ return household; }, get members(){ return members; }, get aiEnabled(){ return aiEnabled; },
+  get household(){ return household; }, get members(){ return members; },
   async rename(name){ await sb.from('members').update({ display_name: name }).eq('household_id', household.id).eq('user_id', session.user.id); const me = members.find(m => m.user_id === session.user.id); if (me) me.display_name = name; },
   signOut: () => sb.auth.signOut(),
   email: () => session?.user?.email || ''
