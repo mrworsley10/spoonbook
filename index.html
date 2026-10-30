@@ -733,6 +733,7 @@ function moreSheet(){
       <span class="hint" style="display:block;margin-top:4px">To add someone, they open Spoonbook, create an account and enter this code:</span>
       <span class="joincode">${esc(hh.join_code)}</span>
       <div class="actions" style="margin-top:8px"><button class="btn small" data-act="copycode">Copy invite</button></div></div>
+    <button class="opt" data-act="shareapp"><span class="ic">${I.link}</span><span><b>Share Spoonbook</b><span>Send the app to friends or family so they can start their own cookbook.</span></span></button>
     <button class="opt" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
     ${S.canSave ? `<button class="opt" data-act="export" data-fmt="json"><span><b>Back up all recipes</b><span>One file with everything, ready to bring into another app later.</span></span></button>
     <button class="opt" data-act="export" data-fmt="md"><span><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes as a text document you can print or read anywhere.</span></span></button>`
@@ -968,6 +969,12 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('Invite copied'); } catch { toast('Code: ' + Backend.household.join_code); }
   },
   signout(){ Backend.signOut(); },
+  async shareapp(){
+    const url = location.origin + location.pathname;
+    const text = `Try Spoonbook, a cookbook app for your recipes, meal plans and shopping list. Open ${url} in Chrome on Android (tap ⋮ then Install app) or Safari on iPhone (tap Share then Add to Home Screen).`;
+    if (navigator.share){ try { await navigator.share({ title: 'Spoonbook', text, url }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast('Link copied, paste it into a message'); } catch { toast(url); }
+  },
   async cliplink(b){
     const u = (overlay.querySelector('#linkIn').value || '').trim(); const m = overlay.querySelector('#aiMsg');
     if (!/^https?:\/\/\S+\.\S+/.test(u)){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Paste the full address, starting with https://</p>'; return; }
