@@ -1376,7 +1376,10 @@ function photoErr(e){ const c = e?.code; return c === 'too_large' ? 'That photo 
 /* ---------- render ---------- */
 function render(force){
   if (!db) return;
-  if (!force && busy()){ S.pending = true; return; }
+  // typing in the shopping box shouldn't hold the list back: redraw and put the cursor back where it was
+  const a = document.activeElement;
+  const keep = a && a.id === 'shopIn' && app.contains(a) ? { id: a.id, value: a.value, s: a.selectionStart, e: a.selectionEnd } : null;
+  if (!force && !keep && busy()){ S.pending = true; return; }
   S.pending = false;
   const v = S.view;
   const html = v === 'recipe' ? recipeView() : v === 'cook' ? cookView() : (v === 'edit' || v === 'add') ? editView() : v === 'shopping' ? shopView() : v === 'favourites' ? favView() : v === 'plan' ? planView() : v === 'fridge' ? fridgeView() : v === 'bin' ? binView() : bookView();
@@ -1384,6 +1387,7 @@ function render(force){
   const y = window.scrollY;
   app.innerHTML = html;
   if (!force) window.scrollTo(0, y);
+  if (keep){ const n = document.getElementById(keep.id); if (n){ n.value = keep.value; n.focus({ preventScroll: true }); try { n.setSelectionRange(keep.s, keep.e); } catch {} } }
   const left = (S.shop.items || []).filter(i => !i.done).length;
   nav.hidden = ['cook','edit','add','recipe'].includes(v);
   nav.querySelectorAll('a').forEach(a => {
