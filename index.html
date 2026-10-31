@@ -748,7 +748,7 @@ function recipeView(){
   <div class="strip" aria-label="Photos">
     ${shots.map(id => `<button class="shot" data-act="show" data-shot="${esc(id)}" aria-current="${id === shown}" aria-label="Show photo"><img src="${img(id)}" alt="" loading="lazy"></button>`).join('')}
     ${S.canPhoto ? `<label class="addshot" for="photoIn">${I.cam}<span>${shots.length ? 'Ours' : 'Photo'}</span></label><input id="photoIn" type="file" accept="image/*" class="sr" data-chg="photo">` : ''}
-    ${shown && shown !== r.photo && S.canPhoto ? `<button class="btn small" data-act="makecover" style="align-self:center">Use as cover</button>` : ''}
+    ${shown && S.canPhoto ? `<span style="display:flex;flex-direction:column;gap:6px;align-self:center">${shown !== r.photo ? `<button class="btn small" data-act="makecover">Use as cover</button>` : ''}<button class="btn small danger" data-act="delphoto">${S.confirmPhoto === shown ? 'Tap again to remove' : 'Remove photo'}</button></span>` : ''}
   </div>
   ${S.noteEdit ? `<div class="note"><label class="eyebrow" for="noteIn">Our note</label><textarea id="noteIn" rows="3" placeholder="e.g. we use 1 tsp chilli and add spinach">${esc(r.note || '')}</textarea>
       <div class="actions" style="margin:0"><button class="btn small primary" data-act="savenote">Save note</button><button class="btn small" data-act="cancelnote">Cancel</button></div></div>`
@@ -1220,6 +1220,16 @@ const A = {
   cancelnote(){ S.noteEdit = false; render(true); },
   async savenote(){ const v = document.getElementById('noteIn').value.trim(); S.noteEdit = false; document.activeElement?.blur(); await patch(S.id, { note: v, editedBy: S.me, editedAt: Date.now() }); render(true); toast(v ? 'Note saved' : 'Note removed'); },
   show(b){ S.cover[S.id] = b.dataset.shot; render(); },
+  async delphoto(){
+    const r = byId(S.id); const id = S.cover[r.id] || r.photo; if (!id) return;
+    if (S.confirmPhoto !== id){ S.confirmPhoto = id; render(); setTimeout(() => { if (S.confirmPhoto === id){ S.confirmPhoto = null; render(); } }, 4000); return; }
+    S.confirmPhoto = null;
+    const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== id);
+    try { await patch(r.id, { photo: rest[0] || null, photos: rest.slice(1) }); } catch { return; }
+    delete S.cover[r.id];
+    if (assets) assets.delete(id).catch(() => {});
+    render(); toast('Photo removed');
+  },
   async makecover(){ const r = byId(S.id); const pick = S.cover[r.id]; const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== pick); await patch(r.id, { photo: pick, photos: rest }); delete S.cover[r.id]; toast('Cover photo updated'); },
   async toshop(){
     const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
