@@ -72,6 +72,9 @@ In **Database → Webhooks**, add a second hook like the one for new members: ta
 - **Simple mode:** for less confident cooks (⋯ → Simple mode, or the switch on a recipe's Method tab). Steps are split into one action at a time, cooking words are underlined and explained when tapped, there's a "before you start" prep list, and heat and food-safety tips appear where they matter. The recipe itself isn't changed. It's a setting on each phone.
 - **Share a recipe:** the share button on a recipe can send a link. Anyone can open it on a nice recipe page; Spoonbook users tap “Save to my Spoonbook” and it's copied into their book, photo and all. New people are invited to make their own cookbook first. (Needs the latest `schema.sql` run in Supabase.)
 - **Bring in lots at once:** + → *Lots at once, from old emails or files*. Pick saved emails (.eml), a whole email folder (.mbox) or text files; each becomes a recipe, attached photos included, with duplicates skipped. Instructions for saving emails with Thunderbird are on that screen.
+- **Allergy & diet flags:** each recipe shows which of the UK's 14 allergens it contains and whether it looks vegetarian or vegan, worked out from the ingredients (a guide only: check labels). Filter the book with the *Allergies & diet* chip.
+- **Oven settings:** temperatures in a method are shown as °C, fan and gas mark together.
+- **Send the shopping list** to WhatsApp or any other app.
 - **Hands-free cooking:** tap the microphone in cooking mode. Steps are read out, and you can say "next", "back", "read it again", "ingredients", "start timer", "ten minute timer" or "stop".
 - **Two dishes at once:** in cooking mode, tap "Add a second dish" to follow two recipes side by side, each with its own steps and timers.
 - **Shop mode, cupboard staples and usuals:** on the shopping list. Staples (salt, pepper…) are left off when you add a recipe; usuals are one tap to add.
@@ -94,6 +97,7 @@ In **Database → Webhooks**, add a second hook like the one for new members: ta
 | `backend.js` | Connects the app to Supabase (data, sign-in, photos) |
 | `simple.js` | Simple mode: splits steps, explains cooking words, builds the prep list, adds heat and safety tips |
 | `mail.js` | Reads saved emails and email folders on the phone for the bulk importer |
+| `diet.js` | Works out allergens and vegetarian/vegan from the ingredients |
 | `local.js` | Reads pasted recipes and photos, sorts the shopping list, works out calories, all on the phone |
 | `nutrition.js` | Nutrition values for about 150 everyday ingredients, from UK government data |
 | `config.js` | Your Supabase address and public key |

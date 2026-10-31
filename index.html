@@ -19,6 +19,7 @@
 <script src="local.js"></script>
 <script src="simple.js"></script>
 <script src="mail.js"></script>
+<script src="diet.js"></script>
 <script src="backend.js"></script>
 </head>
 <body>
@@ -279,6 +280,13 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .second{display:block;margin:26px auto 0}
 .ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
 .legal{font-size:12px;margin-top:4px}
+.dietline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border:0;background:none;padding:0;text-align:left;color:var(--muted);font-size:13px}
+.dietline .contains{line-height:1.4}
+.dietline .info{color:var(--accent);font-size:14px}
+.tg.veg{background:color-mix(in srgb,var(--ok) 22%,transparent);color:var(--fg)}
+.allergens{list-style:none;padding:0;margin:0}
+.allergens li{padding:8px 0;border-bottom:1px solid var(--line)}
+.allergens .hint{display:block;font-size:13px}
 .hellolink{color:inherit;text-decoration:none;border-bottom:2px solid color-mix(in srgb,var(--accent) 40%,transparent)}
 .hello .more{font-size:.5em;font-style:normal;color:var(--muted);white-space:nowrap}
 #printArea{display:none}
@@ -505,7 +513,24 @@ function toMetric(line){
   return out.replace(/\s{2,}/g, ' ');
 }
 const hasUS = r => [...(r.ingredients || []), ...(r.steps || [])].some(l => new RegExp(US_SRC, 'i').test(l) || new RegExp(INCH_SRC, 'i').test(l) || new RegExp(F_SRC).test(l));
-const showLine = l => S.metric ? toMetric(l) : l;
+// UK recipes mix oven settings, so show °C, fan and gas mark together
+const GAS = [[110, '¼'], [120, '½'], [140, '1'], [150, '2'], [160, '3'], [180, '4'], [190, '5'], [200, '6'], [220, '7'], [230, '8'], [240, '9']];
+const gasOf = c => GAS.reduce((b, g) => Math.abs(g[0] - c) < Math.abs(b[0] - c) ? g : b)[1];
+function oven(line){
+  if (!line || !/°|\bC\b|\d\s*C\b|gas|degrees/i.test(line)) return line;
+  if (!/oven|bake|roast|fan|gas|preheat|tin\b|tray/i.test(line)) return line; // not about the oven (oil for frying, say)
+  if (/gas/i.test(line) && /fan/i.test(line)) return line; // already has all three
+  let done = false;
+  let out = line.replace(/\b(\d{3})\s*(?:°\s*C\b|degrees(?:\s*c(?:elsius)?\b)?|°(?!\s*F)|C\b)(\s*fan|\s*\(fan\))?(?!\s*\/)/gi, (m, n, fan) => {
+    const c = +n; if (done || c < 100 || c > 260) return m; done = true;
+    if (fan) return `${m} (${c + 20}°C, gas ${gasOf(c + 20)})`;
+    if (/gas/i.test(line)) return `${m} (fan ${c - 20}°C)`;
+    return `${m} (fan ${c - 20}°C, gas ${gasOf(c)})`;
+  });
+  if (!done) out = out.replace(/\bgas(?: mark)?\s*(\d|¼|½)\b(?![^()]*°)/i, (m, g) => { const row = GAS.find(x => x[1] === g); return row ? `${m} (${row[0]}°C, fan ${row[0] - 20}°C)` : m; });
+  return out;
+}
+const showLine = l => oven(S.metric ? toMetric(l) : l);
 const baseServes = r => { const m = String(r.serves || '').match(/\d+/); return m ? +m[0] : null; };
 function factor(r){ const b = baseServes(r), v = S.scale[r.id]; if (v == null) return 1; return b ? v / b : v; }
 
@@ -694,6 +719,7 @@ function filtered(){
   let list = S.recipes;
   if (S.view === 'favourites') list = list.filter(r => r.favourite);
   if (S.cat !== 'All') list = list.filter(r => (r.category || 'Mains') === S.cat);
+  if (dietActive()) list = list.filter(dietPasses);
   if (S.tag) list = list.filter(r => S.tag.startsWith('spice:') ? r.spice != null && r.spice === +S.tag.slice(6) : (r.tags || []).includes(S.tag));
   if (q) list = list.filter(r => (r.title + ' ' + (r.ingredients || []).join(' ')).toLowerCase().includes(q));
   return sorted(list);
@@ -724,6 +750,7 @@ function bookView(){
   <div class="chips" role="group" aria-label="Filter by category">
     ${['All', ...CATS.filter(c => counts[c])].map(c => `<button class="chip" data-act="cat" data-cat="${esc(c)}" aria-pressed="${S.cat === c}">${esc(c)}${c !== 'All' ? ' · ' + counts[c] : ''}</button>`).join('')}
   </div>
+  <div class="chips tags"><button class="chip" data-act="diet" aria-pressed="${!!dietActive()}">${dietActive() ? '✓ ' + esc(dietSummary()) : 'Allergies &amp; diet'}</button></div>
   ${tagKeys.length ? `<div class="chips tags" role="group" aria-label="Filter by tag or spice">${tagKeys.map(k => `<button class="chip" data-act="tag" data-tag="${esc(k)}" aria-pressed="${S.tag === k}">${esc(tagName(k))} · ${tc[k]}</button>`).join('')}</div>` : ''}
   ${freeNote()}
   <div class="sec"><h2 class="eyebrow" style="margin:0">The whole book · ${S.recipes.length}</h2>
@@ -774,6 +801,40 @@ function greeting(now = new Date()){
   if (d === 5) return `Friday,<br><em>something fun.</em>`;
   return named ? `Evening, ${esc(me)}.<br><em>Something ${season}?</em>` : `Tonight,<br><em>something ${season}.</em>`;
 }
+// allergy and diet flags, worked out from the ingredients (cached per recipe)
+const dietCache = new Map();
+function dietOf(r){
+  const key = r.id + '|' + r.title + '|' + (r.ingredients || []).join('|');
+  if (!dietCache.has(key)) dietCache.set(key, Diet.check(r.ingredients, r.title));
+  return dietCache.get(key);
+}
+function readFilter(){ try { return JSON.parse(ls.get('sb-diet') || 'null') || { avoid: [], diet: '' }; } catch { return { avoid: [], diet: '' }; } }
+S.dietFilter = readFilter();
+const dietActive = () => S.dietFilter.avoid.length || S.dietFilter.diet;
+function dietPasses(r){
+  const f = S.dietFilter; if (!dietActive()) return true;
+  const d = dietOf(r);
+  if (f.diet === 'vegan' && !d.vegan) return false;
+  if (f.diet === 'vegetarian' && !d.vegetarian) return false;
+  return !d.contains.some(c => f.avoid.includes(c.name));
+}
+function dietSummary(){ const f = S.dietFilter; return [f.diet === 'vegan' ? 'Vegan' : f.diet === 'vegetarian' ? 'Vegetarian' : '', ...f.avoid.map(a => 'no ' + a.toLowerCase())].filter(Boolean).join(', '); }
+function dietSheet(){
+  const f = S.dietFilter;
+  openSheet('Allergies and diet', `<h2>Allergies &amp; diet</h2>
+    <p class="hint">Only show recipes that suit. Worked out from each recipe’s ingredients, so it can’t see inside shop-bought products: always check labels if someone has an allergy.</p>
+    <h3 class="sub">Diet</h3>
+    <div class="chips" style="margin-top:6px">${[['', 'Anything'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']].map(([k, n]) => `<button class="chip" data-act="dietpick" data-diet="${k}" aria-pressed="${f.diet === k}">${n}</button>`).join('')}</div>
+    <h3 class="sub">Leave out recipes with</h3>
+    <div class="chips" style="margin-top:6px">${Diet.NAMES.map(n => `<button class="chip" data-act="dietavoid" data-a="${n}" aria-pressed="${f.avoid.includes(n)}">${n}</button>`).join('')}</div>
+    <p class="hint" id="dietCount" style="margin-top:4px">${S.recipes.filter(dietPasses).length} of ${S.recipes.length} recipes suit.</p>
+    <div class="actions" style="margin:0"><button class="btn primary" data-act="closesheet">Show recipes</button>${dietActive() ? '<button class="btn" data-act="dietclear">Clear</button>' : ''}</div>`);
+}
+function dietBadges(r){
+  const d = dietOf(r); if (!(r.ingredients || []).length) return '';
+  const diet = d.vegan ? '<span class="tg veg">🌱 Vegan</span>' : d.vegetarian ? '<span class="tg veg">Vegetarian</span>' : '';
+  return `<button class="dietline" data-act="dietinfo">${diet}${d.contains.length ? `<span class="contains">Contains ${d.contains.map(c => c.name.toLowerCase()).join(', ')}</span>` : '<span class="contains">No common allergens spotted</span>'}<span class="info">ⓘ</span></button>`;
+}
 function welcomeHtml(){
   return `<h1 class="hello">Welcome to<br><em>your cookbook.</em></h1>
   <p class="hint" style="font-size:16px;margin-bottom:14px">Here’s how to fill it. Everything you add is shared with anyone you invite.</p>
@@ -808,6 +869,7 @@ function recipeView(){
   </div>
   <div class="meta">${esc(who(r))}${who(r) && r.source ? ' · ' : ''}${r.source ? `<a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(host(r.source) || 'original recipe')}</a>` : ''}</div>
   ${madeLine(r) ? `<div class="meta" style="margin-top:4px">${madeLine(r)}</div>` : ''}
+  ${dietBadges(r)}
   ${(r.tags || []).length || r.spice != null ? `<div class="tagline">${r.spice != null ? `<span class="tg">${r.spice ? chillies(r.spice) + ' ' : ''}${SPICE[r.spice]}</span>` : ''}${(r.tags || []).map(t => `<span class="tg">${esc(t)}</span>`).join('')}</div>` : ''}
   ${r.aiNote ? `<p class="ainote">${I.pen}<span>${esc(r.aiNote)}</span></p>` : ''}
   ${S.me && S.canEdit ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
@@ -951,6 +1013,7 @@ function shopView(){
   <div class="shopbar">
     ${items.length ? `<button class="btn small ${S.shopMode ? 'on' : ''}" data-act="shopmode" aria-pressed="${S.shopMode}">${S.shopMode ? '✓ Shop mode' : 'Shop mode'}</button>` : ''}
     <button class="btn small" data-act="pantry">Cupboard &amp; usuals</button>
+    ${open.length ? `<button class="btn small" data-act="sendlist">Send list</button>` : ''}
     ${items.length ? `<button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>
       ${done.length ? `<button class="btn small" data-act="clearDone">Clear ${done.length} ticked</button>` : ''}
       <button class="btn small danger" data-act="clearAll">${S.confirmClear ? 'Tap again to empty' : 'Empty list'}</button>` : ''}</div>
@@ -1476,6 +1539,34 @@ const A = {
   },
   more(){ moreSheet(); },
   books(){ booksSheet(); },
+  diet(){ dietSheet(); },
+  dietpick(b){ S.dietFilter.diet = b.dataset.diet; ls.set('sb-diet', JSON.stringify(S.dietFilter)); dietSheet(); render(); },
+  dietavoid(b){ const a = b.dataset.a, l = S.dietFilter.avoid; S.dietFilter.avoid = l.includes(a) ? l.filter(x => x !== a) : [...l, a]; ls.set('sb-diet', JSON.stringify(S.dietFilter)); dietSheet(); render(); },
+  dietclear(){ S.dietFilter = { avoid: [], diet: '' }; ls.set('sb-diet', JSON.stringify(S.dietFilter)); closeSheet(); render(); },
+  dietinfo(){
+    const r = byId(S.id); const d = dietOf(r);
+    openSheet('Allergens', `<h2>Allergy &amp; diet guide</h2>
+      ${d.vegan ? '<p>🌱 Looks <b>vegan</b>: no meat, fish, dairy, eggs or honey spotted.</p>' : d.vegetarian ? '<p>Looks <b>vegetarian</b>: no meat or fish spotted.</p>' : ''}
+      ${d.contains.length ? `<ul class="allergens">${d.contains.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>` : '<p>None of the 14 common allergens spotted in the ingredients.</p>'}
+      <p class="hint">Worked out by Spoonbook from the ingredient list. It can’t see inside shop-bought products like stock cubes, sauces or bread, which often contain gluten, milk, soya or mustard. If someone has an allergy, always check the labels.</p>
+      <button class="btn" data-act="closesheet">Got it</button>`);
+  },
+  sendlist(){
+    const open = (S.shop.items || []).filter(i => !i.done);
+    const groups = {}; open.forEach(it => { const k = it.aisle || 'Shopping'; (groups[k] = groups[k] || []).push(it.text); });
+    const many = Object.keys(groups).length > 1;
+    const text = '🛒 Shopping list\n' + Object.entries(groups).map(([k, l]) => (many ? `\n*${k}*\n` : '\n') + l.map(x => '• ' + x).join('\n')).join('\n') + '\n\nFrom our Spoonbook';
+    S.listText = text;
+    openSheet('Send the list', `<h2>Send the list</h2><p class="hint">${open.length} item${open.length > 1 ? 's' : ''}, sorted by aisle if you’ve tapped “Combine &amp; sort”.</p>
+      <a class="btn primary" href="https://wa.me/?text=${encodeURIComponent(text)}" target="_blank" rel="noopener" data-act="closesheet">Send on WhatsApp</a>
+      <button class="btn" data-act="sendlistother">Another app or copy</button>
+      <button class="btn" data-act="closesheet">Cancel</button>`);
+  },
+  async sendlistother(){
+    const t = S.listText; closeSheet();
+    if (navigator.share){ try { await navigator.share({ title: 'Shopping list', text: t }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
+  },
   people(){ peopleSheet(); },
   switchbook(b){ if (b.dataset.id !== Backend.household.id) Backend.switchTo(b.dataset.id); else closeSheet(); },
   async joinbook(b){
@@ -1702,7 +1793,7 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const fn = A[b.dataset.act]; if (!fn) return;
   if (!S.canEdit && EDIT_ACTS.has(b.dataset.act)){ e.preventDefault(); toast('This cookbook is view only'); return; }
-  if (b.tagName === 'A' && !['canceledit','done'].includes(b.dataset.act)) e.preventDefault();
+  if (b.tagName === 'A' && !['canceledit','done'].includes(b.dataset.act) && !(b.dataset.act === 'closesheet' && b.target === '_blank')) e.preventDefault();
   fn(b, e);
 });
 document.addEventListener('keydown', e => {
