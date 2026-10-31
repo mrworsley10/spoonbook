@@ -338,6 +338,7 @@ const I = {
   star:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
   starF:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
   moon:'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
+  share:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
   mic:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const app = document.getElementById('app'), overlay = document.getElementById('overlay'), nav = document.getElementById('nav');
@@ -710,7 +711,8 @@ function recipeView(){
   return `
   <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : esc(r.title.charAt(0).toUpperCase())}
     <div class="bar"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a>
-      <button class="icon-btn" data-act="fav" aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button></div>
+      <span style="display:flex;gap:8px"><button class="icon-btn" data-act="copy" aria-label="Share this recipe">${I.share}</button>
+      <button class="icon-btn" data-act="fav" aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button></span></div>
     <div class="ttl"><div class="eyebrow">${esc(r.category || 'Mains')}${r.serves ? ' · Serves ' + esc(r.serves) : ''}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</div><h1>${esc(r.title)}</h1></div>
   </div>
   <div class="meta">${esc(who(r))}${who(r) && r.source ? ' · ' : ''}${r.source ? `<a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(host(r.source) || 'original recipe')}</a>` : ''}</div>
