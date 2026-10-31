@@ -36,10 +36,28 @@ create table if not exists public.lists (
   primary key (household_id, id)
 );
 
+-- Roles: editors can change the cookbook, viewers can only look (and copy recipes into a cookbook of their own).
+-- Editors join with join_code, viewers with view_code.
+alter table public.members add column if not exists role text not null default 'editor';
+do $$ begin alter table public.members add constraint members_role_check check (role in ('editor', 'viewer')); exception when duplicate_object then null; end $$;
+alter table public.households add column if not exists view_code text unique default upper(substr(md5(random()::text), 1, 6));
+update public.households set view_code = upper(substr(md5(random()::text || id::text), 1, 6)) where view_code is null;
+
 -- Who belongs where. security definer so policies can call it without recursion.
 create or replace function public.is_member(hh uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select exists (select 1 from public.members where household_id = hh and user_id = auth.uid());
+$$;
+create or replace function public.is_editor(hh uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.members where household_id = hh and user_id = auth.uid() and role = 'editor');
+$$;
+-- Who can manage people: whoever started the cookbook, or any editor once that person has gone.
+create or replace function public.can_manage(hh uuid) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from public.households h where h.id = hh and (
+    h.created_by = auth.uid()
+    or ((h.created_by is null or not exists (select 1 from public.members m where m.household_id = hh and m.user_id = h.created_by)) and public.is_editor(hh))));
 $$;
 
 alter table public.households enable row level security;
@@ -50,7 +68,10 @@ alter table public.lists enable row level security;
 drop policy if exists "members read household" on public.households;
 create policy "members read household" on public.households for select using (public.is_member(id));
 drop policy if exists "members rename household" on public.households;
-create policy "members rename household" on public.households for update using (public.is_member(id));
+create policy "members rename household" on public.households for update using (public.is_editor(id));
+-- The invite codes are only handed out through cookbook_codes(), so a viewer can't find the editors' code.
+revoke select on public.households from anon, authenticated;
+grant select (id, name, created_by, created_at) on public.households to authenticated;
 
 drop policy if exists "members see each other" on public.members;
 create policy "members see each other" on public.members for select using (public.is_member(household_id));
@@ -60,9 +81,23 @@ drop policy if exists "leave household" on public.members;
 create policy "leave household" on public.members for delete using (user_id = auth.uid());
 
 drop policy if exists "members use recipes" on public.recipes;
-create policy "members use recipes" on public.recipes for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+drop policy if exists "members read recipes" on public.recipes;
+create policy "members read recipes" on public.recipes for select using (public.is_member(household_id));
+drop policy if exists "editors add recipes" on public.recipes;
+create policy "editors add recipes" on public.recipes for insert with check (public.is_editor(household_id));
+drop policy if exists "editors change recipes" on public.recipes;
+create policy "editors change recipes" on public.recipes for update using (public.is_editor(household_id)) with check (public.is_editor(household_id));
+drop policy if exists "editors remove recipes" on public.recipes;
+create policy "editors remove recipes" on public.recipes for delete using (public.is_editor(household_id));
 drop policy if exists "members use lists" on public.lists;
-create policy "members use lists" on public.lists for all using (public.is_member(household_id)) with check (public.is_member(household_id));
+drop policy if exists "members read lists" on public.lists;
+create policy "members read lists" on public.lists for select using (public.is_member(household_id));
+drop policy if exists "editors add lists" on public.lists;
+create policy "editors add lists" on public.lists for insert with check (public.is_editor(household_id));
+drop policy if exists "editors change lists" on public.lists;
+create policy "editors change lists" on public.lists for update using (public.is_editor(household_id)) with check (public.is_editor(household_id));
+drop policy if exists "editors remove lists" on public.lists;
+create policy "editors remove lists" on public.lists for delete using (public.is_editor(household_id));
 
 -- Start a new cookbook and join it.
 create or replace function public.create_household(cookbook_name text, my_name text) returns public.households
@@ -75,21 +110,76 @@ begin
   return h;
 end $$;
 
--- Join someone else's cookbook with their code.
-create or replace function public.join_household(code text, my_name text) returns public.households
+-- Join someone else's cookbook with their code. The editors' code makes you an editor, the view code a viewer.
+drop function if exists public.join_household(text, text);
+create or replace function public.join_household(code text, my_name text) returns json
 language plpgsql security definer set search_path = public as $$
-declare h public.households;
+declare h public.households; r text;
 begin
   if auth.uid() is null then raise exception 'Not signed in'; end if;
   select * into h from public.households where join_code = upper(trim(code));
+  if h.id is not null then r := 'editor';
+  else select * into h from public.households where view_code = upper(trim(code)); r := 'viewer'; end if;
   if h.id is null then raise exception 'No cookbook has that code'; end if;
-  insert into public.members (household_id, user_id, display_name) values (h.id, auth.uid(), coalesce(trim(my_name), ''))
-    on conflict (household_id, user_id) do update set display_name = excluded.display_name;
-  return h;
+  insert into public.members (household_id, user_id, display_name, role) values (h.id, auth.uid(), coalesce(trim(my_name), ''), r)
+    on conflict (household_id, user_id) do update set display_name = excluded.display_name,
+      role = case when public.members.role = 'editor' then 'editor' else excluded.role end;
+  return json_build_object('id', h.id, 'name', h.name, 'role', (select role from public.members where household_id = h.id and user_id = auth.uid()));
+end $$;
+
+-- The invite codes, for editors only.
+create or replace function public.cookbook_codes(hh uuid) returns json
+language sql stable security definer set search_path = public as $$
+  select case when public.is_editor(hh) then json_build_object('join_code', join_code, 'view_code', view_code) end from public.households where id = hh;
+$$;
+
+-- Managing people (whoever started the cookbook).
+create or replace function public.set_member_role(hh uuid, member uuid, new_role text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.can_manage(hh) then raise exception 'Only the person who started this cookbook can do that'; end if;
+  if new_role not in ('editor', 'viewer') then raise exception 'Unknown role'; end if;
+  if new_role = 'viewer' and not exists (select 1 from public.members where household_id = hh and role = 'editor' and user_id <> member) then
+    raise exception 'A cookbook needs at least one editor'; end if;
+  update public.members set role = new_role where household_id = hh and user_id = member;
+end $$;
+create or replace function public.remove_member(hh uuid, member uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.can_manage(hh) then raise exception 'Only the person who started this cookbook can do that'; end if;
+  if member = auth.uid() then raise exception 'Use Leave this cookbook instead'; end if;
+  delete from public.members where household_id = hh and user_id = member;
+end $$;
+-- New invite codes, so old ones stop working.
+create or replace function public.new_codes(hh uuid) returns json
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.can_manage(hh) then raise exception 'Only the person who started this cookbook can do that'; end if;
+  update public.households set join_code = upper(substr(md5(random()::text), 1, 6)), view_code = upper(substr(md5(random()::text || 'v'), 1, 6)) where id = hh;
+  return public.cookbook_codes(hh);
+end $$;
+-- Leave a cookbook. The last person out takes it with them; if only viewers are left, the longest-standing becomes an editor.
+create or replace function public.leave_household(hh uuid) returns text
+language plpgsql security definer set search_path = public as $$
+declare left_n int;
+begin
+  delete from public.members where household_id = hh and user_id = auth.uid();
+  select count(*) into left_n from public.members where household_id = hh;
+  if left_n = 0 then delete from public.households where id = hh; return 'deleted_cookbook'; end if;
+  if not exists (select 1 from public.members where household_id = hh and role = 'editor') then
+    update public.members set role = 'editor' where household_id = hh and user_id = (select user_id from public.members where household_id = hh order by joined_at limit 1);
+  end if;
+  return 'left';
 end $$;
 
 grant execute on function public.create_household(text, text) to authenticated;
 grant execute on function public.join_household(text, text) to authenticated;
+grant execute on function public.cookbook_codes(uuid) to authenticated;
+grant execute on function public.set_member_role(uuid, uuid, text) to authenticated;
+grant execute on function public.remove_member(uuid, uuid) to authenticated;
+grant execute on function public.new_codes(uuid) to authenticated;
+grant execute on function public.leave_household(uuid) to authenticated;
+grant execute on function public.is_editor(uuid) to authenticated;
 grant execute on function public.is_member(uuid) to authenticated;
 
 -- Live updates between phones.
@@ -106,13 +196,13 @@ create policy "household photos read" on storage.objects for select
   using (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
 drop policy if exists "household photos add" on storage.objects;
 create policy "household photos add" on storage.objects for insert
-  with check (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
+  with check (bucket_id = 'photos' and public.is_editor(((storage.foldername(name))[1])::uuid));
 drop policy if exists "household photos change" on storage.objects;
 create policy "household photos change" on storage.objects for update
-  using (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
+  using (bucket_id = 'photos' and public.is_editor(((storage.foldername(name))[1])::uuid));
 drop policy if exists "household photos remove" on storage.objects;
 create policy "household photos remove" on storage.objects for delete
-  using (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
+  using (bucket_id = 'photos' and public.is_editor(((storage.foldername(name))[1])::uuid));
 
 -- Spoonbook Plus (paywall, off by default) lives in plus.sql. Run that file too.
 
@@ -162,3 +252,22 @@ drop policy if exists "shared photos mine" on storage.objects;
 create policy "shared photos mine" on storage.objects for select to authenticated using (bucket_id = 'shared' and owner_id = auth.uid()::text);
 drop policy if exists "shared photos remove" on storage.objects;
 create policy "shared photos remove" on storage.objects for delete to authenticated using (bucket_id = 'shared' and owner_id = auth.uid()::text);
+
+-- Feedback sent from the app (⋯ → Send feedback). Read it in Table Editor → feedback.
+create table if not exists public.feedback (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid default auth.uid() references auth.users(id) on delete set null,
+  household_id uuid,
+  name text,
+  message text not null check (length(message) between 1 and 5000),
+  app text,
+  created_at timestamptz not null default now()
+);
+alter table public.feedback enable row level security;
+drop policy if exists "send feedback" on public.feedback;
+create policy "send feedback" on public.feedback for insert to authenticated with check (user_id = auth.uid());
+revoke select, update, delete on public.feedback from anon, authenticated;
+grant insert on public.feedback to authenticated;
+
+-- Weekly backups are saved here by the backup function. Private: no policies, so only the server can read it.
+insert into storage.buckets (id, name, public) values ('backups', 'backups', false) on conflict (id) do update set public = false;

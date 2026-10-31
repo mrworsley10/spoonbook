@@ -8,6 +8,7 @@ alter table public.households add column if not exists plus_until timestamptz;
 -- People can still rename their cookbook, but can't give themselves Plus.
 revoke update on public.households from anon, authenticated;
 grant update (name) on public.households to authenticated;
+grant select (plan, plus_until) on public.households to authenticated;
 
 -- One row of app-wide settings, readable by the app.
 create table if not exists public.app_settings (

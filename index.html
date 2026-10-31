@@ -279,6 +279,32 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .second{display:block;margin:26px auto 0}
 .ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
 .legal{font-size:12px;margin-top:4px}
+#printArea{display:none}
+@media print{
+  body{background:#fff!important;color:#000!important}
+  body>*:not(#printArea){display:none!important}
+  #printArea{display:block!important;font:12pt/1.45 Georgia,serif;color:#000;padding:0 8mm}
+  #printArea img{width:100%;max-height:70mm;object-fit:cover;border-radius:4px}
+  #printArea h1{font-size:24pt;margin:2mm 0 4mm;font-weight:500}
+  #printArea h2{font-size:13pt;margin:0 0 2mm;text-transform:uppercase;letter-spacing:1px}
+  #printArea .pe,#printArea .pf{font:9pt/1.3 system-ui,sans-serif;color:#555;margin:4mm 0 0;text-transform:uppercase;letter-spacing:1px}
+  #printArea .pcols{display:grid;grid-template-columns:1fr 1.6fr;gap:8mm}
+  #printArea ul,#printArea ol{margin:0;padding-left:5mm}
+  #printArea li{margin-bottom:1.5mm;break-inside:avoid}
+  #printArea .pn{margin-top:4mm;font-style:italic}
+}
+.booknote{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:var(--raise);font-size:13px;color:var(--muted);display:flex;gap:10px;align-items:center;justify-content:space-between}
+.booknote.view{border:1px solid var(--accent)}
+.booknote .linkbtn{font-size:13px;flex:none}
+.booklist{display:flex;flex-direction:column;gap:8px}
+.booklist .tick{color:var(--accent);font-weight:700;font-size:18px}
+.people{list-style:none;margin:0;padding:0}
+.people li{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.people .row{display:flex;flex-direction:column;gap:6px}
+.invite{display:flex;gap:12px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:12px}
+.invite .code{font-weight:700;letter-spacing:1.5px;color:var(--fg)}
+.invite .btn{flex:none;white-space:nowrap}
+.welcome{display:flex;flex-direction:column;gap:10px}
 .gbtn{width:100%;margin-top:4px;background:#fff;color:#1f1f1f;border-color:#dadce0;gap:12px}
 .or{display:flex;align-items:center;gap:12px;margin:18px 0 6px;font-size:13px;color:var(--muted)}
 .or::before,.or::after{content:'';flex:1;height:1px;background:var(--line)}
@@ -370,8 +396,8 @@ let db=null, assets=null, user=null, sample=null, wake=null, downloads=null;
 /* ---------- shared from another app (Android share sheet) ---------- */
 let shared = (() => {
   const p = new URLSearchParams(location.search);
-  const v = { title: p.get('title') || '', text: p.get('text') || '', url: p.get('url') || '', imp: p.get('import') || '' };
-  if (!v.title && !v.text && !v.url && !v.imp){
+  const v = { title: p.get('title') || '', text: p.get('text') || '', url: p.get('url') || '', imp: p.get('import') || '', join: (p.get('join') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12) };
+  if (!v.title && !v.text && !v.url && !v.imp && !v.join){
     // still waiting from before a sign-in (Google sign-in reloads the page)
     try { return JSON.parse(sessionStorage.getItem('sb-shared') || 'null'); } catch { return null; }
   }
@@ -381,7 +407,10 @@ let shared = (() => {
 })();
 function handleShared(){
   if (!shared) return; const v = shared; shared = null;
+  // a join code already used on the "set up your cookbook" screen is cleared there
+  try { if (v.join && !JSON.parse(sessionStorage.getItem('sb-shared') || 'null')?.join) v.join = ''; } catch {}
   try { sessionStorage.removeItem('sb-shared'); } catch {}
+  if (v.join){ const mine = Backend.household; if (!mine?.join_code || ![mine.join_code, mine.view_code].includes(v.join.toUpperCase())) joinSheet(v.join.toUpperCase()); return; }
   if (v.imp) return importShared(v.imp);
   const link = ((v.url + ' ' + v.text).match(/https?:\/\/[^\s"'<>]+/) || [])[0]?.replace(/[).,;!?]+$/, '');
   const body = v.text.replace(link || '\u0000', '').trim();
@@ -627,7 +656,11 @@ function topBar(){
   return `<div class="top"><p class="brand">Spoonbook</p><div class="row">
     <button class="icon-btn" data-act="theme" aria-label="${isDark() ? 'Switch to light' : 'Switch to dark'}">${isDark() ? I.sun : I.moon}</button>
     <button class="icon-btn" data-act="more" aria-label="More options">${I.more}</button>
-    <button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button></div></div>${offlineNote()}`;
+    ${S.canEdit ? `<button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button>` : ''}</div></div>${offlineNote()}${viewNote()}`;
+}
+function viewNote(){
+  if (S.canEdit) return Backend.cookbooks.length > 1 ? `<p class="booknote"><span>${esc(Backend.household.name)}</span><button class="linkbtn" data-act="books">Switch cookbook</button></p>` : '';
+  return `<p class="booknote view"><span>You’re looking at <b>${esc(Backend.household.name)}</b>. View only: copy any recipe into your own cookbook to change it.</span><button class="linkbtn" data-act="books">Switch</button></p>`;
 }
 function offlineNote(){
   const n = Backend.pending;
@@ -670,7 +703,7 @@ function listHtml(){
 }
 function bookView(){
   if (S.status === 'none') return topBar() + `<div class="empty"><h2>Can’t reach the cookbook</h2>Check your internet connection, then close and reopen Spoonbook.</div>`;
-  if (!S.recipes.length) return topBar() + `<h1 class="hello">An empty<br><em>cookbook.</em></h1><div class="empty"><h2>Add your first recipe</h2>Tap + to paste a recipe, snap a cookbook page, or type one in.</div>`;
+  if (!S.recipes.length) return topBar() + (S.canEdit ? welcomeHtml() : `<h1 class="hello">Nothing here<br><em>yet.</em></h1><div class="empty">When recipes are added to ${esc(Backend.household.name)}, they’ll appear here.</div>`);
   const favs = S.recipes.filter(r => r.favourite);
   const picks = favs.length >= 3 ? [...favs].sort((a, b) => lastMade(a) - lastMade(b)).slice(0, 8) : dailyPicks(S.recipes);
   const counts = {}; S.recipes.forEach(r => counts[r.category || 'Mains'] = (counts[r.category || 'Mains'] || 0) + 1);
@@ -718,6 +751,18 @@ function freeNote(){
   const n = S.recipes.length; if (n < p.limit - 10) return '';
   return `<p class="offline">${n >= p.limit ? `This cookbook has reached its ${p.limit} free recipes.` : `${n} of ${p.limit} free recipes used.`} <button class="linkbtn" data-act="upgrade">Get Spoonbook Plus</button></p>`;
 }
+function welcomeHtml(){
+  return `<h1 class="hello">Welcome to<br><em>your cookbook.</em></h1>
+  <p class="hint" style="font-size:16px;margin-bottom:14px">Here’s how to fill it. Everything you add is shared with anyone you invite.</p>
+  <div class="welcome">
+    <button class="opt" data-act="sheet" data-mode="link"><span class="ic">${I.link}</span><span><b>Save one from a website</b><span>Paste the link and the recipe and photo come in together. On Android you can also share straight from Chrome.</span></span></button>
+    <button class="opt" data-act="sheet" data-mode="photo"><span class="ic">${I.cam}</span><span><b>Snap a cookbook page</b><span>Take a photo of a printed recipe and Spoonbook reads it in.</span></span></button>
+    <button class="opt" data-act="sheet" data-mode="bulk"><span class="ic">${I.plus}</span><span><b>Bring lots across</b><span>From another recipe app like ChefTap, or a folder of old emails.</span></span></button>
+    <button class="opt" data-act="typein"><span class="ic">${I.pen}</span><span><b>Type in a family favourite</b><span>Start from a blank recipe.</span></span></button>
+  </div>
+  <div class="actions" style="margin-top:18px"><button class="btn small" data-act="samples">Add 3 example recipes to try it out</button><button class="btn small" data-act="people">Invite someone</button></div>
+  <p class="hint" style="margin-top:12px">Examples can be deleted whenever you like.</p>`;
+}
 function favView(){
   const favs = S.recipes.filter(r => r.favourite);
   return topBar() + `<h1 class="hello">Our<br><em>favourites.</em></h1>` +
@@ -735,22 +780,22 @@ function recipeView(){
   <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : esc(r.title.charAt(0).toUpperCase())}
     <div class="bar"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a>
       <span style="display:flex;gap:8px"><button class="icon-btn" data-act="copy" aria-label="Share this recipe">${I.share}</button>
-      <button class="icon-btn" data-act="fav" aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button></span></div>
+      <button class="icon-btn" data-act="fav" ${S.canEdit ? '' : 'hidden'} aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button></span></div>
     <div class="ttl"><div class="eyebrow">${esc(r.category || 'Mains')}${r.serves ? ' · Serves ' + esc(r.serves) : ''}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</div><h1>${esc(r.title)}</h1></div>
   </div>
   <div class="meta">${esc(who(r))}${who(r) && r.source ? ' · ' : ''}${r.source ? `<a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(host(r.source) || 'original recipe')}</a>` : ''}</div>
   ${madeLine(r) ? `<div class="meta" style="margin-top:4px">${madeLine(r)}</div>` : ''}
   ${(r.tags || []).length || r.spice != null ? `<div class="tagline">${r.spice != null ? `<span class="tg">${r.spice ? chillies(r.spice) + ' ' : ''}${SPICE[r.spice]}</span>` : ''}${(r.tags || []).map(t => `<span class="tg">${esc(t)}</span>`).join('')}</div>` : ''}
   ${r.aiNote ? `<p class="ainote">${I.pen}<span>${esc(r.aiNote)}</span></p>` : ''}
-  ${S.me ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
-  ${r.needsReview ? `<div class="review"><span>${esc(r.reviewNote || 'This one came across from ChefTap a bit jumbled. Give it a quick check.')}</span>
+  ${S.me && S.canEdit ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
+  ${r.needsReview && S.canEdit ? `<div class="review"><span>${esc(r.reviewNote || 'This one came across from ChefTap a bit jumbled. Give it a quick check.')}</span>
      <div class="actions" style="margin:0"><a class="btn small" href="#edit-${esc(r.id)}">Fix it</a><button class="btn small" data-act="reviewed">Looks fine</button>${r.duplicateOf ? `<button class="btn small danger" data-act="del">${S.confirmDel ? 'Tap again to delete' : 'Delete this copy'}</button>` : ''}</div></div>` : ''}
   <div class="strip" aria-label="Photos">
     ${shots.map(id => `<button class="shot" data-act="show" data-shot="${esc(id)}" aria-current="${id === shown}" aria-label="Show photo"><img src="${img(id)}" alt="" loading="lazy"></button>`).join('')}
     ${S.canPhoto ? `<label class="addshot" for="photoIn">${I.cam}<span>${shots.length ? 'Ours' : 'Photo'}</span></label><input id="photoIn" type="file" accept="image/*" class="sr" data-chg="photo">` : ''}
     ${shown && S.canPhoto ? `<span style="display:flex;flex-direction:column;gap:6px;align-self:center">${shown !== r.photo ? `<button class="btn small" data-act="makecover">Use as cover</button>` : ''}<button class="btn small danger" data-act="delphoto">${S.confirmPhoto === shown ? 'Tap again to remove' : 'Remove photo'}</button></span>` : ''}
   </div>
-  ${S.noteEdit ? `<div class="note"><label class="eyebrow" for="noteIn">Our note</label><textarea id="noteIn" rows="3" placeholder="e.g. we use 1 tsp chilli and add spinach">${esc(r.note || '')}</textarea>
+  ${!S.canEdit ? (r.note ? `<div class="note"><span class="eyebrow">Their note</span><q>${esc(r.note)}</q></div>` : '') : S.noteEdit ? `<div class="note"><label class="eyebrow" for="noteIn">Our note</label><textarea id="noteIn" rows="3" placeholder="e.g. we use 1 tsp chilli and add spinach">${esc(r.note || '')}</textarea>
       <div class="actions" style="margin:0"><button class="btn small primary" data-act="savenote">Save note</button><button class="btn small" data-act="cancelnote">Cancel</button></div></div>`
     : r.note ? `<div class="note"><span class="eyebrow">Our note</span><q>${esc(r.note)}</q><button class="btn small" data-act="editnote" style="align-self:flex-start">Edit note</button></div>`
     : `<div class="actions" style="margin-top:16px"><button class="btn small" data-act="editnote">${I.pen} Add our note</button></div>`}
@@ -772,8 +817,9 @@ function recipeView(){
       return `<li><span class="n">${i+1}</span><div>${body}${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`; }).join(''); })()}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`)}
   ${r.nutrition ? (() => { const n = r.nutrition; return `<div class="kcal" id="kcalBox"><div class="kc"><b>${n.kcal}</b><span>kcal</span></div><div class="kc"><b>${n.protein}g</b><span>protein</span></div><div class="kc"><b>${n.carbs}g</b><span>carbs</span></div><div class="kc"><b>${n.fat}g</b><span>fat</span></div>
       <p class="hint">Per portion, ${n.portionsAssumed ? 'assuming it makes ' + n.portions + ' (add “Serves” to the recipe to be exact)' : 'if it makes ' + n.portions}. A rough guide worked out from UK government food data${n.total ? `, counting ${n.counted} of ${n.total} ingredients` : ''}${n.missed?.length ? ` (not counted: ${esc(n.missed.slice(0, 4).join('; '))}${n.missed.length > 4 ? '…' : ''})` : ''}. <button class="linkbtn" data-act="kcal">Work it out again</button></p></div>`; })()
-    : (r.ingredients || []).length ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
-  <div class="actions">
+    : (r.ingredients || []).length && S.canEdit ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
+  ${!S.canEdit ? `<div class="actions"><button class="btn small primary" data-act="copyto">Copy to my cookbook</button><button class="btn small" data-act="copy">Share recipe</button></div>` : ''}
+  <div class="actions" ${S.canEdit ? '' : 'hidden'}>
     <button class="btn small ${madeToday(r) ? 'on' : ''}" data-act="made" aria-pressed="${madeToday(r)}">${madeToday(r) ? '✓ Made today' : 'We made this'}</button>
     <button class="btn small" data-act="planpick">Add to plan</button>
     <button class="btn small" data-act="toshop">Add to shopping</button>
@@ -860,7 +906,11 @@ function editView(){
     <button class="btn primary" data-act="save" type="button">Save recipe</button>
   </form>`;
 }
+function viewOnlyTab(what){
+  return topBar() + `<h1 class="hello">${what}</h1><div class="empty"><h2>View only</h2>You’re looking at someone else’s cookbook, so their ${what.toLowerCase().replace(/<[^>]+>/g, ' ').trim()} isn’t yours to change. Switch to your own cookbook for yours.<div class="actions" style="justify-content:center;margin-top:16px"><button class="btn small primary" data-act="books">Switch cookbook</button></div></div>`;
+}
 function shopView(){
+  if (!S.canEdit) return viewOnlyTab('Shopping<br><em>list.</em>');
   const items = S.shop.items || [];
   const open = items.filter(i => !i.done), done = items.filter(i => i.done);
   const groupsOf = list => { const g = {}; list.forEach(it => { const k = it.aisle || it.from || 'Extras'; (g[k] = g[k] || []).push(it); }); return g; };
@@ -926,6 +976,7 @@ function upgradeSheet(reason){
     <button class="btn" data-act="closesheet">Close</button>`);
 }
 function planView(){
+  if (!S.canEdit) return viewOnlyTab('The week’s<br><em>dinners.</em>');
   const days = weekDays(S.week), today = dayKey(new Date());
   const plan = S.plan.days || {};
   const count = days.reduce((n, d) => n + (plan[dayKey(d)] || []).length, 0);
@@ -977,6 +1028,70 @@ function recipePickSheet(day, act){
     <ul class="list picklist" id="pickList">${recipePickList('')}</ul>
     <button class="btn" data-act="closesheet">Done</button>`);
 }
+// three simple examples for a brand-new cookbook (written for Spoonbook)
+const SAMPLES = [
+  { title: 'Easy Chicken Traybake', category: 'Chicken', serves: '4', totalMins: 55, tags: ['Quick weeknight'], spice: 1,
+    ingredients: ['8 chicken thighs, skin on', '600g new potatoes, halved', '2 red onions, cut into wedges', '2 peppers, sliced', '3 tbsp olive oil', '2 tsp smoked paprika', '1 lemon', 'salt and black pepper'],
+    steps: ['Heat the oven to 200C/180C fan/gas 6.', 'Put the potatoes, onions and peppers in a large roasting tin, drizzle with 2 tbsp of the oil and season well.', 'Rub the chicken with the rest of the oil, the paprika and a pinch of salt, then sit it on top of the vegetables, skin side up.', 'Roast for 45 mins, turning the vegetables halfway, until the chicken is golden and cooked through.', 'Squeeze over the lemon and serve straight from the tin.'] },
+  { title: 'Weeknight Spaghetti Bolognese', category: 'Pasta & rice', serves: '4', totalMins: 45, tags: ['Freezes well', 'Batch cook'], spice: 0,
+    ingredients: ['1 tbsp olive oil', '1 onion, finely chopped', '1 carrot, finely chopped', '2 garlic cloves, crushed', '500g beef mince', '2 tbsp tomato purée', '400g can chopped tomatoes', '200ml beef stock', '1 tsp dried oregano', '350g spaghetti', 'grated parmesan, to serve'],
+    steps: ['Heat the oil in a large pan and fry the onion and carrot for 8 mins until soft.', 'Add the garlic and cook for 1 min, then add the mince and cook until browned, breaking it up with a spoon.', 'Stir in the tomato purée, chopped tomatoes, stock and oregano. Simmer for 20 mins until thick, then season.', 'Meanwhile, cook the spaghetti in a big pan of salted boiling water following the packet instructions, then drain.', 'Serve the sauce over the spaghetti with grated parmesan.'] },
+  { title: 'Fluffy Pancakes', category: 'Puddings & treats', serves: '8 pancakes', totalMins: 20, tags: ['Vegetarian', 'Quick weeknight'],
+    ingredients: ['200g self-raising flour', '1 tsp baking powder', '1 tbsp caster sugar', '2 eggs', '250ml milk', '25g butter, melted, plus extra for the pan', 'maple syrup and berries, to serve'],
+    steps: ['Whisk the flour, baking powder and sugar together in a bowl.', 'Beat the eggs with the milk and melted butter, then whisk into the flour until smooth.', 'Heat a non-stick frying pan over a medium heat and add a small knob of butter.', 'Pour in a small ladle of batter and cook for 1-2 mins until bubbles appear, then flip and cook for 1 min more.', 'Keep warm while you cook the rest, then serve with maple syrup and berries.'] }
+];
+const roleName = r => r === 'viewer' ? 'View only' : 'Can edit';
+function booksSheet(){
+  const books = Backend.cookbooks, cur = Backend.household.id;
+  openSheet('Your cookbooks', `<h2>Your cookbooks</h2>
+    <div class="booklist">${books.map(c => `<button class="opt" data-act="switchbook" data-id="${esc(c.id)}" aria-current="${c.id === cur}"><span style="flex:1"><b>${esc(c.name)}</b><span>${roleName(c.role)}</span></span>${c.id === cur ? '<span class="tick">✓</span>' : ''}</button>`).join('')}</div>
+    <h3 class="sub">Join another cookbook</h3>
+    <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="joinIn">Invite code</label><input id="joinIn" placeholder="6-letter code" autocomplete="off" style="text-transform:uppercase"><button class="btn" data-act="joinbook" type="button">Join</button></form>
+    <h3 class="sub">Start a new cookbook</h3>
+    <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="newBookIn">Name</label><input id="newBookIn" placeholder="e.g. Dad’s recipes" autocomplete="off"><button class="btn" data-act="newbook" type="button">Start</button></form>
+    <div id="bookMsg"></div>
+    <button class="btn" data-act="closesheet">Close</button>`);
+}
+function peopleSheet(){
+  const hh = Backend.household, me = Backend.userId(), manage = Backend.canManage;
+  const ms = [...Backend.members].sort((a, b) => (a.joined_at || '').localeCompare(b.joined_at || ''));
+  openSheet('People', `<h2>People in ${esc(hh.name)}</h2>
+    <ul class="people">${ms.map(m => `<li><span style="flex:1;min-width:0"><b>${esc(m.display_name || 'Someone')}${m.user_id === me ? ' (you)' : ''}</b><span class="hint" style="display:block">${roleName(m.role)}${m.user_id === hh.created_by ? ' · started this cookbook' : ''}</span></span>
+      ${manage && m.user_id !== me ? `<span class="row"><button class="btn small" data-act="setrole" data-id="${esc(m.user_id)}" data-role="${m.role === 'viewer' ? 'editor' : 'viewer'}">${m.role === 'viewer' ? 'Let them edit' : 'Make view only'}</button><button class="btn small danger" data-act="kick" data-id="${esc(m.user_id)}">${S.confirmKick === m.user_id ? 'Sure?' : 'Remove'}</button></span>` : ''}</li>`).join('')}</ul>
+    ${S.canEdit && hh.join_code ? `<h3 class="sub">Invite someone</h3>
+      <div class="invite"><div><b>To cook and edit with you</b><span class="hint" style="display:block">They can add, change and delete recipes, and share the shopping list and plan. Code <span class="code">${esc(hh.join_code)}</span></span></div><button class="btn small primary" data-act="invite" data-kind="edit">Send invite</button></div>
+      ${hh.view_code ? `<div class="invite"><div><b>To look and copy only</b><span class="hint" style="display:block">They can browse and cook from your recipes, and copy them into their own cookbook, but can’t change yours. Code <span class="code">${esc(hh.view_code)}</span></span></div><button class="btn small" data-act="invite" data-kind="view">Send invite</button></div>` : ''}
+      ${manage ? `<button class="linkbtn" data-act="newcodes" style="align-self:flex-start">${S.confirmCodes ? 'Tap again: old invites will stop working' : 'Make new invite codes'}</button>` : ''}` : ''}
+    ${manage ? `<h3 class="sub">Cookbook name</h3><form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="bookName">Cookbook name</label><input id="bookName" value="${esc(hh.name)}" autocomplete="off"><button class="btn" data-act="renamebook" type="button">Save</button></form>` : ''}
+    <div id="peopleMsg"></div>
+    <button class="btn danger" data-act="leavebook">${S.confirmLeave ? (ms.length === 1 ? 'Tap again: this deletes the cookbook and its recipes' : 'Tap again to leave') : 'Leave this cookbook'}</button>
+    <button class="btn" data-act="closesheet">Close</button>`);
+}
+function joinSheet(code){
+  openSheet('Join a cookbook', `<h2>Join a cookbook?</h2>
+    <p class="hint">You’ve been invited to a cookbook (code <b>${esc(code)}</b>). Your own cookbook stays as it is, and you can switch between them from ⋯ → Your cookbooks.</p>
+    <div id="bookMsg"></div>
+    <button class="btn primary" data-act="joinbook" data-code="${esc(code)}">Join</button>
+    <button class="btn" data-act="closesheet">Not now</button>`);
+}
+function copySheet(){
+  const r = byId(S.id); const mine = Backend.cookbooks.filter(c => c.role === 'editor' && c.id !== Backend.household.id);
+  openSheet('Copy to my cookbook', `<h2>Copy ${esc(r.title)}</h2>
+    ${mine.length ? `<p class="hint">Pick which of your cookbooks to keep it in. You can then change it however you like.</p>
+      ${mine.map(c => `<button class="opt" data-act="copyhere" data-id="${esc(c.id)}"><span><b>${esc(c.name)}</b><span>Your cookbook</span></span></button>`).join('')}`
+    : `<p class="hint">You don’t have a cookbook of your own yet. Start one and this recipe goes straight into it.</p>
+      <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="newBookIn">Name</label><input id="newBookIn" value="My recipes" autocomplete="off"><button class="btn primary" data-act="copynew" type="button">Start &amp; copy</button></form>`}
+    <div id="copyMsg"></div>
+    <button class="btn" data-act="closesheet">Cancel</button>`);
+}
+function feedbackSheet(){
+  openSheet('Send feedback', `<h2>Send feedback</h2>
+    <p class="hint">What’s confusing, what’s broken, what would make it better? Every message is read.</p>
+    <label class="sr" for="fbIn">Your feedback</label><textarea id="fbIn" style="min-height:160px" placeholder="e.g. I couldn’t find how to…"></textarea>
+    <div id="fbMsg"></div>
+    <button class="btn primary" data-act="sendfb">Send</button>
+    <button class="btn" data-act="closesheet">Cancel</button>`);
+}
 function moreSheet(){
   const awakeHint = S.awake === 'unsupported' ? 'This phone or browser can’t keep the screen on from an app.'
     : S.awake === 'blocked' ? 'Your phone said no this time. Tap anywhere in the app to try again, or turn off Low Power Mode.'
@@ -984,20 +1099,20 @@ function moreSheet(){
   const hh = Backend.household;
   openSheet('More', `<h2>More</h2>
     <div class="opt" style="display:block"><b>${esc(hh.name)}</b>
-      <span class="hint" style="display:block;margin-top:4px">To add someone, they open Spoonbook, create an account and enter this code:</span>
-      <span class="joincode">${esc(hh.join_code)}</span>
-      <div class="actions" style="margin-top:8px"><button class="btn small" data-act="copycode">Copy invite</button></div></div>
+      <span class="hint" style="display:block;margin-top:2px">${S.canEdit ? 'You can add and change recipes' : 'View only'} · ${Backend.members.length} ${Backend.members.length === 1 ? 'person' : 'people'}${Backend.cookbooks.length > 1 ? ` · one of your ${Backend.cookbooks.length} cookbooks` : ''}</span>
+      <div class="actions" style="margin-top:10px"><button class="btn small" data-act="people">${S.canEdit ? 'People &amp; invites' : 'People'}</button><button class="btn small" data-act="books">${Backend.cookbooks.length > 1 ? 'Switch cookbook' : 'Your cookbooks'}</button></div></div>
     <button class="opt" data-act="shareapp"><span class="ic">${I.link}</span><span><b>Share Spoonbook</b><span>Send the app to friends or family so they can start their own cookbook.</span></span></button>
     <button class="opt" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>For less confident cooks: one action at a time, cooking words explained, a prep list before you start, and safety tips. Recipes aren’t changed.</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
     <button class="opt" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
     ${S.canSave ? `<button class="opt" data-act="export" data-fmt="json"><span><b>Back up all recipes</b><span>One file with everything, ready to bring into another app later.</span></span></button>
     <button class="opt" data-act="export" data-fmt="md"><span><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes as a text document you can print or read anywhere.</span></span></button>`
     : `<p class="hint">Downloads aren’t available in this view.</p>`}
-    <label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
+    ${S.canEdit ? `<label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
     <button class="opt" data-act="sheet" data-mode="bulk"><span><b>Import from old emails or files</b><span>Bring in lots of recipes at once from saved emails, an email folder or text files.</span></span></button>
     <div id="importMsg"></div>
-    <button class="opt" data-act="gobin"><span><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back a recipe deleted in the last 30 days.</span></span></button>
+    <button class="opt" data-act="gobin"><span><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back a recipe deleted in the last 30 days.</span></span></button>` : ''}
+    <button class="opt" data-act="feedback"><span><b>Send feedback</b><span>Spotted a problem or got an idea? It goes straight to the person who makes Spoonbook.</span></span></button>
     ${Backend.plan?.enabled ? `<button class="opt" data-act="upgrade"><span><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook.' : `Free cookbooks hold ${Backend.plan.limit} recipes. Plus has no limit.`}</span></span></button>` : ''}
     <p class="hint" style="font-size:12px">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>
     <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
@@ -1329,7 +1444,7 @@ const A = {
   },
   async finish(){
     const r = byId(S.id);
-    if (!madeToday(r)){ try { await patch(r.id, { cooked: [...(r.cooked || []), Date.now()].slice(-200) }); toast('Logged as made today'); } catch {} }
+    if (S.canEdit && !madeToday(r)){ try { await patch(r.id, { cooked: [...(r.cooked || []), Date.now()].slice(-200) }); toast('Logged as made today'); } catch {} }
     go('recipe-' + r.id);
   },
   async rate(b){
@@ -1337,6 +1452,72 @@ const A = {
     await patch(r.id, { ratings: { [S.me]: cur === n ? 0 : n } });
   },
   more(){ moreSheet(); },
+  books(){ booksSheet(); },
+  people(){ peopleSheet(); },
+  switchbook(b){ if (b.dataset.id !== Backend.household.id) Backend.switchTo(b.dataset.id); else closeSheet(); },
+  async joinbook(b){
+    const code = (b.dataset.code || overlay.querySelector('#joinIn')?.value || '').trim(); const m = overlay.querySelector('#bookMsg');
+    if (code.length < 6){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Type the 6-letter code you were sent.</p>'; return; }
+    b.disabled = true;
+    try { const res = await Backend.joinCookbook(code); toast(`Joined ${res.name}${res.role === 'viewer' ? ' (view only)' : ''}`); Backend.switchTo(res.id); }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message || 'Couldn’t join. Try again.')}</p>`; }
+  },
+  async newbook(b){
+    const name = overlay.querySelector('#newBookIn').value.trim(); const m = overlay.querySelector('#bookMsg');
+    if (!name){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Give the new cookbook a name.</p>'; return; }
+    b.disabled = true;
+    try { const h = await Backend.createCookbook(name); Backend.switchTo(h.id); } catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message || 'Couldn’t start it. Try again.')}</p>`; }
+  },
+  async setrole(b){
+    try { await Backend.setRole(b.dataset.id, b.dataset.role); toast(b.dataset.role === 'viewer' ? 'Now view only' : 'They can edit now'); peopleSheet(); }
+    catch (e) { overlay.querySelector('#peopleMsg').innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message)}</p>`; }
+  },
+  async kick(b){
+    const id = b.dataset.id;
+    if (S.confirmKick !== id){ S.confirmKick = id; peopleSheet(); return; }
+    S.confirmKick = null;
+    try { await Backend.removeMember(id); toast('Removed from the cookbook'); peopleSheet(); }
+    catch (e) { overlay.querySelector('#peopleMsg').innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message)}</p>`; }
+  },
+  async newcodes(){
+    if (!S.confirmCodes){ S.confirmCodes = true; peopleSheet(); setTimeout(() => { S.confirmCodes = false; }, 5000); return; }
+    S.confirmCodes = false;
+    try { await Backend.newCodes(); toast('New invite codes made. Old invites no longer work'); peopleSheet(); } catch (e) { toast(e.message || 'Couldn’t change the codes'); }
+  },
+  async renamebook(){ const v = overlay.querySelector('#bookName').value.trim(); if (!v) return; try { await Backend.renameCookbook(v); toast('Renamed'); peopleSheet(); render(); } catch { toast('Couldn’t rename it. Try again.'); } },
+  async leavebook(b){
+    if (!S.confirmLeave){ S.confirmLeave = true; peopleSheet(); setTimeout(() => { S.confirmLeave = false; }, 5000); return; }
+    S.confirmLeave = false; b.disabled = true;
+    try { await Backend.leave(); } catch (e) { b.disabled = false; toast(e.message || 'Couldn’t leave. Try again.'); }
+  },
+  async invite(b){
+    const hh = Backend.household, view = b.dataset.kind === 'view', code = view ? hh.view_code : hh.join_code;
+    const url = appBase() + '?join=' + code;
+    const t = view ? `Have a look at our Spoonbook recipes: ${url} (or open Spoonbook and enter the code ${code}). You'll be able to browse them and copy any you like into your own cookbook.`
+      : `Join our Spoonbook cookbook: ${url} (or open Spoonbook and enter the code ${code}). We'll share recipes, the meal plan and the shopping list.`;
+    if (navigator.share){ try { await navigator.share({ title: 'Spoonbook', text: t }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(t); toast('Invite copied. Paste it into a message'); } catch { toast('Code: ' + code); }
+  },
+  copyto(){ copySheet(); },
+  async copyhere(b){
+    const m = overlay.querySelector('#copyMsg'); b.disabled = true; m.innerHTML = `<div class="thinking"><span class="spin"></span>Copying…</div>`;
+    try { await Backend.copyTo(byId(S.id), b.dataset.id); closeSheet(); toast('Copied. Switch to your cookbook to change it'); }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${e.code === 'free_limit' ? 'That cookbook is full on the free plan.' : 'Couldn’t copy it. Check your connection and try again.'}</p>`; }
+  },
+  async copynew(b){
+    const name = overlay.querySelector('#newBookIn').value.trim() || 'My recipes'; const m = overlay.querySelector('#copyMsg');
+    b.disabled = true; m.innerHTML = `<div class="thinking"><span class="spin"></span>Starting your cookbook…</div>`;
+    try { const h = await Backend.createCookbook(name); await Backend.copyTo(byId(S.id), h.id); Backend.cookbooks.push({ id: h.id, name, role: 'editor' }); closeSheet(); toast(`Copied into ${name}. Find it under ⋯ → Your cookbooks`); }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">Couldn’t do that just now. Try again.</p>`; }
+  },
+  feedback(){ feedbackSheet(); },
+  async sendfb(b){
+    const v = overlay.querySelector('#fbIn').value.trim(); const m = overlay.querySelector('#fbMsg');
+    if (v.length < 3){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Write a few words first.</p>'; return; }
+    b.disabled = true;
+    try { await Backend.sendFeedback(v.slice(0, 5000)); closeSheet(); toast('Thank you, that’s been sent'); }
+    catch { b.disabled = false; m.innerHTML = '<p class="hint" style="color:var(--danger)">Couldn’t send it. Check your connection and try again.</p>'; }
+  },
   async copycode(){
     const t = `Join our Spoonbook cookbook: open ${location.origin + location.pathname}, create an account and enter the code ${Backend.household.join_code}`;
     if (navigator.share){ try { await navigator.share({ title: 'Spoonbook', text: t }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
@@ -1410,6 +1591,7 @@ const A = {
     openSheet('Share recipe', `<h2>Share ${esc(r.title)}</h2>
       <button class="opt" data-act="sharelink"><span class="ic">${I.link}</span><span><b>Send a link</b><span>Opens on any phone or computer. If they use Spoonbook, one tap saves it to their cookbook, photo and all.</span></span></button>
       <button class="opt" data-act="sharetext"><span class="ic">${I.text}</span><span><b>Send as text</b><span>The recipe written out in the message itself.</span></span></button>
+      <button class="opt" data-act="print"><span class="ic">${I.pen}</span><span><b>Print it</b><span>A clean one-page copy for the fridge, or save it as a PDF.</span></span></button>
       <div id="shareMsg"></div>
       <button class="btn" data-act="closesheet">Cancel</button>`);
   },
@@ -1433,6 +1615,28 @@ const A = {
   },
   async sendlink(){ const r = byId(S.id); try { await navigator.share({ title: r.title, text: r.title + ', from our Spoonbook', url: S.shareUrl }); closeSheet(); } catch (e) { if (e?.name !== 'AbortError') A.copylink(); } },
   async copylink(){ try { await navigator.clipboard.writeText(S.shareUrl); toast('Link copied. Paste it into a message'); } catch { toast(S.shareUrl); } },
+  print(){
+    const r = byId(S.id); if (!r) return; closeSheet();
+    const f = factor(r); let el = document.getElementById('printArea');
+    if (!el){ el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
+    el.innerHTML = `${r.photo ? `<img src="${img(r.photo)}" alt="">` : ''}<p class="pe">${esc(r.category || 'Mains')}${r.serves ? ' · Serves ' + esc(S.scale[r.id] ?? r.serves) : ''}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</p>
+      <h1>${esc(r.title)}</h1><div class="pcols"><div><h2>Ingredients</h2><ul>${(r.ingredients || []).map(l => `<li>${esc(showLine(scaleLine(l, f)))}</li>`).join('')}</ul></div>
+      <div><h2>Method</h2><ol>${(r.steps || []).map(st => `<li>${esc(showLine(st))}</li>`).join('')}</ol>${r.note ? `<p class="pn"><b>Our note:</b> ${esc(r.note)}</p>` : ''}</div></div>
+      <p class="pf">From our Spoonbook${r.source ? ' · ' + esc(host(r.source) || r.source) : ''}</p>`;
+    // wait for the photo so it makes it onto the page
+    const pic = el.querySelector('img');
+    const go2 = () => setTimeout(() => window.print(), 50);
+    if (pic && !pic.complete){ pic.onload = pic.onerror = go2; setTimeout(go2, 2500); } else go2();
+  },
+  async samples(b){
+    b.disabled = true;
+    for (const x of SAMPLES){
+      const id = x.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + rid().slice(0, 4);
+      try { await db.collection('recipes').doc(id).set({ ...x, photo: null, photos: [], note: '', favourite: false, addedBy: S.me, createdAt: Date.now(), updatedAt: Date.now(), sample: true,
+        story: 'An example to show how Spoonbook works. Delete it whenever you like.' }); } catch {}
+    }
+    toast('Added 3 examples. Open one and try “Start cooking”');
+  },
   async sharetext(){
     const r0 = byId(S.id); const t = recipeText(r0); closeSheet();
     if (navigator.share){ try { await navigator.share({ title: r0.title, text: t }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
@@ -1469,9 +1673,12 @@ const A = {
     setTimeout(() => sortAisles(), 300);
   }
 };
+// things only editors can do; a viewer is told the cookbook is view only
+const EDIT_ACTS = new Set(['clip','typein','readpaste','cliplink','fav','reviewed','editnote','savenote','makecover','delphoto','toshop','del','save','additem','clearDone','clearAll','aisle','made','madeid','rate','planpick','planon','planadd','planthis','unplan','shopweek','restore','purge','usual','addstaple','unstaple','addusual','unusual','pantry','kcal','samples','shoptick']);
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const fn = A[b.dataset.act]; if (!fn) return;
+  if (!S.canEdit && EDIT_ACTS.has(b.dataset.act)){ e.preventDefault(); toast('This cookbook is view only'); return; }
   if (b.tagName === 'A' && !['canceledit','done'].includes(b.dataset.act)) e.preventDefault();
   fn(b, e);
 });
@@ -1480,6 +1687,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.id === 'shopIn'){ e.preventDefault(); A.additem(); }
   if (e.key === 'Enter' && e.target.id === 'stapleIn'){ e.preventDefault(); A.addstaple(); }
   if (e.key === 'Enter' && e.target.id === 'usualIn'){ e.preventDefault(); A.addusual(); }
+  if (e.key === 'Enter' && e.target.id === 'joinIn'){ e.preventDefault(); A.joinbook(overlay.querySelector('[data-act="joinbook"]')); }
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'fridgeIn'){ S.fridge = e.target.value; document.getElementById('fridgeList').innerHTML = fridgeResults(); return; }
@@ -1488,6 +1696,7 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', async e => {
   const t = e.target, k = t.dataset.chg; if (!k) return;
+  if (!S.canEdit && ['importzip','bulk','photo','cover','shoptick','snap'].includes(k)){ toast('This cookbook is view only'); return; }
   if (k === 'importzip' && t.files[0]){
     const m = document.getElementById('importMsg');
     const say = x => { if (m) m.innerHTML = `<div class="thinking"><span class="spin"></span>${esc(x)}</div>`; };
@@ -1649,7 +1858,7 @@ lockScreen();
 window.__spoonbookRender = () => render();
 Backend.start(async caps => {
   ({ db, assets, user, downloads } = caps);
-  S.canPhoto = !!assets; S.canSave = !!downloads;
+  S.canEdit = Backend.role !== 'viewer'; S.canPhoto = !!assets && S.canEdit; S.canSave = !!downloads;
   S.me = await user.id();
 
   const seenKey = 'sb-seen-' + Backend.household.id;

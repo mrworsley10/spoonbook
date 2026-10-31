@@ -13,7 +13,7 @@ function merge(a, b){ for (const k in b){ const v = b[k]; if (v && typeof v === 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
 
-let session = null, household = null, members = [], plan = null;
+let session = null, household = null, members = [], plan = null, cookbooks = [];
 const rerender = () => window.__spoonbookRender?.();
 
 /* ---------- working with no signal ----------
@@ -60,7 +60,7 @@ function makeDb(hh, uid, cached){
   const listeners = { recipes: new Set(), lists: new Map() };
   const snap = (id, d) => ({ id, exists: !!d, data: () => d && clone(d) });
   let saveTimer = null;
-  const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set(cacheKey(uid), JSON.stringify({ household, members, recipes: Object.fromEntries(rows.recipes), lists: Object.fromEntries(rows.lists), at: Date.now() })), 500); };
+  const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set(cacheKey(uid), JSON.stringify({ household, members, cookbooks, recipes: Object.fromEntries(rows.recipes), lists: Object.fromEntries(rows.lists), at: Date.now() })), 500); };
   const emitRecipes = () => { const docs = [...rows.recipes].map(([id, d]) => snap(id, d)); listeners.recipes.forEach(cb => cb({ docs })); persist(); };
   const emitList = id => { (listeners.lists.get(id) || new Set()).forEach(cb => cb(snap(id, rows.lists.get(id)))); persist(); };
   const emit = (table, id) => table === 'recipes' ? emitRecipes() : emitList(id);
@@ -325,11 +325,15 @@ function newPasswordScreen(){
   };
 }
 
+// a join link (?join=CODE) waiting from before sign-in
+function pendingJoin(){ try { return JSON.parse(sessionStorage.getItem('sb-shared') || 'null')?.join || ''; } catch { return ''; } }
+function clearPendingJoin(){ try { const v = JSON.parse(sessionStorage.getItem('sb-shared') || 'null'); if (v?.join){ delete v.join; sessionStorage.setItem('sb-shared', JSON.stringify(v)); } } catch {} }
+const currentKey = () => 'sb-current-' + session?.user?.id;
 function householdScreen(){
   screen(`<h1 class="hello">Set up your<br><em>cookbook.</em></h1>
   <form class="form" id="hhForm" novalidate>
     <div class="field"><label for="h-name">Your name</label><input id="h-name" autocomplete="given-name" placeholder="e.g. Mark" value="${esc(((session?.user?.user_metadata?.full_name || session?.user?.user_metadata?.name || '').split(' ')[0]))}" required></div>
-    <div class="field"><label for="h-code">Joining someone? Enter their code</label><input id="h-code" autocomplete="off" placeholder="6-letter code (leave blank to start a new one)" style="text-transform:uppercase"></div>
+    <div class="field"><label for="h-code">Joining someone? Enter their code</label><input id="h-code" autocomplete="off" placeholder="6-letter code (leave blank to start a new one)" style="text-transform:uppercase" value="${esc(pendingJoin())}"></div>
     <button class="btn primary" type="submit">Continue</button>
     <p id="authMsg" class="hint" role="status"></p>
     <button class="btn small" type="button" id="h-out">Sign out</button>
@@ -340,10 +344,21 @@ function householdScreen(){
     const name = document.getElementById('h-name').value.trim(), code = document.getElementById('h-code').value.trim();
     if (!name) return msg('Add your name so the other cook knows who did what.', true);
     msg('One moment…');
-    const { error } = code ? await sb.rpc('join_household', { code, my_name: name }) : await sb.rpc('create_household', { cookbook_name: 'Our cookbook', my_name: name });
+    const { data, error } = code ? await sb.rpc('join_household', { code, my_name: name }) : await sb.rpc('create_household', { cookbook_name: 'Our cookbook', my_name: name });
     if (error) return msg(/code/i.test(error.message) ? 'No cookbook has that code. Check it and try again.' : error.message, true);
+    if (code) clearPendingJoin();
+    if (data?.id) store.set(currentKey(), data.id);
     start();
   };
+}
+
+async function removeHouseholdPhotos(hh){
+  for (let round = 0; round < 50; round++){
+    const { data, error } = await sb.storage.from('photos').list(hh, { limit: 1000 });
+    if (error || !data?.length) break;
+    const { error: e2 } = await sb.storage.from('photos').remove(data.map(f => `${hh}/${f.name}`));
+    if (e2 || data.length < 1000) break;
+  }
 }
 
 /* ---------- start-up ---------- */
@@ -370,17 +385,35 @@ async function runInner(){
   }
   if (!session) return signInScreen();
   const cached = readCache(session.user.id);
-  const ask = sb.from('members').select('household_id, display_name, households(id, name, join_code)').eq('user_id', session.user.id).limit(1);
+  const ask = sb.from('members').select('household_id, display_name, role, joined_at, households(id, name, created_by)').eq('user_id', session.user.id);
   let m; try { m = await (cached ? withTimeout(ask, 5000) : ask); } catch (e) { m = { error: e }; }
   if (m.error && cached?.household && isNetErr(m.error)){
-    household = cached.household; members = cached.members || []; offline = true;
+    household = cached.household; members = cached.members || []; cookbooks = cached.cookbooks || []; offline = true;
     return boot(cached);
+  }
+  // the database hasn't had the latest schema.sql yet: carry on the old way (everyone can edit, one cookbook)
+  let legacy = false;
+  if (m.error && /column|does not exist|schema cache|permission denied/i.test(m.error.message || '')){
+    legacy = true;
+    m = await sb.from('members').select('household_id, display_name, households(id, name, join_code)').eq('user_id', session.user.id);
+    (m.data || []).forEach(x => { x.role = 'editor'; if (x.households) x.households.created_by = session.user.id; });
   }
   if (m.error){ screen(`<div class="empty"><h2>Can’t reach your cookbook</h2>${esc(m.error.message)}</div>`); return; }
   if (!m.data?.length) return householdScreen();
-  household = m.data[0].households;
-  const all = await sb.from('members').select('user_id, display_name').eq('household_id', household.id);
+  // every cookbook this person belongs to; the one they last used opens
+  cookbooks = m.data.filter(x => x.households).map(x => ({ id: x.household_id, name: x.households.name, role: x.role, createdBy: x.households.created_by, myName: x.display_name, joined: x.joined_at }))
+    .sort((a, b) => (a.joined || '').localeCompare(b.joined || ''));
+  const want = store.get(currentKey());
+  const cur = cookbooks.find(c => c.id === want) || cookbooks.find(c => c.role === 'editor') || cookbooks[0];
+  store.set(currentKey(), cur.id);
+  household = { id: cur.id, name: cur.name, created_by: cur.createdBy, role: cur.role };
+  const legacyCode = legacy ? m.data.find(x => x.household_id === cur.id)?.households?.join_code : null;
+  const [all, codes] = await Promise.all([
+    sb.from('members').select(legacy ? 'user_id, display_name' : 'user_id, display_name, role, joined_at').eq('household_id', household.id),
+    legacy ? Promise.resolve({ data: { join_code: legacyCode, view_code: '' } }) : cur.role === 'editor' ? sb.rpc('cookbook_codes', { hh: household.id }) : Promise.resolve({ data: null })
+  ]);
   members = all.data || (cached?.members || []);
+  if (codes.data){ household.join_code = codes.data.join_code; household.view_code = codes.data.view_code; }
   boot(cached?.household?.id === household.id ? cached : null);
   loadPlan();
 }
@@ -414,6 +447,52 @@ window.Backend = {
   start(cb){ onReady = cb; start(); },
   photoUrl, clip, importBackup, shareRecipe, getShared,
   get household(){ return household; }, get members(){ return members; },
+  get cookbooks(){ return cookbooks; }, get role(){ return household?.role || 'editor'; },
+  // whoever started the cookbook manages its people; if they've gone, any editor can
+  get canManage(){ const me = session?.user?.id; return household?.created_by === me || (household?.role === 'editor' && !members.some(m => m.user_id === household?.created_by)); },
+  userId: () => session?.user?.id,
+  switchTo(id){ store.set(currentKey(), id); location.hash = '#book'; location.reload(); },
+  async createCookbook(name){
+    const me = members.find(m => m.user_id === session.user.id)?.display_name || cookbooks[0]?.myName || '';
+    const { data, error } = await sb.rpc('create_household', { cookbook_name: name || 'Our cookbook', my_name: me });
+    if (error) throw error; return data;
+  },
+  async joinCookbook(code){
+    const me = members.find(m => m.user_id === session.user.id)?.display_name || cookbooks[0]?.myName || '';
+    const { data, error } = await sb.rpc('join_household', { code, my_name: me });
+    if (error) throw { message: /code/i.test(error.message) ? 'No cookbook has that code. Check it and try again.' : error.message };
+    clearPendingJoin(); return data;
+  },
+  async renameCookbook(name){ const { error } = await sb.from('households').update({ name }).eq('id', household.id); if (error) throw error; household.name = name; const c = cookbooks.find(x => x.id === household.id); if (c) c.name = name; },
+  async setRole(userId, role){ const { error } = await sb.rpc('set_member_role', { hh: household.id, member: userId, new_role: role }); if (error) throw error; const m = members.find(x => x.user_id === userId); if (m) m.role = role; if (userId === session.user.id) household.role = role; },
+  async removeMember(userId){ const { error } = await sb.rpc('remove_member', { hh: household.id, member: userId }); if (error) throw error; members = members.filter(x => x.user_id !== userId); },
+  async newCodes(){ const { data, error } = await sb.rpc('new_codes', { hh: household.id }); if (error) throw error; household.join_code = data.join_code; household.view_code = data.view_code; },
+  async leave(){
+    if (members.every(m => m.user_id === session.user.id)) await removeHouseholdPhotos(household.id);
+    const { error } = await sb.rpc('leave_household', { hh: household.id }); if (error) throw error;
+    store.set(currentKey(), ''); location.hash = '#book'; location.reload();
+  },
+  // a viewer keeping a copy of a recipe in a cookbook of their own, photo and all
+  async copyTo(r, targetId){
+    let photo = null;
+    if (r.photo){
+      const { data: blob } = await sb.storage.from('photos').download(r.photo);
+      if (blob){ const path = `${targetId}/${uuid()}.jpg`; const { error } = await sb.storage.from('photos').upload(path, blob, { contentType: blob.type || 'image/jpeg' }); if (!error) photo = path; }
+    }
+    const id = (r.title || 'recipe').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + '-' + uuid().slice(0, 4);
+    const keep = ['title', 'category', 'serves', 'totalMins', 'ingredients', 'steps', 'source', 'tags', 'spice', 'bestCook', 'story'];
+    const data = Object.fromEntries(keep.filter(k => r[k] != null).map(k => [k, r[k]]));
+    Object.assign(data, { photo, photos: [], note: '', favourite: false, addedBy: session.user.id, createdAt: Date.now(), updatedAt: Date.now(),
+      story: [r.story, `Copied from ${household.name}.`].filter(Boolean).join(' ') });
+    const { error } = await sb.from('recipes').insert({ household_id: targetId, id, data });
+    if (error) throw { code: /free_limit/.test(error.message) ? 'free_limit' : 'failed', message: error.message };
+    return id;
+  },
+  async sendFeedback(message){
+    const me = members.find(m => m.user_id === session.user.id);
+    const { error } = await sb.from('feedback').insert({ message, name: me?.display_name || '', household_id: household.id, app: navigator.userAgent.slice(0, 200) });
+    if (error) throw error;
+  },
   get offline(){ return offline; }, get pending(){ return pending; }, get plan(){ return plan; }, refreshPlan: loadPlan,
   checkoutUrl(){
     if (!CFG.checkoutUrl) return '';
@@ -427,17 +506,11 @@ window.Backend = {
   // Deletes this person's account. If nobody else shares the cookbook, its recipes, lists and photos go too;
   // otherwise the cookbook stays with the others.
   async deleteAccount(progress){
-    const all = await sb.from('members').select('user_id').eq('household_id', household.id);
-    if (all.error) throw all.error;
-    const alone = (all.data || []).every(m => m.user_id === session.user.id);
-    if (alone){
-      progress?.('Deleting photos…');
-      for (let round = 0; round < 50; round++){
-        const { data, error } = await sb.storage.from('photos').list(household.id, { limit: 1000 });
-        if (error || !data?.length) break;
-        const { error: e2 } = await sb.storage.from('photos').remove(data.map(f => `${household.id}/${f.name}`));
-        if (e2 || data.length < 1000) break;
-      }
+    // photos of every cookbook this person is the last one in
+    for (const c of cookbooks){
+      const all = await sb.from('members').select('user_id').eq('household_id', c.id);
+      if (all.error) throw all.error;
+      if ((all.data || []).every(m => m.user_id === session.user.id)){ progress?.('Deleting photos…'); await removeHouseholdPhotos(c.id); }
     }
     // photos of recipes this person shared as links
     const mine = await sb.from('shared_recipes').select('id, data').eq('created_by', session.user.id);

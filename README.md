@@ -56,7 +56,17 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 3. Deploy [`supabase/functions/notify/index.ts`](supabase/functions/notify/index.ts) as a function called `notify` (leave Verify JWT on).
 4. **Database → Webhooks → Create a new hook:** table `members`, event **Insert**, type **Supabase Edge Functions**, function `notify`, and add the auth header.
 
+### 10. Weekly backups
+1. Deploy [`supabase/functions/backup/index.ts`](supabase/functions/backup/index.ts) as a function called `backup` (leave Verify JWT on). It uses the same Resend secrets as `notify`.
+2. **Integrations → Cron → Create job:** name `weekly-backup`, schedule `0 3 * * 0` (3am every Sunday), type **Supabase Edge Function**, function `backup`, method POST, and add the auth header.
+3. Each week a copy of every cookbook is saved in **Storage → backups** (the last 12 are kept) and emailed to you. Photos aren't included; they stay in the photos bucket.
+
+### 11. Feedback emails
+In **Database → Webhooks**, add a second hook like the one for new members: table `feedback`, event **Insert**, function `notify`. Feedback also appears in **Table Editor → feedback**.
+
 ## Features worth knowing about
+- **More than one cookbook:** ⋯ → Your cookbooks to switch, join another with a code, or start a new one.
+- **Edit or view-only invites:** ⋯ → People & invites. Send a link that lets someone edit with you, or one that only lets them browse and copy recipes into their own cookbook. Whoever started the cookbook can change people's access, remove them, or make new codes.
 - **Share to Spoonbook:** once installed, Spoonbook appears in Android's share sheet. Share a recipe page from Chrome (or a recipe's text from anywhere) and it opens ready to save.
 - **No signal:** the cookbook, lists and every photo you've looked at are kept on the phone. Changes made offline sync when you're back online.
 - **Simple mode:** for less confident cooks (⋯ → Simple mode, or the switch on a recipe's Method tab). Steps are split into one action at a time, cooking words are underlined and explained when tapped, there's a "before you start" prep list, and heat and food-safety tips appear where they matter. The recipe itself isn't changed. It's a setting on each phone.

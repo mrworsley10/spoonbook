@@ -1,4 +1,5 @@
-// Emails you whenever someone new joins Spoonbook (a new cookbook, or someone joining one).
+// Emails you whenever someone new joins Spoonbook (a new cookbook, or someone joining one), and when
+// someone sends feedback from the app.
 // It's started by a Supabase Database Webhook on the "members" table and sends the email through Resend's free plan.
 // Nothing here uses AI.
 //
@@ -12,9 +13,22 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const esc = (s: string) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 
+const send = (subject: string, html: string) => fetch('https://api.resend.com/emails', {
+  method: 'POST',
+  headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
+  body: JSON.stringify({ from: 'Spoonbook <onboarding@resend.dev>', to: [Deno.env.get('NOTIFY_EMAIL')], subject, html })
+});
+// feedback sent from the app (⋯ → Send feedback)
+async function feedback(f: any){
+  const res = await send(`💬 Spoonbook feedback from ${f.name || 'someone'}`, `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">
+    <p style="white-space:pre-wrap">${esc(f.message)}</p><p style="color:#666;font-size:13px">${esc(f.name || '')} · ${esc(f.app || '')}</p></div>`);
+  return new Response(res.ok ? 'sent' : 'email failed: ' + await res.text(), { status: res.ok ? 200 : 502 });
+}
+
 Deno.serve(async req => {
   let body: any; try { body = await req.json(); } catch { return new Response('bad json', { status: 400 }); }
-  if (body?.type !== 'INSERT' || body?.table !== 'members') return new Response('ignored');
+  if (body?.type !== 'INSERT' || !['members', 'feedback'].includes(body?.table)) return new Response('ignored');
+  if (body.table === 'feedback') return feedback(body.record || {});
   const m = body.record || {};
   const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } });
 
