@@ -369,13 +369,19 @@ let db=null, assets=null, user=null, sample=null, wake=null, downloads=null;
 /* ---------- shared from another app (Android share sheet) ---------- */
 let shared = (() => {
   const p = new URLSearchParams(location.search);
-  const v = { title: p.get('title') || '', text: p.get('text') || '', url: p.get('url') || '' };
-  if (!v.title && !v.text && !v.url) return null;
+  const v = { title: p.get('title') || '', text: p.get('text') || '', url: p.get('url') || '', imp: p.get('import') || '' };
+  if (!v.title && !v.text && !v.url && !v.imp){
+    // still waiting from before a sign-in (Google sign-in reloads the page)
+    try { return JSON.parse(sessionStorage.getItem('sb-shared') || 'null'); } catch { return null; }
+  }
   history.replaceState(null, '', location.pathname + (location.hash || '#book'));
+  try { sessionStorage.setItem('sb-shared', JSON.stringify(v)); } catch {}
   return v;
 })();
 function handleShared(){
   if (!shared) return; const v = shared; shared = null;
+  try { sessionStorage.removeItem('sb-shared'); } catch {}
+  if (v.imp) return importShared(v.imp);
   const link = ((v.url + ' ' + v.text).match(/https?:\/\/[^\s"'<>]+/) || [])[0]?.replace(/[).,;!?]+$/, '');
   const body = v.text.replace(link || '\u0000', '').trim();
   // a whole recipe pasted as text: read it straight in. Otherwise fetch it from the link.
@@ -387,6 +393,22 @@ function handleShared(){
   if (link){ clipSheet('link'); overlay.querySelector('#linkIn').value = link; A.cliplink(overlay.querySelector('[data-act="cliplink"]')); return; }
   if (body){ clipSheet('paste'); overlay.querySelector('#pasteIn').value = body; toast('Check the text, then tap Read recipe'); }
 }
+
+// a recipe someone sent as a Spoonbook link: copy it (and its photo) into this cookbook, then check and save
+async function importShared(id){
+  toast('Getting the shared recipe…');
+  let d; try { d = await Backend.getShared(id); } catch { toast('Couldn’t open that shared recipe. Check your connection and try the link again.'); return; }
+  if (!d){ toast('That shared recipe isn’t available any more'); return; }
+  let photo = null;
+  if (d.photoUrl && assets){ try { const res = await fetch(d.photoUrl); if (res.ok) photo = await uploadPhoto(await res.blob()); } catch {} }
+  const dr = blankDraft();
+  Object.assign(dr, { title: d.title || '', category: CATS.includes(d.category) ? d.category : 'Mains', serves: d.serves || '', ingredients: d.ingredients || [], steps: d.steps || [],
+    source: d.source || '', totalMins: d.totalMins || null, photo, tags: d.tags || [], spice: d.spice ?? null,
+    story: [d.sharedBy ? `Shared by ${d.sharedBy}.` : '', d.note ? `Their note: ${d.note}` : ''].filter(Boolean).join(' ') });
+  S.draft = dr; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
+  toast('Check it over, then tap Save to add it to your book');
+}
+const appBase = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
 /* ---------- theme ---------- */
 function applyTheme(t){ if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
@@ -1317,8 +1339,36 @@ const A = {
     try { await downloads.save({ filename: `spoonbook-${stamp}.${fmt}`, data }); closeSheet(); toast('Saved'); }
     catch (e) { if (e?.code !== 'declined') toast('Couldn’t save the file here.'); }
   },
-  async copy(){
-    const r0 = byId(S.id); const t = recipeText(r0);
+  copy(){
+    const r = byId(S.id); if (!r) return;
+    openSheet('Share recipe', `<h2>Share ${esc(r.title)}</h2>
+      <button class="opt" data-act="sharelink"><span class="ic">${I.link}</span><span><b>Send a link</b><span>Opens on any phone or computer. If they use Spoonbook, one tap saves it to their cookbook, photo and all.</span></span></button>
+      <button class="opt" data-act="sharetext"><span class="ic">${I.text}</span><span><b>Send as text</b><span>The recipe written out in the message itself.</span></span></button>
+      <div id="shareMsg"></div>
+      <button class="btn" data-act="closesheet">Cancel</button>`);
+  },
+  async sharelink(b){
+    const r = byId(S.id); const m = overlay.querySelector('#shareMsg');
+    const sig = JSON.stringify([r.title, r.serves, r.ingredients, r.steps, r.note, r.photo, r.tags, r.spice]);
+    let url = r.share?.sig === sig ? appBase() + 'r.html?id=' + r.share.id : '';
+    const fresh = !url;
+    if (!url){
+      b.disabled = true; m.innerHTML = `<div class="thinking"><span class="spin"></span>Making a link…</div>`;
+      try { const res = await Backend.shareRecipe(r); url = res.url; patch(r.id, { share: { id: res.id, sig } }).catch(() => {}); }
+      catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'offline' || !navigator.onLine ? 'You need a connection to make a link. Send it as text instead.' : 'Couldn’t make a link just now. Try again, or send it as text.'}</p>`; return; }
+      b.disabled = false;
+    }
+    S.shareUrl = url;
+    // phones only allow the share menu straight after a tap, so a slow first link gets its own Send button
+    const ready = () => { m.innerHTML = `<p class="hint">Link ready.</p><div class="actions" style="margin:6px 0 0"><button class="btn primary" data-act="sendlink">Send link</button><button class="btn" data-act="copylink">Copy link</button></div>`; };
+    if (!navigator.share){ ready(); return A.copylink(); }
+    try { await navigator.share({ title: r.title, text: r.title + ', from our Spoonbook', url }); closeSheet(); }
+    catch (e) { if (e?.name !== 'AbortError' || fresh) ready(); }
+  },
+  async sendlink(){ const r = byId(S.id); try { await navigator.share({ title: r.title, text: r.title + ', from our Spoonbook', url: S.shareUrl }); closeSheet(); } catch (e) { if (e?.name !== 'AbortError') A.copylink(); } },
+  async copylink(){ try { await navigator.clipboard.writeText(S.shareUrl); toast('Link copied. Paste it into a message'); } catch { toast(S.shareUrl); } },
+  async sharetext(){
+    const r0 = byId(S.id); const t = recipeText(r0); closeSheet();
     if (navigator.share){ try { await navigator.share({ title: r0.title, text: t }); return; } catch (e) { if (e?.name === 'AbortError') return; } }
     try { await navigator.clipboard.writeText(t); toast('Recipe copied — paste it into a message'); }
     catch { openSheet('Copy recipe', `<h2>Copy recipe</h2><p class="hint">Select all and copy.</p><textarea id="copyBox" readonly style="min-height:300px">${esc(t)}</textarea><button class="btn" data-act="closesheet">Done</button>`); const box = document.getElementById('copyBox'); box.focus(); box.select(); }

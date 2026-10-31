@@ -54,6 +54,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 - **Share to Spoonbook:** once installed, Spoonbook appears in Android's share sheet. Share a recipe page from Chrome (or a recipe's text from anywhere) and it opens ready to save.
 - **No signal:** the cookbook, lists and every photo you've looked at are kept on the phone. Changes made offline sync when you're back online.
 - **Simple mode:** for less confident cooks (⋯ → Simple mode, or the switch on a recipe's Method tab). Steps are split into one action at a time, cooking words are underlined and explained when tapped, there's a "before you start" prep list, and heat and food-safety tips appear where they matter. The recipe itself isn't changed. It's a setting on each phone.
+- **Share a recipe:** the share button on a recipe can send a link. Anyone can open it on a nice recipe page; Spoonbook users tap “Save to my Spoonbook” and it's copied into their book, photo and all. New people are invited to make their own cookbook first. (Needs the latest `schema.sql` run in Supabase.)
 - **Hands-free cooking:** tap the microphone in cooking mode. Steps are read out, and you can say "next", "back", "read it again", "ingredients", "start timer", "ten minute timer" or "stop".
 - **Two dishes at once:** in cooking mode, tap "Add a second dish" to follow two recipes side by side, each with its own steps and timers.
 - **Shop mode, cupboard staples and usuals:** on the shopping list. Staples (salt, pepper…) are left off when you add a recipe; usuals are one tap to add.
@@ -79,6 +80,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 | `nutrition.js` | Nutrition values for about 150 everyday ingredients, from UK government data |
 | `config.js` | Your Supabase address and public key |
 | `manifest.webmanifest`, `sw.js`, `icons/` | What makes it installable and quick to open |
+| `r.html` | The public page for a recipe shared as a link |
 | `privacy.html`, `terms.html` | Draft privacy policy and terms (fill in the placeholders) |
 | `supabase/` | Database setup, the paywall switch (`plus.sql`), the link-clipping function and the billing function |
 

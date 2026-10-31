@@ -132,3 +132,33 @@ begin
 end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- Sharing a recipe as a link. Each share is a snapshot of one recipe; the cookbook itself stays private.
+-- Anyone with the link can read that one recipe (through get_shared_recipe), but nobody can list them.
+create table if not exists public.shared_recipes (
+  id text primary key check (id ~ '^[A-Za-z0-9]{8,24}$'),
+  household_id uuid references public.households(id) on delete cascade,
+  created_by uuid references auth.users(id) on delete cascade,
+  data jsonb not null,
+  created_at timestamptz not null default now()
+);
+alter table public.shared_recipes enable row level security;
+drop policy if exists "share from my cookbook" on public.shared_recipes;
+create policy "share from my cookbook" on public.shared_recipes for insert to authenticated
+  with check (created_by = auth.uid() and public.is_member(household_id));
+drop policy if exists "see my shares" on public.shared_recipes;
+create policy "see my shares" on public.shared_recipes for select to authenticated using (created_by = auth.uid());
+create or replace function public.get_shared_recipe(share_id text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select data from public.shared_recipes where id = share_id;
+$$;
+grant execute on function public.get_shared_recipe(text) to anon, authenticated;
+
+-- Photos for shared recipes live in a public bucket, one file per share, named by its unguessable id.
+insert into storage.buckets (id, name, public) values ('shared', 'shared', true) on conflict (id) do update set public = true;
+drop policy if exists "shared photos add" on storage.objects;
+create policy "shared photos add" on storage.objects for insert to authenticated with check (bucket_id = 'shared');
+drop policy if exists "shared photos mine" on storage.objects;
+create policy "shared photos mine" on storage.objects for select to authenticated using (bucket_id = 'shared' and owner_id = auth.uid()::text);
+drop policy if exists "shared photos remove" on storage.objects;
+create policy "shared photos remove" on storage.objects for delete to authenticated using (bucket_id = 'shared' and owner_id = auth.uid()::text);

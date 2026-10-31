@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A recipe from Spoonbook</title>
+<meta name="description" content="A recipe shared from Spoonbook, the shared cookbook app.">
+<meta property="og:title" content="A recipe from Spoonbook">
+<meta property="og:description" content="Open it to see the recipe, and save it to your own Spoonbook in one tap.">
+<meta property="og:image" content="icons/icon-512.png">
+<meta name="theme-color" content="#1F1A17">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,500&family=Work+Sans:wght@400;500;600&display=swap">
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg:#1F1A17;--surface:#2B2420;--raise:#352C27;--line:#3A312C;--fg:#F4EBDD;--muted:#BFAF9B;--accent:#E8A93A;--on-accent:#1F1A17;--ph:#4A3328;
+  --display:"Playfair Display",Georgia,serif;--body:"Work Sans",system-ui,sans-serif;color-scheme:dark}
+@media (prefers-color-scheme: light){:root{--bg:#F7F1E8;--surface:#FFFBF5;--raise:#F0E6D8;--line:#E3D6C4;--fg:#241C17;--muted:#6B5B4D;--accent:#94570A;--on-accent:#FFFBF5;--ph:#E8D6BE;color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 var(--body);-webkit-font-smoothing:antialiased}
+main{max-width:680px;margin:0 auto;padding:20px 16px 120px}
+.brand{font-family:var(--display);font-style:italic;color:var(--accent);font-size:20px;text-decoration:none}
+.hero{margin:16px -16px 0;aspect-ratio:4/3;max-height:420px;background:var(--ph);overflow:hidden}
+.hero img{width:100%;height:100%;object-fit:cover;display:block}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent);margin-top:20px}
+h1{font-family:var(--display);font-weight:500;font-size:clamp(32px,8vw,44px);line-height:1.08;margin:6px 0 8px}
+h2{font-family:var(--display);font-weight:500;font-size:24px;margin:30px 0 8px}
+.by{color:var(--muted);font-size:15px;margin:0}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.tags span{font-size:13px;padding:4px 10px;border-radius:12px;background:var(--raise)}
+.note{margin-top:20px;border-left:3px solid var(--accent);padding:4px 0 4px 14px;font-style:italic}
+ul.ings{list-style:none;padding:0;margin:0}
+ul.ings li{padding:10px 0;border-bottom:1px solid var(--line)}
+ol.steps{list-style:none;padding:0;margin:0;counter-reset:s;display:flex;flex-direction:column;gap:16px}
+ol.steps li{display:flex;gap:14px;counter-increment:s}
+ol.steps li::before{content:counter(s);flex:none;width:26px;font-family:var(--display);font-style:italic;font-size:26px;line-height:1;color:var(--accent)}
+.src{margin-top:24px;font-size:14px;color:var(--muted)}
+a{color:var(--accent)}
+.dock{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 30%)}
+.dock .in{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.btn{height:54px;border-radius:27px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:17px;text-decoration:none;color:var(--fg);background:var(--surface)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.hint{font-size:13px;color:var(--muted);text-align:center;margin:0}
+.empty{padding:80px 8px;text-align:center;color:var(--muted)}
+.empty h1{color:var(--fg);font-size:30px}
+</style>
+</head>
+<body>
+<main id="page"><a class="brand" href="./">Spoonbook</a><div class="empty">Opening the recipe…</div></main>
+<script>
+(async () => {
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  const page = document.getElementById('page');
+  const id = new URLSearchParams(location.search).get('id') || '';
+  const CFG = window.SPOONBOOK_CONFIG || {};
+  const fail = (h, t) => { page.innerHTML = `<a class="brand" href="./">Spoonbook</a><div class="empty"><h1>${h}</h1><p>${t}</p><p><a href="./">Open Spoonbook</a></p></div>`; };
+  if (!/^[A-Za-z0-9]{8,24}$/.test(id)) return fail('Recipe not found', 'This link looks incomplete. Ask for it to be sent again.');
+  let d;
+  try {
+    const sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: false, detectSessionInUrl: false } });
+    const { data, error } = await sb.rpc('get_shared_recipe', { share_id: id });
+    if (error) throw error; d = data;
+  } catch { return fail('Can’t open the recipe', 'Check your internet connection and try the link again.'); }
+  if (!d) return fail('Recipe not found', 'This shared recipe isn’t available any more.');
+  const SPICE = ['Not spicy', 'Mild', 'Medium', 'Hot'];
+  const mins = m => { const h = Math.floor(m / 60), r = m % 60; return (h ? h + ' hr' : '') + (h && r ? ' ' : '') + (r ? r + ' min' : ''); };
+  const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+  document.title = d.title + ' · Spoonbook';
+  const tags = [...(d.spice != null ? [(d.spice ? '🌶'.repeat(d.spice) + ' ' : '') + SPICE[d.spice]] : []), ...(d.tags || [])];
+  page.innerHTML = `<a class="brand" href="./">Spoonbook</a>
+    ${d.photo ? `<div class="hero"><img src="${esc(CFG.supabaseUrl + '/storage/v1/object/public/shared/' + d.photo)}" alt="Photo of ${esc(d.title)}"></div>` : ''}
+    <div class="eyebrow">${esc(d.category || 'Recipe')}${d.serves ? ' · Serves ' + esc(d.serves) : ''}${d.totalMins ? ' · ' + mins(d.totalMins) : ''}</div>
+    <h1>${esc(d.title)}</h1>
+    ${d.sharedBy ? `<p class="by">Shared by ${esc(d.sharedBy)} from their Spoonbook</p>` : ''}
+    ${tags.length ? `<div class="tags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
+    ${d.note ? `<p class="note">“${esc(d.note)}”</p>` : ''}
+    <h2>Ingredients</h2><ul class="ings">${(d.ingredients || []).map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+    <h2>Method</h2><ol class="steps">${(d.steps || []).map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol>
+    ${d.source ? `<p class="src">Original recipe: <a href="${esc(d.source)}" rel="noopener nofollow" target="_blank">${esc(host(d.source) || 'link')}</a></p>` : ''}
+    <div class="dock"><div class="in">
+      <a class="btn primary" href="./?import=${encodeURIComponent(id)}">Save to my Spoonbook</a>
+      <p class="hint">New to Spoonbook? It’s a free cookbook app for your recipes, meal plans and shopping list. Tap above to make your own and this recipe comes with you.</p>
+    </div></div>`;
+})();
+</script>
+</body>
+</html>

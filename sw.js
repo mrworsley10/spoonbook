@@ -1,9 +1,9 @@
 // Keeps the app itself on the phone so it opens instantly and works with no signal.
 // The app's files are fetched fresh when possible and saved for offline. Recipe data is saved by the app
 // itself (see backend.js); this file also keeps a copy of every photo the app has shown.
-const CACHE = 'spoonbook-v12';
+const CACHE = 'spoonbook-v13';
 const PHOTOS = 'spoonbook-photos'; // kept across updates
-const SHELL = ['./', './index.html', './backend.js', './local.js', './simple.js', './nutrition.js', './config.js', './manifest.webmanifest', './privacy.html', './terms.html', './icons/icon-192.png', './icons/icon-512.png'];
+const SHELL = ['./', './index.html', './backend.js', './local.js', './simple.js', './nutrition.js', './config.js', './manifest.webmanifest', './privacy.html', './terms.html', './r.html', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

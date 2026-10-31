@@ -209,6 +209,29 @@ async function clip(url){
   return data.recipe;
 }
 
+/* ---------- sharing a recipe as a link ---------- */
+const shareId = () => { const a = new Uint8Array(12); crypto.getRandomValues(a); return [...a].map(x => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'[x % 57]).join(''); };
+const appBase = () => location.origin + location.pathname.replace(/index\.html$/, '');
+const sharedPhotoUrl = name => `${CFG.supabaseUrl}/storage/v1/object/public/shared/${name}`;
+async function shareRecipe(r){
+  const id = shareId(); let photo = null;
+  if (r.photo){
+    const { data: blob } = await sb.storage.from('photos').download(r.photo);
+    if (blob){ const { error } = await sb.storage.from('shared').upload(`${id}.jpg`, blob, { contentType: blob.type || 'image/jpeg' }); if (!error) photo = `${id}.jpg`; }
+  }
+  const me = members.find(m => m.user_id === session.user.id);
+  const data = { title: r.title, category: r.category || 'Mains', serves: r.serves || '', totalMins: r.totalMins || null, ingredients: r.ingredients || [], steps: r.steps || [],
+    note: r.note || '', tags: r.tags || [], spice: r.spice ?? null, source: r.source || '', photo, sharedBy: me?.display_name || '', sharedAt: Date.now() };
+  const { error } = await sb.from('shared_recipes').insert({ id, household_id: household.id, created_by: session.user.id, data });
+  if (error) throw { code: isNetErr(error) ? 'offline' : 'failed', message: error.message };
+  return { id, url: appBase() + 'r.html?id=' + id };
+}
+async function getShared(id){
+  const { data, error } = await sb.rpc('get_shared_recipe', { share_id: id });
+  if (error) throw error;
+  return data ? { ...data, photoUrl: data.photo ? sharedPhotoUrl(data.photo) : null } : null;
+}
+
 /* ---------- importing the backup from the Claude version ---------- */
 async function importBackup(file, progress){
   if (!window.JSZip) throw { message: 'The importer did not load. Check your connection and try again.' };
@@ -389,7 +412,7 @@ sb.auth.onAuthStateChange((event, s) => {
 
 window.Backend = {
   start(cb){ onReady = cb; start(); },
-  photoUrl, clip, importBackup,
+  photoUrl, clip, importBackup, shareRecipe, getShared,
   get household(){ return household; }, get members(){ return members; },
   get offline(){ return offline; }, get pending(){ return pending; }, get plan(){ return plan; }, refreshPlan: loadPlan,
   checkoutUrl(){
@@ -416,6 +439,10 @@ window.Backend = {
         if (e2 || data.length < 1000) break;
       }
     }
+    // photos of recipes this person shared as links
+    const mine = await sb.from('shared_recipes').select('id, data').eq('created_by', session.user.id);
+    const files = (mine.data || []).map(x => x.data?.photo).filter(Boolean);
+    if (files.length) await sb.storage.from('shared').remove(files).catch(() => {});
     progress?.('Deleting your account…');
     const { error } = await sb.rpc('delete_my_account');
     if (error) throw error;
