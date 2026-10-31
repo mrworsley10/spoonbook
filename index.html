@@ -18,6 +18,7 @@
 <script src="nutrition.js"></script>
 <script src="local.js"></script>
 <script src="simple.js"></script>
+<script src="mail.js"></script>
 <script src="backend.js"></script>
 </head>
 <body>
@@ -1024,6 +1025,7 @@ function clipSheet(mode){
     <button class="opt" data-act="sheet" data-mode="paste"><span class="ic">${I.text}</span><span><b>Paste a recipe</b><span>Copy a recipe from a website or message and Spoonbook sorts out the ingredients and method.</span></span></button>
     <button class="opt" data-act="sheet" data-mode="photo"><span class="ic">${I.cam}</span><span><b>Snap a cookbook page</b><span>Take a photo of a printed recipe or a screenshot, and Spoonbook reads the words in.</span></span></button>
     <button class="opt" data-act="typein"><span class="ic">${I.pen}</span><span><b>Type it in</b><span>Start from a blank recipe.</span></span></button>
+    <button class="opt" data-act="sheet" data-mode="bulk"><span class="ic">${I.plus}</span><span><b>Lots at once, from old emails or files</b><span>Got a folder of recipe emails? Save them as files and bring them all in together.</span></span></button>
     <button class="btn" data-act="closesheet">Cancel</button>`;
   else if (S.sheet === 'link') body = `<h2>From a link</h2>
     <p class="hint">Copy the address of the recipe page from your browser or the app you found it in, then paste it here.</p>
@@ -1043,6 +1045,14 @@ function clipSheet(mode){
     <label style="display:flex;gap:10px;align-items:center;font-size:15px"><input type="checkbox" id="snapKeep" style="width:20px;height:20px;accent-color:var(--accent)"> Use the picture as the recipe photo</label>
     <div id="aiMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
+  else if (S.sheet === 'bulk') body = `<h2>Bring in lots at once</h2>
+    <p class="hint">Pick saved emails (.eml), a whole email folder (.mbox), or text files. Spoonbook reads each one on this phone, makes a recipe from it, and keeps any attached photo. Anything it isn’t sure about is marked “needs a check”.</p>
+    <details class="hint"><summary style="cursor:pointer;color:var(--accent);font-weight:600">How do I save my emails as files?</summary>
+      <p style="margin:8px 0 0">On a computer, install the free email program <b>Thunderbird</b> and add your email account to it (AOL, Gmail, Outlook and others work; for AOL and Yahoo you first create an “app password” in your account’s security settings). Open the folder with your recipes, press <b>Ctrl+A</b> (Cmd+A on a Mac) to select them all, right-click and choose <b>Save As…</b>, and pick a folder. Each email is saved as a file. Then come back here and choose them all.</p></details>
+    <label class="opt" for="bulkIn"><span class="ic">${I.plus}</span><span><b>Choose files</b><span>You can pick lots at once</span></span></label>
+    <input id="bulkIn" type="file" multiple accept=".eml,.mbox,.txt,.md,.html,.htm,message/rfc822,text/plain,text/html,application/mbox" class="sr" data-chg="bulk">
+    <div id="bulkMsg"></div>
+    <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
   overlay.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
   overlay.querySelector('textarea,button,label')?.focus?.();
 }
@@ -1051,7 +1061,7 @@ function closeSheet(){ S.sheet = null; S.aiCtl?.abort(); overlay.innerHTML = '';
 function guessCategory(title, ings){
   const t = (title + ' ' + ings.join(' ')).toLowerCase(), n = title.toLowerCase();
   const rules = [['Curries', /curry|korma|madras|masala|biryani|balti|tikka|massaman|rogan|jalfrezi|dhal|dal\b|tagine/], ['Soups & stews', /soup|stew|casserole|chowder|broth/],
-    ['Puddings & treats', /cake|cheesecake|crumble|brownie|cookie|biscuit|pudding|tart|trifle|mousse|ice cream|pavlova|scone|muffin|flapjack/], ['Bread & dough', /bread|dough|loaf|focaccia|bun/],
+    ['Puddings & treats', /cake|sponge|cheesecake|crumble|brownie|cookie|biscuit|pudding|tart|trifle|mousse|ice cream|pavlova|scone|muffin|flapjack/], ['Bread & dough', /bread|dough|loaf|focaccia|bun/],
     ['Sauces & pastes', /sauce|paste|gravy|marinade|dressing|pesto|chutney|dip\b/], ['Pies & bakes', /pie\b|bake\b|lasagne|pasty|quiche|empanada|wellington/],
     ['Pasta & rice', /pasta|spaghetti|penne|risotto|paella|noodle|rice\b|gnocchi|jambalaya|pad thai/], ['Sides & starters', /bhaji|salad|potatoes|yorkshire|wings|starter|side/]];
   for (const [c, re] of rules) if (re.test(n)) return c;
@@ -1059,6 +1069,50 @@ function guessCategory(title, ings){
   if (/beef|pork|lamb|sausage|bacon|mince|steak|ham\b/.test(t)) return 'Beef & pork';
   return 'Mains';
 }
+// lots of recipes at once, from saved emails or files
+async function bulkImport(files){
+  const m = overlay.querySelector('#bulkMsg'); const say = t => { if (m) m.innerHTML = `<div class="thinking"><span class="spin"></span>${esc(t)}</div>`; };
+  overlay.querySelector('#bulkIn').disabled = true;
+  const mails = await Mail.readFiles(files, (i, n) => say(`Reading file ${i} of ${n}…`));
+  const have = new Set(S.recipes.map(r => (r.title || '').trim().toLowerCase()));
+  const generic = /^(re|fw|fwd|recipe|recipes|a recipe|no subject|\(no subject\)|hi|hello|this|try this)?[!.]*$/i;
+  let added = 0, check = 0, dupes = 0, full = false; const skipped = [];
+  // read them all first, so if the same recipe turns up twice the fuller copy wins
+  const found = new Map();
+  for (const x of mails){
+    const out = x.text && x.text.length >= 60 ? Local.parseRecipe(x.text) : null;
+    if (!out || (!out.ingredients.length && !out.steps.length) || out.ingredients.length + out.steps.length < 2){ skipped.push(x.title || x.file); continue; }
+    const title = (x.title && !generic.test(x.title) ? x.title : out.title || x.title || 'Untitled recipe').slice(0, 140);
+    const key = title.toLowerCase(), size = out.ingredients.length + out.steps.length;
+    if (have.has(key) || (found.has(key) && found.get(key).size >= size)){ dupes++; continue; }
+    if (found.has(key)) dupes++;
+    found.set(key, { x, out, title, size });
+  }
+  const todo = [...found.values()];
+  for (let i = 0; i < todo.length; i++){
+    const { x, out, title } = todo[i]; say(`Adding ${i + 1} of ${todo.length}…`);
+    const unsure = out.ingredients.length < 2 || !out.steps.length || out.warnings.length > 0;
+    let photo = null; if (x.image && assets){ try { photo = await uploadPhoto(x.image); } catch {} }
+    const when = x.date ? x.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+    const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + '-' + rid().slice(0, 4);
+    const data = { title, category: guessCategory(title, out.ingredients), serves: out.serves || '', ingredients: out.ingredients, steps: out.steps, totalMins: out.totalMins || null,
+      source: '', photo, photos: [], note: '', favourite: false, addedBy: S.me, createdAt: Date.now(), updatedAt: Date.now(),
+      story: x.from || when ? `From ${x.from ? x.from + '’s' : 'an'} email${when ? ', ' + when : ''}.` : '' };
+    if (unsure){ data.needsReview = true; data.reviewNote = 'This came in from an email and looked a bit unusual. Give it a quick check.'; }
+    try { await db.collection('recipes').doc(id).set(data); have.add(title.toLowerCase()); added++; if (unsure) check++; }
+    catch (e) { if (e?.code === 'free_limit'){ full = true; break; } skipped.push(title); }
+  }
+  if (!m) return;
+  m.innerHTML = `<div class="opt" style="display:block"><b>${added ? `Added ${added} recipe${added > 1 ? 's' : ''}` : 'No new recipes added'}</b>
+    <span class="hint" style="display:block;margin-top:6px">${[check ? `${check} ${check > 1 ? 'are' : 'is'} marked “needs a check”: open ${check > 1 ? 'them' : 'it'} to tidy up.` : '',
+      dupes ? `${dupes} ${dupes > 1 ? 'were' : 'was'} already in your book.` : '',
+      skipped.length ? `${skipped.length} didn’t look like recipes and ${skipped.length > 1 ? 'were' : 'was'} left out${skipped.length <= 6 ? ': ' + esc(skipped.join(', ')) : ''}.` : '',
+      full ? 'The cookbook reached its free limit, so the rest weren’t added.' : '',
+      added ? 'Sort the book by “Newest” to see them together.' : ''].filter(Boolean).join(' ')}</span></div>
+    <button class="btn primary" data-act="bulkdone">Done</button>`;
+  if (full) upgradeSheet('limit');
+}
+
 async function readLocally({ text, files, srcUrl, keepPhoto }){
   const msg = overlay.querySelector('#aiMsg');
   overlay.querySelectorAll('[data-act="readpaste"],#snapIn').forEach(b => b.disabled = true);
@@ -1183,6 +1237,7 @@ const A = {
     } catch {}
   },
   gobin(){ closeSheet(); go('bin'); },
+  bulkdone(){ closeSheet(); S.sort = 'newest'; ls.set('sb-sort', 'newest'); S.cat = 'All'; S.tag = null; go('book'); render(true); },
   async restore(b){ const r = S.bin.find(x => x.id === b.dataset.id); if (!r) return; await patch(r.id, { deletedAt: null, deletedBy: null }); toast(r.title + ' is back in the book'); },
   async purge(b){
     const id = b.dataset.id;
@@ -1452,6 +1507,7 @@ document.addEventListener('change', async e => {
       toast('Photo ready. Save to keep it');
     } catch (err) { toast(photoErr(err)); }
   }
+  if (k === 'bulk' && t.files.length){ bulkImport([...t.files]); return; }
   if (k === 'snap' && t.files.length){
     const files = [...t.files].slice(0, S.imgMax || 1);
     readLocally({ files: [...t.files].slice(0, 4), keepPhoto: overlay.querySelector('#snapKeep')?.checked });
