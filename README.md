@@ -53,6 +53,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 ## Features worth knowing about
 - **Share to Spoonbook:** once installed, Spoonbook appears in Android's share sheet. Share a recipe page from Chrome (or a recipe's text from anywhere) and it opens ready to save.
 - **No signal:** the cookbook, lists and every photo you've looked at are kept on the phone. Changes made offline sync when you're back online.
+- **Simple mode:** for less confident cooks (⋯ → Simple mode, or the switch on a recipe's Method tab). Steps are split into one action at a time, cooking words are underlined and explained when tapped, there's a "before you start" prep list, and heat and food-safety tips appear where they matter. The recipe itself isn't changed. It's a setting on each phone.
 - **Hands-free cooking:** tap the microphone in cooking mode. Steps are read out, and you can say "next", "back", "read it again", "ingredients", "start timer", "ten minute timer" or "stop".
 - **Two dishes at once:** in cooking mode, tap "Add a second dish" to follow two recipes side by side, each with its own steps and timers.
 - **Shop mode, cupboard staples and usuals:** on the shopping list. Staples (salt, pepper…) are left off when you add a recipe; usuals are one tap to add.
@@ -73,6 +74,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 |---|---|
 | `index.html` | The app |
 | `backend.js` | Connects the app to Supabase (data, sign-in, photos) |
+| `simple.js` | Simple mode: splits steps, explains cooking words, builds the prep list, adds heat and safety tips |
 | `local.js` | Reads pasted recipes and photos, sorts the shopping list, works out calories, all on the phone |
 | `nutrition.js` | Nutrition values for about 150 everyday ingredients, from UK government data |
 | `config.js` | Your Supabase address and public key |

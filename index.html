@@ -17,6 +17,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
 <script src="nutrition.js"></script>
 <script src="local.js"></script>
+<script src="simple.js"></script>
 <script src="backend.js"></script>
 </head>
 <body>
@@ -277,6 +278,18 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .second{display:block;margin:26px auto 0}
 .ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
 .legal{font-size:12px;margin-top:4px}
+/* simple mode */
+.term{border:0;background:none;padding:0;font:inherit;color:inherit;text-decoration:underline dotted var(--accent);text-decoration-thickness:2px;text-underline-offset:4px;cursor:help}
+.prep{margin:4px 0 22px;background:var(--surface);border-radius:12px;padding:14px 16px;border-left:3px solid var(--accent)}
+.prep ul{margin:8px 0 0;padding-left:20px}
+.prep li{padding:3px 0;font-size:17px}
+.tip{margin:10px 0 0;font-size:14px;color:var(--muted);padding:8px 12px;border-radius:10px;background:var(--surface)}
+.cook .tip{font-size:15px}
+.simplerow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 6px}
+ol.sub{margin:0;padding:0;list-style:none}
+.steps ol.sub li{display:block;position:relative;padding:2px 0 2px 16px}
+ol.sub li::before{content:'›';position:absolute;left:0;top:1px;color:var(--accent);font-weight:600}
+ol.sub li p{margin:0 0 6px}
 .legal a{color:var(--muted)}
 .switch{flex:none;width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .2s}
 .switch i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:12px;background:var(--fg);transition:transform .2s}
@@ -334,7 +347,7 @@ const S = {
   cat:'All', q:'', tab:'ing', scale:{}, checked:{}, noteEdit:false, cover:{}, confirmDel:false,
   draft:null, cookStep:0, cookShowIng:false, names:{}, me:null, canPhoto:false, sampleOk:false, imgOk:false, pending:false,
   sort: ls.get('sb-sort') || 'az', metric: ls.get('sb-units') !== 'us', plan:{ days:{} }, week:0, fridge:'', canSave:false,
-  bin:[], tag:null, shopMode: ls.get('sb-shopmode') === 'on', pantry:null, cook2:null, cookStep2:0, handsFree:false, seen:0
+  bin:[], tag:null, simple: ls.get('sb-simple') === 'on', shopMode: ls.get('sb-shopmode') === 'on', pantry:null, cook2:null, cookStep2:0, handsFree:false, seen:0
 };
 const TAGS = ['Quick weeknight', 'Freezes well', 'Slow cooker', 'Batch cook', 'Vegetarian'];
 const SPICE = ['Not spicy', 'Mild', 'Medium', 'Hot'];
@@ -724,7 +737,11 @@ function recipeView(){
     <div class="ctrl"><span class="eyebrow">${f !== 1 ? 'Scaled ×' + fmt(f) : 'As written'}</span>
       <div class="stepper"><button data-act="scale" data-d="-1" aria-label="Less">−</button><span>${scaleLabel}</span><button data-act="scale" data-d="1" aria-label="More">+</button></div></div>
     ${ings.length ? `<ul class="ings">${ings.map((l, i) => `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`
-  : (steps.length ? `<ol class="steps">${steps.map((s, i) => `<li><span class="n">${i+1}</span><div><p>${esc(showLine(s))}</p>${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`).join('')}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`)}
+  : (steps.length ? `<div class="simplerow"><span class="hint">${S.simple ? 'Simple mode: one action at a time, with cooking words explained. Tap an underlined word.' : 'New to cooking?'}</span><button class="chip" data-act="simple" aria-pressed="${S.simple}">${S.simple ? '✓ Simple mode' : 'Simple mode'}</button></div>
+    ${S.simple ? prepBox(r) : ''}
+    <ol class="steps">${(() => { const flat = csteps(r); let k = 0; return steps.map((s, i) => { const parts = S.simple ? Simple.splitStep(s) : [s];
+      const body = parts.length > 1 ? `<ol class="sub">${parts.map(x => { const t = tipsHtml(newTips(flat, k++)); return `<li><p>${stepHtml(x)}</p>${t}</li>`; }).join('')}</ol>` : `<p>${stepHtml(s)}</p>${S.simple ? tipsHtml(newTips(flat, k++)) : ''}`;
+      return `<li><span class="n">${i+1}</span><div>${body}${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`; }).join(''); })()}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`)}
   ${r.nutrition ? (() => { const n = r.nutrition; return `<div class="kcal" id="kcalBox"><div class="kc"><b>${n.kcal}</b><span>kcal</span></div><div class="kc"><b>${n.protein}g</b><span>protein</span></div><div class="kc"><b>${n.carbs}g</b><span>carbs</span></div><div class="kc"><b>${n.fat}g</b><span>fat</span></div>
       <p class="hint">Per portion, ${n.portionsAssumed ? 'assuming it makes ' + n.portions + ' (add “Serves” to the recipe to be exact)' : 'if it makes ' + n.portions}. A rough guide worked out from UK government food data${n.total ? `, counting ${n.counted} of ${n.total} ingredients` : ''}${n.missed?.length ? ` (not counted: ${esc(n.missed.slice(0, 4).join('; '))}${n.missed.length > 4 ? '…' : ''})` : ''}. <button class="linkbtn" data-act="kcal">Work it out again</button></p></div>`; })()
     : (r.ingredients || []).length ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
@@ -739,12 +756,23 @@ function recipeView(){
   <div class="dock"><div class="in"><a class="btn primary" href="#cook-${esc(r.id)}" ${steps.length ? '' : 'aria-disabled="true"'}>Start cooking</a></div></div>`;
 }
 function mins(m){ const h = Math.floor(m/60), mm = m % 60; return (h ? h + ' hr' : '') + (h && mm ? ' ' : '') + (mm ? mm + ' min' : ''); }
+// Simple mode: the steps as single actions, plus help around them. The recipe itself never changes.
+const csteps = r => S.simple ? (r.steps || []).flatMap(st => Simple.splitStep(st)) : (r.steps || []);
+const stepHtml = t => S.simple ? Simple.explainHtml(esc(showLine(t))) : esc(showLine(t));
+function newTips(list, i){ const seen = new Set(list.slice(0, i).flatMap(x => Simple.tips(x))); return Simple.tips(list[i]).filter(t => !seen.has(t)); }
+function prepBox(r){
+  const prep = Simple.prepList(r.ingredients);
+  return prep.length ? `<div class="prep"><span class="eyebrow">Before you start</span><p class="hint">Get these done first, so nothing burns while you’re chopping.</p><ul>${prep.map(x => `<li>${esc(x)}</li>`).join('')}</ul></div>` : '';
+}
+const tipsHtml = tips => tips.map(t => `<p class="tip">${esc(t)}</p>`).join('');
 function cookPanel(r, step, w, dual){
-  const steps = r.steps || [], n = steps.length, i = Math.min(step, Math.max(0, n - 1)), f = factor(r);
+  const steps = csteps(r), n = steps.length, i = Math.min(step, Math.max(0, n - 1)), f = factor(r);
   const need = n ? stepIngs(r, steps[i], f) : [];
   return `<section class="cpanel${dual ? ' dual' : ''}" aria-label="${esc(r.title)}">
     ${dual ? `<div class="ch"><span class="eyebrow">${esc(r.title)}</span>${w === 2 ? `<button class="icon-btn" data-act="cook2off" aria-label="Stop cooking ${esc(r.title)}">${I.close}</button>` : ''}</div>` : ''}
-    ${n ? `<div class="num">${i + 1}<span> / ${n}</span></div><p class="big">${esc(showLine(steps[i]))}</p>
+    ${S.simple && i === 0 && !dual ? prepBox(r) : ''}
+    ${n ? `<div class="num">${i + 1}<span> / ${n}</span></div><p class="big">${stepHtml(steps[i])}</p>
+      ${S.simple ? tipsHtml(newTips(steps, i)) : ''}
       ${durations(steps[i]).length ? `<div class="tbtns">${timerBtns(r, steps[i], i + 1)}</div>` : ''}
       ${need.length ? `<div class="need"><span class="eyebrow">For this step</span><ul>${need.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>` : ''}`
       : `<p class="big">No steps written yet.</p>`}
@@ -759,7 +787,7 @@ function cookIngs(r, label){
 function cookView(){
   const r = byId(S.id); if (!r) return '';
   const r2 = S.cook2 ? byId(S.cook2) : null, dual = !!r2;
-  const steps = r.steps || [], n = steps.length, i = Math.min(S.cookStep, Math.max(0, n - 1));
+  const steps = csteps(r), n = steps.length, i = Math.min(S.cookStep, Math.max(0, n - 1));
   const hint = S.handsFree
     ? `<p class="hf" role="status">${SR ? `<b>Listening.</b> Say “next”, “back”, “read it again”, “ingredients”, “start timer” or “stop”${dual ? '. Add “second” for the other dish' : ''}.` : '<b>Reading aloud.</b> This phone can’t listen for commands, so tap Next and each step is read out.'}</p>`
     : (!S.cookShowIng && !dual && n > 1 && i === 0 ? `<p class="hint" style="text-align:center;margin:8px 0 0">Swipe left or right to move between steps</p>` : '');
@@ -773,7 +801,8 @@ function cookView(){
     <div class="body">${S.cookShowIng
       ? cookIngs(r, dual) + (dual ? cookIngs(r2, true) : '')
       : dual ? cookPanel(r, S.cookStep, 1, true) + cookPanel(r2, S.cookStep2, 2, true)
-      : cookPanel(r, S.cookStep, 1, false) + `<button class="linkbtn second" data-act="cook2pick">Cooking something else at the same time? Add a second dish</button>`}</div>
+      : cookPanel(r, S.cookStep, 1, false) + `<button class="linkbtn second" data-act="cook2pick">Cooking something else at the same time? Add a second dish</button>`}
+      ${S.cookShowIng ? '' : `<button class="linkbtn second" data-act="simple">${S.simple ? 'Simple mode is on · turn off' : 'New to cooking? Turn on simple mode'}</button>`}</div>
     ${dual ? '' : `<div class="foot"><button class="btn" data-act="step" data-d="-1" ${i === 0 ? 'disabled' : ''}>Back</button>
       ${i < n - 1 ? `<button class="btn primary" data-act="step" data-d="1">Next step</button>` : `<button class="btn primary" data-act="finish">${madeToday(r) ? 'Finish' : 'Finish · we made this'}</button>`}</div>`}
   </div>`;
@@ -931,6 +960,7 @@ function moreSheet(){
       <span class="joincode">${esc(hh.join_code)}</span>
       <div class="actions" style="margin-top:8px"><button class="btn small" data-act="copycode">Copy invite</button></div></div>
     <button class="opt" data-act="shareapp"><span class="ic">${I.link}</span><span><b>Share Spoonbook</b><span>Send the app to friends or family so they can start their own cookbook.</span></span></button>
+    <button class="opt" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>For less confident cooks: one action at a time, cooking words explained, a prep list before you start, and safety tips. Recipes aren’t changed.</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
     <button class="opt" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
     ${S.canSave ? `<button class="opt" data-act="export" data-fmt="json"><span><b>Back up all recipes</b><span>One file with everything, ready to bring into another app later.</span></span></button>
     <button class="opt" data-act="export" data-fmt="md"><span><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes as a text document you can print or read anywhere.</span></span></button>`
@@ -1149,6 +1179,16 @@ const A = {
   cooking(){ S.cookShowIng = !S.cookShowIng; render(true); },
   step(b){ moveStep(b.dataset.w === '2' ? 2 : 1, +b.dataset.d); },
   handsfree(){ handsFree(!S.handsFree); },
+  simple(b){
+    // keep your place in cooking mode when switching
+    const r = S.view === 'cook' ? byId(S.id) : null; let at = 0;
+    if (r){ const steps = r.steps || []; const before = csteps(r)[S.cookStep]; at = steps.findIndex(st => S.simple ? Simple.splitStep(st).includes(before) : st === before); }
+    S.simple = !S.simple; ls.set('sb-simple', S.simple ? 'on' : 'off');
+    if (r && at >= 0){ const steps = r.steps || []; S.cookStep = S.simple ? steps.slice(0, at).flatMap(st => Simple.splitStep(st)).length : at; }
+    if (b.closest('.sheet')) moreSheet(); else render(true);
+    toast(S.simple ? 'Simple mode on' : 'Simple mode off');
+  },
+  term(b){ const g = Simple.term(b.dataset.g); if (!g) return; openSheet('What it means', `<h2>${esc(b.textContent.trim().replace(/^./, c => c.toUpperCase()))}</h2><p style="margin:0;font-size:18px;line-height:1.55">${esc(g.d)}</p><button class="btn primary" data-act="closesheet">Got it</button>`); },
   cook2pick(){ recipePickSheet(null, 'cook2this'); },
   cook2this(b){ S.cook2 = b.dataset.id; S.cookStep2 = 0; closeSheet(); render(true); if (S.handsFree) readStep(2); },
   cook2off(){ S.cook2 = null; render(true); },
@@ -1383,7 +1423,7 @@ document.addEventListener('touchend', e => {
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 let recog = null, speaking = false;
 function moveStep(w, d){
-  const r = byId(w === 2 ? S.cook2 : S.id); const n = (r?.steps || []).length; if (!n) return false;
+  const r = byId(w === 2 ? S.cook2 : S.id); const n = r ? csteps(r).length : 0; if (!n) return false;
   const cur = w === 2 ? S.cookStep2 : S.cookStep, next = cur + d;
   if (next < 0 || next >= n) return false;
   if (w === 2) S.cookStep2 = next; else S.cookStep = next;
@@ -1402,7 +1442,7 @@ function say(text){
 }
 function readStep(w){
   const r = byId(w === 2 ? S.cook2 : S.id); if (!r) return;
-  const steps = r.steps || []; if (!steps.length) return say('There are no steps written for this one.');
+  const steps = csteps(r); if (!steps.length) return say('There are no steps written for this one.');
   const i = Math.min(w === 2 ? S.cookStep2 : S.cookStep, steps.length - 1);
   say(`${S.cook2 ? r.title + '. ' : ''}Step ${i + 1}${i === steps.length - 1 ? ', the last step' : ''}. ${showLine(steps[i])}`);
 }
@@ -1443,7 +1483,7 @@ function command(raw){
   if (has(/\bingredients?\b|what do i need/)){ S.cookShowIng = true; render(true); return readIngredients(w); }
   if (has(/\b(steps?|method)\b/)){ S.cookShowIng = false; render(true); return readStep(w); }
   if (has(/\btimer\b/)){
-    const r = byId(w === 2 ? S.cook2 : S.id); const steps = r?.steps || []; const i = Math.min(w === 2 ? S.cookStep2 : S.cookStep, steps.length - 1);
+    const r = byId(w === 2 ? S.cook2 : S.id); const steps = r ? csteps(r) : []; const i = Math.min(w === 2 ? S.cookStep2 : S.cookStep, steps.length - 1);
     const d = durations(steps[i] || '')[0];
     if (!d) return say('There’s no time in this step. Say how long, like ten minute timer.');
     startTimer(r.title + ' · step ' + (i + 1), d.mins); return say(timerLabel(d.mins).replace('hr', 'hour').replace('min', 'minute').replace('sec', 'second') + ' timer started.');
