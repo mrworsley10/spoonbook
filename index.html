@@ -1047,11 +1047,11 @@ function clipSheet(mode){
     <div id="aiMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
   else if (S.sheet === 'bulk') body = `<h2>Bring in lots at once</h2>
-    <p class="hint">Pick saved emails (.eml), a whole email folder (.mbox), or text files. Spoonbook reads each one on this phone, makes a recipe from it, and keeps any attached photo. Anything it isn’t sure about is marked “needs a check”.</p>
+    <p class="hint">Pick saved emails (.eml), a whole email folder (.mbox), text or web page files, or an export from another recipe app (.zip, like ChefTap’s). Spoonbook reads each one on this phone, makes a recipe from it, and keeps any attached photo. Anything it isn’t sure about is marked “needs a check”.</p>
     <details class="hint"><summary style="cursor:pointer;color:var(--accent);font-weight:600">How do I save my emails as files?</summary>
       <p style="margin:8px 0 0">On a computer, install the free email program <b>Thunderbird</b> and add your email account to it (AOL, Gmail, Outlook and others work; for AOL and Yahoo you first create an “app password” in your account’s security settings). Open the folder with your recipes, press <b>Ctrl+A</b> (Cmd+A on a Mac) to select them all, right-click and choose <b>Save As…</b>, and pick a folder. Each email is saved as a file. Then come back here and choose them all.</p></details>
     <label class="opt" for="bulkIn"><span class="ic">${I.plus}</span><span><b>Choose files</b><span>You can pick lots at once</span></span></label>
-    <input id="bulkIn" type="file" multiple accept=".eml,.mbox,.txt,.md,.html,.htm,message/rfc822,text/plain,text/html,application/mbox" class="sr" data-chg="bulk">
+    <input id="bulkIn" type="file" multiple accept=".eml,.mbox,.txt,.md,.html,.htm,.zip,application/zip,message/rfc822,text/plain,text/html,application/mbox" class="sr" data-chg="bulk">
     <div id="bulkMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
   overlay.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
@@ -1097,7 +1097,7 @@ async function bulkImport(files){
     const when = x.date ? x.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
     const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + '-' + rid().slice(0, 4);
     const data = { title, category: guessCategory(title, out.ingredients), serves: out.serves || '', ingredients: out.ingredients, steps: out.steps, totalMins: out.totalMins || null,
-      source: '', photo, photos: [], note: '', favourite: false, addedBy: S.me, createdAt: Date.now(), updatedAt: Date.now(),
+      source: x.source || '', photo, photos: [], note: '', favourite: false, addedBy: S.me, createdAt: Date.now(), updatedAt: Date.now(),
       story: x.from || when ? `From ${x.from ? x.from + '’s' : 'an'} email${when ? ', ' + when : ''}.` : '' };
     if (unsure){ data.needsReview = true; data.reviewNote = 'This came in from an email and looked a bit unusual. Give it a quick check.'; }
     try { await db.collection('recipes').doc(id).set(data); have.add(title.toLowerCase()); added++; if (unsure) check++; }

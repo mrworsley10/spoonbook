@@ -54,6 +54,12 @@ function tidy(text){
 const subjectTitle = s => words(s).replace(/^\s*((re|fw|fwd|aw|tr)\s*:\s*)+/i, '').replace(/\s+/g, ' ').trim();
 function fromName(h){ const f = words(h || ''); return (f.match(/^\s*"?([^"<]+?)"?\s*</) || [])[1]?.trim() || f.replace(/<.*>/, '').trim() || ''; }
 
+// a saved web page or an app's export: keep the link to the original recipe if there is one
+function htmlFile(html, fileName){
+  const link = (html.match(/<a[^>]+href=['"](https?:\/\/[^'"]+)['"][^>]*>\s*(original|source|view original|original article|recipe from)[^<]*<\/a>/i) || [])[1] || '';
+  const h1 = (html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1];
+  return { title: h1 ? htmlText(h1).trim() : '', text: tidy(htmlText(html.replace(/<a[^>]*>\s*(original|source|view original|original article)[^<]*<\/a>/gi, ''))), source: link, file: fileName };
+}
 function readMessage(raw, fileName){
   const cut = raw.search(/\r?\n\r?\n/); const head = headers(cut < 0 ? raw : raw.slice(0, cut));
   const parts = mime(raw);
@@ -75,7 +81,20 @@ async function readFiles(files, onProgress){
     const name = f.name.toLowerCase();
     try {
       if (/\.(txt|md|text)$/.test(name) || f.type === 'text/plain'){ out.push({ title: '', text: tidy(await f.text()), file: f.name }); continue; }
-      if (/\.html?$/.test(name) || f.type === 'text/html'){ out.push({ title: '', text: tidy(htmlText(await f.text())), file: f.name }); continue; }
+      if (/\.html?$/.test(name) || f.type === 'text/html'){ out.push(htmlFile(await f.text(), f.name)); continue; }
+      if (/\.zip$/.test(name) || f.type === 'application/zip'){
+        // an export from another app (ChefTap and others give a .zip of recipe files)
+        if (!window.JSZip) throw new Error('zip');
+        const zip = await JSZip.loadAsync(f);
+        const entries = Object.values(zip.files).filter(e => !e.dir && /\.(html?|txt|md|eml)$/i.test(e.name) && !/__MACOSX/.test(e.name));
+        for (const e of entries){
+          const short = e.name.split('/').pop();
+          if (/\.html?$/i.test(e.name)) out.push(htmlFile(await e.async('string'), short));
+          else if (/\.eml$/i.test(e.name)) out.push(readMessage(bin(await e.async('arraybuffer')), short));
+          else out.push({ title: '', text: tidy(await e.async('string')), file: short });
+        }
+        continue;
+      }
       const raw = bin(await f.arrayBuffer());
       if (/\.mbox$/.test(name) || /^From \S+/.test(raw)){
         // a whole folder in one file: messages start with a line beginning "From "
