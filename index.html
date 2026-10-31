@@ -995,6 +995,7 @@ function moreSheet(){
     : `<p class="hint">Downloads aren’t available in this view.</p>`}
     <label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
+    <button class="opt" data-act="sheet" data-mode="bulk"><span><b>Import from old emails or files</b><span>Bring in lots of recipes at once from saved emails, an email folder or text files.</span></span></button>
     <div id="importMsg"></div>
     <button class="opt" data-act="gobin"><span><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back a recipe deleted in the last 30 days.</span></span></button>
     ${Backend.plan?.enabled ? `<button class="opt" data-act="upgrade"><span><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook.' : `Free cookbooks hold ${Backend.plan.limit} recipes. Plus has no limit.`}</span></span></button>` : ''}
