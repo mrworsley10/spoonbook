@@ -279,6 +279,8 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .second{display:block;margin:26px auto 0}
 .ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
 .legal{font-size:12px;margin-top:4px}
+.hellolink{color:inherit;text-decoration:none;border-bottom:2px solid color-mix(in srgb,var(--accent) 40%,transparent)}
+.hello .more{font-size:.5em;font-style:normal;color:var(--muted);white-space:nowrap}
 #printArea{display:none}
 @media print{
   body{background:#fff!important;color:#000!important}
@@ -710,7 +712,7 @@ function bookView(){
   const tc = {}; S.recipes.forEach(r => { (r.tags || []).forEach(t => tc[t] = (tc[t] || 0) + 1); if (r.spice != null) tc['spice:' + r.spice] = (tc['spice:' + r.spice] || 0) + 1; });
   const tagKeys = [...TAGS.filter(t => tc[t]), ...[0, 1, 2, 3].map(i => 'spice:' + i).filter(k => tc[k])];
   return topBar() + `
-  <h1 class="hello">Tonight,<br><em>something warm.</em></h1>
+  <h1 class="hello">${greeting()}</h1>
   ${newsHtml()}
   <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
@@ -750,6 +752,27 @@ function freeNote(){
   const p = Backend.plan; if (!p?.enabled || p.plus) return '';
   const n = S.recipes.length; if (n < p.limit - 10) return '';
   return `<p class="offline">${n >= p.limit ? `This cookbook has reached its ${p.limit} free recipes.` : `${n} of ${p.limit} free recipes used.`} <button class="linkbtn" data-act="upgrade">Get Spoonbook Plus</button></p>`;
+}
+// the line at the top of the book: what's planned today, or something to suit the time, day and season
+function greeting(now = new Date()){
+  const h = now.getHours(), d = now.getDay(), m = now.getMonth() + 1, date = now.getDate();
+  const ids = (S.plan.days?.[dayKey(now)] || []).filter(id => byId(id));
+  if (ids.length && h >= 5 && h < 21){
+    const r = byId(ids[0]);
+    return `${h < 15 ? 'Today' : 'Tonight'},<br><em><a class="hellolink" href="#recipe-${esc(r.id)}">${esc(r.title)}</a>${ids.length > 1 ? ` <span class="more">&amp; ${ids.length - 1} more</span>` : ''}</em>`;
+  }
+  const special = { '10-31': ['Happy Halloween,', 'something spooky?'], '11-5': ['Bonfire night,', 'something warming.'], '12-24': ['Christmas Eve,', 'something to look forward to.'],
+    '12-25': ['Happy Christmas,', 'something special.'], '12-31': ['New Year’s Eve,', 'something to celebrate.'], '1-1': ['Happy New Year,', 'something easy.'], '2-14': ['Valentine’s,', 'something to share.'] }[m + '-' + date];
+  if (special) return `${special[0]}<br><em>${special[1]}</em>`;
+  const season = m === 12 ? 'festive' : m <= 2 ? 'warm' : m <= 5 ? 'light' : m <= 8 ? 'fresh' : 'warming';
+  const me = Backend.members?.find(x => x.user_id === S.me)?.display_name?.split(' ')[0];
+  const named = me && date % 2 === 0; // now and then, not every day
+  if (h >= 21 || h < 5) return `Late one?<br><em>Something easy.</em>`;
+  if (h < 11) return named ? `Morning, ${esc(me)}.<br><em>Something to plan?</em>` : `This morning,<br><em>something to plan.</em>`;
+  if (h < 14) return d === 0 ? `Sunday,<br><em>something to share.</em>` : `Lunch,<br><em>something quick.</em>`;
+  if (h < 17) return d === 0 ? `Sunday,<br><em>something to share.</em>` : d === 6 ? `Saturday,<br><em>something to bake.</em>` : `This afternoon,<br><em>something to look forward to.</em>`;
+  if (d === 5) return `Friday,<br><em>something fun.</em>`;
+  return named ? `Evening, ${esc(me)}.<br><em>Something ${season}?</em>` : `Tonight,<br><em>something ${season}.</em>`;
 }
 function welcomeHtml(){
   return `<h1 class="hello">Welcome to<br><em>your cookbook.</em></h1>
@@ -1876,7 +1899,7 @@ Backend.start(async caps => {
   }, () => { S.status = 'none'; render(true); });
   db.doc('lists/pantry').onSnapshot(s => { S.pantry = s.exists ? s.data() : null; if (S.view === 'shopping') render(); });
   db.doc('lists/shopping').onSnapshot(s => { S.shop = s.exists ? s.data() : { items: [] }; if (S.view !== 'cook') render(); });
-  db.doc('lists/plan').onSnapshot(s => { S.plan = s.exists ? s.data() : { days: {} }; if (S.view === 'plan') render(); });
+  db.doc('lists/plan').onSnapshot(s => { S.plan = s.exists ? s.data() : { days: {} }; if (S.view === 'plan' || S.view === 'book') render(); });
 });
 })();
 </script>
