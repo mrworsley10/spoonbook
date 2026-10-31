@@ -225,6 +225,59 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .kc span{font-size:12px;color:var(--muted)}
 .kcal .hint{grid-column:1/-1;margin:2px 0 0}
 .linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;font-size:14px}
+/* offline, what's new, tags */
+.offline{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:var(--raise);font-size:13px;color:var(--muted)}
+.news{margin:0 0 14px;border:1px solid var(--accent);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:flex-start}
+.news p{margin:4px 0 0;font-size:15px;line-height:1.45}
+.news a{color:var(--accent)}
+.news .btn{flex:none}
+.chips.tags{margin-top:10px}
+.tagline{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.tg{font-size:13px;padding:4px 10px;border-radius:12px;background:var(--raise);color:var(--fg)}
+.tagset{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.tagset legend{font-size:14px;font-weight:600;color:var(--muted);padding:0;margin-bottom:8px}
+.tagset .chips{margin:0}
+.tagset label.chip{display:inline-flex;align-items:center;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted)}
+.tagset label.chip:has(input:checked){background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.tagset label.chip:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+/* shopping */
+.shopbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.usuals{margin-top:18px}
+.usuals .chips{margin-top:8px}
+.shopmode .ings label{padding:15px 0}
+.shopmode .ings span{font-size:21px;line-height:1.3}
+.shopmode .ings input{width:28px;height:28px}
+.shopmode .group h3{font-size:13px}
+.trolley h3{color:var(--accent)!important}
+.sheet h3.sub{margin:14px 0 2px;font-size:16px;font-family:var(--display);font-weight:500}
+.pchip{display:inline-flex;align-items:center;gap:4px;padding-right:6px}
+.pchip span{font-size:16px;line-height:1;opacity:.7}
+/* recently deleted */
+.binlist{list-style:none;margin:6px 0 0;padding:0}
+.binlist li{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.binlist .txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.binlist .t{font-family:var(--display);font-size:17px;line-height:1.25}
+.binlist .s{font-size:13px;color:var(--muted)}
+.binlist .row{display:flex;flex-direction:column;gap:6px}
+/* cooking: hands-free and two dishes */
+.cook .head .row{display:flex;gap:8px;align-items:center}
+.icon-btn.live{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.hf{text-align:center;margin:8px 0 0;font-size:13px;color:var(--muted)}
+.hf b{color:var(--accent)}
+.cpanel.dual{border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+.cpanel.dual .num{font-size:40px}
+.cpanel.dual .big{font-size:clamp(19px,5vw,24px)}
+.cpanel.dual .need{margin-top:12px}
+.cpanel.dual .need li{font-size:15px}
+.cpanel .ch{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.cpanel .ch .eyebrow{color:var(--accent);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cpanel .foot{display:flex;gap:8px;margin-top:14px}
+.cpanel .foot .btn{flex:1;height:48px}
+.num span{font-size:22px;color:var(--muted)}
+.second{display:block;margin:26px auto 0}
+.ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
+.legal{font-size:12px;margin-top:4px}
+.legal a{color:var(--muted)}
 .switch{flex:none;width:50px;height:30px;border-radius:15px;background:var(--line);position:relative;transition:background .2s}
 .switch i{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:12px;background:var(--fg);transition:transform .2s}
 [aria-checked="true"] .switch{background:var(--accent)}
@@ -268,7 +321,8 @@ const I = {
   clock:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2.5M9 2h6"/></svg>',
   star:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
   starF:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
-  moon:'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>'
+  moon:'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
+  mic:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const app = document.getElementById('app'), overlay = document.getElementById('overlay'), nav = document.getElementById('nav');
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -279,9 +333,43 @@ const S = {
   status:'loading', recipes:[], shop:{ items:[] }, view:'book', id:null,
   cat:'All', q:'', tab:'ing', scale:{}, checked:{}, noteEdit:false, cover:{}, confirmDel:false,
   draft:null, cookStep:0, cookShowIng:false, names:{}, me:null, canPhoto:false, sampleOk:false, imgOk:false, pending:false,
-  sort: ls.get('sb-sort') || 'az', metric: ls.get('sb-units') !== 'us', plan:{ days:{} }, week:0, fridge:'', canSave:false
+  sort: ls.get('sb-sort') || 'az', metric: ls.get('sb-units') !== 'us', plan:{ days:{} }, week:0, fridge:'', canSave:false,
+  bin:[], tag:null, shopMode: ls.get('sb-shopmode') === 'on', pantry:null, cook2:null, cookStep2:0, handsFree:false, seen:0
 };
+const TAGS = ['Quick weeknight', 'Freezes well', 'Slow cooker', 'Batch cook', 'Vegetarian'];
+const SPICE = ['Not spicy', 'Mild', 'Medium', 'Hot'];
+const chillies = n => '🌶'.repeat(n || 0);
+const tagName = k => k.startsWith('spice:') ? ((+k.slice(6) ? chillies(+k.slice(6)) + ' ' : '') + SPICE[+k.slice(6)]) : k;
+const DEFAULT_STAPLES = ['salt', 'black pepper', 'water'];
+const staples = () => S.pantry?.staples ?? DEFAULT_STAPLES;
+const escRe = x => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function isStaple(line){
+  const name = String(line).toLowerCase().split(',')[0];
+  return staples().some(st => st.trim() && new RegExp('\\b' + escRe(st.trim().toLowerCase()) + '\\b').test(name));
+}
 let db=null, assets=null, user=null, sample=null, wake=null, downloads=null;
+
+/* ---------- shared from another app (Android share sheet) ---------- */
+let shared = (() => {
+  const p = new URLSearchParams(location.search);
+  const v = { title: p.get('title') || '', text: p.get('text') || '', url: p.get('url') || '' };
+  if (!v.title && !v.text && !v.url) return null;
+  history.replaceState(null, '', location.pathname + (location.hash || '#book'));
+  return v;
+})();
+function handleShared(){
+  if (!shared) return; const v = shared; shared = null;
+  const link = ((v.url + ' ' + v.text).match(/https?:\/\/[^\s"'<>]+/) || [])[0]?.replace(/[).,;!?]+$/, '');
+  const body = v.text.replace(link || '\u0000', '').trim();
+  // a whole recipe pasted as text: read it straight in. Otherwise fetch it from the link.
+  if (body.length > 150 && body.split('\n').length > 4){
+    clipSheet('paste'); overlay.querySelector('#pasteIn').value = (v.title && !body.startsWith(v.title) ? v.title + '\n' : '') + body;
+    if (link) overlay.querySelector('#pasteUrl').value = link;
+    A.readpaste(); return;
+  }
+  if (link){ clipSheet('link'); overlay.querySelector('#linkIn').value = link; A.cliplink(overlay.querySelector('[data-act="cliplink"]')); return; }
+  if (body){ clipSheet('paste'); overlay.querySelector('#pasteIn').value = body; toast('Check the text, then tap Read recipe'); }
+}
 
 /* ---------- theme ---------- */
 function applyTheme(t){ if (t) document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme'); }
@@ -362,7 +450,7 @@ function toast(msg){ const t = document.getElementById('toast'); t.textContent =
 function busy(){ const a = document.activeElement; return a && app.contains(a) && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName) && a.type !== 'checkbox'; }
 async function resolveNames(){
   if (!user) return;
-  const ids = [...new Set(S.recipes.map(r => r.addedBy).filter(Boolean))];
+  const ids = [...new Set([...S.recipes, ...S.bin].flatMap(r => [r.addedBy, r.editedBy, r.deletedBy]).filter(Boolean))];
   if (!ids.length) return;
   const ps = await user.profiles(ids);
   let changed = false;
@@ -479,16 +567,17 @@ async function setPlan(days){
 function parse(){
   const h = location.hash.slice(1);
   const m = h.match(/^(recipe|cook|edit)-(.+)$/);
-  S.view = m ? m[1] : (['favourites','shopping','add','plan','fridge'].includes(h) ? h : 'book');
+  S.view = m ? m[1] : (['favourites','shopping','add','plan','fridge','bin'].includes(h) ? h : 'book');
   S.id = m ? m[2] : null;
   // Ticks belong to the recipe you're in: they survive tabs, cooking mode and edits, and clear once you leave it.
   const inside = ['recipe','cook','edit'].includes(S.view) ? S.id : null;
-  for (const k of Object.keys(S.checked)) if (k !== inside) delete S.checked[k];
+  if (S.view !== 'cook'){ S.cook2 = null; if (S.handsFree) handsFree(false); }
+  for (const k of Object.keys(S.checked)) if (k !== inside && k !== S.cook2) delete S.checked[k];
   if (S.view !== 'recipe'){ S.noteEdit = false; S.confirmDel = false; }
   if (S.view === 'recipe' && S._lastId !== S.id){ S.tab = 'ing'; S.noteEdit = false; S.confirmDel = false; S._lastId = S.id; }
   if (S.view === 'edit' && (!S.draft || S.draft.id !== S.id)){ const r = byId(S.id); S.draft = r ? JSON.parse(JSON.stringify(r)) : null; }
   if (S.view === 'add' && !S.draft) S.draft = blankDraft();
-  if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; }
+  if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; }
 }
 const go = h => { location.hash = h; };
 window.addEventListener('hashchange', () => { parse(); render(true); window.scrollTo(0,0); });
@@ -498,13 +587,19 @@ function topBar(){
   return `<div class="top"><p class="brand">Spoonbook</p><div class="row">
     <button class="icon-btn" data-act="theme" aria-label="${isDark() ? 'Switch to light' : 'Switch to dark'}">${isDark() ? I.sun : I.moon}</button>
     <button class="icon-btn" data-act="more" aria-label="More options">${I.more}</button>
-    <button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button></div></div>`;
+    <button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button></div></div>${offlineNote()}`;
+}
+function offlineNote(){
+  const n = Backend.pending;
+  if (Backend.offline) return `<p class="offline" role="status">No signal. Showing the copy saved on this phone${n ? ` · ${n} change${n > 1 ? 's' : ''} will sync when you’re back online` : ', and anything you change will sync later'}.</p>`;
+  return n ? `<p class="offline" role="status">Syncing ${n} change${n > 1 ? 's' : ''}…</p>` : '';
 }
 function rowHtml(r, extra){
   const avg = avgRating(r);
   const bits = [esc(r.category || 'Mains')];
   if (avg) bits.push('★ ' + (Math.round(avg*10)/10));
   if (r.cooked?.length) bits.push('made ' + ago(lastMade(r)));
+  if (r.spice) bits.push(chillies(r.spice));
   if (r.needsReview) bits.push('needs a check');
   return `<li><a href="#recipe-${esc(r.id)}"><span class="thumb ph">${phOrImg(r)}</span>
     <span class="txt"><span class="t">${esc(r.title)}${r.favourite ? '<span class="dot" title="Favourite"></span>' : ''}</span>
@@ -524,12 +619,13 @@ function filtered(){
   let list = S.recipes;
   if (S.view === 'favourites') list = list.filter(r => r.favourite);
   if (S.cat !== 'All') list = list.filter(r => (r.category || 'Mains') === S.cat);
+  if (S.tag) list = list.filter(r => S.tag.startsWith('spice:') ? r.spice != null && r.spice === +S.tag.slice(6) : (r.tags || []).includes(S.tag));
   if (q) list = list.filter(r => (r.title + ' ' + (r.ingredients || []).join(' ')).toLowerCase().includes(q));
   return sorted(list);
 }
 function listHtml(){
   const list = filtered();
-  if (!list.length) return S.q ? `<div class="empty">Nothing matches “${esc(S.q)}”. Try an ingredient, like <em>chorizo</em>.</div>` : `<div class="empty">No recipes here yet.</div>`;
+  if (!list.length) return S.q ? `<div class="empty">Nothing matches “${esc(S.q)}”. Try an ingredient, like <em>chorizo</em>.</div>` : `<div class="empty">No recipes ${S.tag || S.cat !== 'All' ? 'match that filter' : 'here'} yet.</div>`;
   return `<ul class="list">${list.map(rowHtml).join('')}</ul>`;
 }
 function bookView(){
@@ -538,8 +634,11 @@ function bookView(){
   const favs = S.recipes.filter(r => r.favourite);
   const picks = favs.length >= 3 ? [...favs].sort((a, b) => lastMade(a) - lastMade(b)).slice(0, 8) : dailyPicks(S.recipes);
   const counts = {}; S.recipes.forEach(r => counts[r.category || 'Mains'] = (counts[r.category || 'Mains'] || 0) + 1);
+  const tc = {}; S.recipes.forEach(r => { (r.tags || []).forEach(t => tc[t] = (tc[t] || 0) + 1); if (r.spice != null) tc['spice:' + r.spice] = (tc['spice:' + r.spice] || 0) + 1; });
+  const tagKeys = [...TAGS.filter(t => tc[t]), ...[0, 1, 2, 3].map(i => 'spice:' + i).filter(k => tc[k])];
   return topBar() + `
   <h1 class="hello">Tonight,<br><em>something warm.</em></h1>
+  ${newsHtml()}
   <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
@@ -550,9 +649,34 @@ function bookView(){
   <div class="chips" role="group" aria-label="Filter by category">
     ${['All', ...CATS.filter(c => counts[c])].map(c => `<button class="chip" data-act="cat" data-cat="${esc(c)}" aria-pressed="${S.cat === c}">${esc(c)}${c !== 'All' ? ' · ' + counts[c] : ''}</button>`).join('')}
   </div>
+  ${tagKeys.length ? `<div class="chips tags" role="group" aria-label="Filter by tag or spice">${tagKeys.map(k => `<button class="chip" data-act="tag" data-tag="${esc(k)}" aria-pressed="${S.tag === k}">${esc(tagName(k))} · ${tc[k]}</button>`).join('')}</div>` : ''}
+  ${freeNote()}
   <div class="sec"><h2 class="eyebrow" style="margin:0">The whole book · ${S.recipes.length}</h2>
     <label class="sortsel"><span class="sr">Sort by</span><select id="sortSel" data-chg="sort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${S.sort === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
   <div id="list">${listHtml()}</div>`;
+}
+// what the other cook has added or changed since this phone last looked
+function newsItems(){
+  if (!S.seen) return null;
+  const fresh = [], changed = [];
+  for (const r of S.recipes){
+    if (r.addedBy && r.addedBy !== S.me && (r.createdAt || 0) > S.seen) fresh.push(r);
+    else if (r.editedBy && r.editedBy !== S.me && (r.editedAt || 0) > S.seen) changed.push(r);
+  }
+  return fresh.length || changed.length ? { fresh, changed } : null;
+}
+function newsHtml(){
+  const n = newsItems(); if (!n) return '';
+  const byWho = (list, verb) => {
+    const g = {}; list.forEach(r => { const k = S.names[r.addedBy && verb === 'added' ? r.addedBy : r.editedBy] || 'Someone'; (g[k] = g[k] || []).push(r); });
+    return Object.entries(g).map(([name, rs]) => `${esc(name)} ${verb} ${rs.slice(0, 4).map(r => `<a href="#recipe-${esc(r.id)}">${esc(r.title)}</a>`).join(', ')}${rs.length > 4 ? ` and ${rs.length - 4} more` : ''}.`).join(' ');
+  };
+  return `<div class="news" role="status"><div style="flex:1;min-width:0"><span class="eyebrow">New in the book</span><p>${[n.fresh.length ? byWho(n.fresh, 'added') : '', n.changed.length ? byWho(n.changed, 'changed') : ''].filter(Boolean).join(' ')}</p></div><button class="btn small" data-act="seen">Got it</button></div>`;
+}
+function freeNote(){
+  const p = Backend.plan; if (!p?.enabled || p.plus) return '';
+  const n = S.recipes.length; if (n < p.limit - 10) return '';
+  return `<p class="offline">${n >= p.limit ? `This cookbook has reached its ${p.limit} free recipes.` : `${n} of ${p.limit} free recipes used.`} <button class="linkbtn" data-act="upgrade">Get Spoonbook Plus</button></p>`;
 }
 function favView(){
   const favs = S.recipes.filter(r => r.favourite);
@@ -575,6 +699,7 @@ function recipeView(){
   </div>
   <div class="meta">${esc(who(r))}${who(r) && r.source ? ' · ' : ''}${r.source ? `<a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(host(r.source) || 'original recipe')}</a>` : ''}</div>
   ${madeLine(r) ? `<div class="meta" style="margin-top:4px">${madeLine(r)}</div>` : ''}
+  ${(r.tags || []).length || r.spice != null ? `<div class="tagline">${r.spice != null ? `<span class="tg">${r.spice ? chillies(r.spice) + ' ' : ''}${SPICE[r.spice]}</span>` : ''}${(r.tags || []).map(t => `<span class="tg">${esc(t)}</span>`).join('')}</div>` : ''}
   ${r.aiNote ? `<p class="ainote">${I.pen}<span>${esc(r.aiNote)}</span></p>` : ''}
   ${S.me ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
   ${r.needsReview ? `<div class="review"><span>${esc(r.reviewNote || 'This one came across from ChefTap a bit jumbled. Give it a quick check.')}</span>
@@ -614,23 +739,43 @@ function recipeView(){
   <div class="dock"><div class="in"><a class="btn primary" href="#cook-${esc(r.id)}" ${steps.length ? '' : 'aria-disabled="true"'}>Start cooking</a></div></div>`;
 }
 function mins(m){ const h = Math.floor(m/60), mm = m % 60; return (h ? h + ' hr' : '') + (h && mm ? ' ' : '') + (mm ? mm + ' min' : ''); }
+function cookPanel(r, step, w, dual){
+  const steps = r.steps || [], n = steps.length, i = Math.min(step, Math.max(0, n - 1)), f = factor(r);
+  const need = n ? stepIngs(r, steps[i], f) : [];
+  return `<section class="cpanel${dual ? ' dual' : ''}" aria-label="${esc(r.title)}">
+    ${dual ? `<div class="ch"><span class="eyebrow">${esc(r.title)}</span>${w === 2 ? `<button class="icon-btn" data-act="cook2off" aria-label="Stop cooking ${esc(r.title)}">${I.close}</button>` : ''}</div>` : ''}
+    ${n ? `<div class="num">${i + 1}<span> / ${n}</span></div><p class="big">${esc(showLine(steps[i]))}</p>
+      ${durations(steps[i]).length ? `<div class="tbtns">${timerBtns(r, steps[i], i + 1)}</div>` : ''}
+      ${need.length ? `<div class="need"><span class="eyebrow">For this step</span><ul>${need.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>` : ''}`
+      : `<p class="big">No steps written yet.</p>`}
+    ${dual ? `<div class="foot"><button class="btn" data-act="step" data-w="${w}" data-d="-1" ${i === 0 ? 'disabled' : ''}>Back</button>
+      ${i < n - 1 ? `<button class="btn primary" data-act="step" data-w="${w}" data-d="1">Next</button>` : `<button class="btn ${madeToday(r) ? 'on' : 'primary'}" data-act="madeid" data-id="${esc(r.id)}">${madeToday(r) ? '✓ Made' : 'Done · we made this'}</button>`}</div>` : ''}
+  </section>`;
+}
+function cookIngs(r, label){
+  const f = factor(r), chk = S.checked[r.id] || {};
+  return `${label ? `<h3 class="ingtitle">${esc(r.title)}</h3>` : ''}<ul class="ings">${(r.ingredients || []).map((l, j) => `<li><label><input type="checkbox" data-chg="tick" data-rid="${esc(r.id)}" data-i="${j}" ${chk[j] ? 'checked' : ''}><span style="font-size:19px">${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>`;
+}
 function cookView(){
   const r = byId(S.id); if (!r) return '';
-  const steps = r.steps || [], n = steps.length, i = Math.min(S.cookStep, Math.max(0, n-1)), f = factor(r);
+  const r2 = S.cook2 ? byId(S.cook2) : null, dual = !!r2;
+  const steps = r.steps || [], n = steps.length, i = Math.min(S.cookStep, Math.max(0, n - 1));
+  const hint = S.handsFree
+    ? `<p class="hf" role="status">${SR ? `<b>Listening.</b> Say “next”, “back”, “read it again”, “ingredients”, “start timer” or “stop”${dual ? '. Add “second” for the other dish' : ''}.` : '<b>Reading aloud.</b> This phone can’t listen for commands, so tap Next and each step is read out.'}</p>`
+    : (!S.cookShowIng && !dual && n > 1 && i === 0 ? `<p class="hint" style="text-align:center;margin:8px 0 0">Swipe left or right to move between steps</p>` : '');
   return `<div class="cook" role="dialog" aria-label="Cooking ${esc(r.title)}">
     <div class="head"><a class="icon-btn" href="#recipe-${esc(r.id)}" aria-label="Stop cooking">${I.close}</a>
-      <span class="eyebrow" style="text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.title)}</span>
-      <button class="btn small" data-act="cooking" aria-pressed="${S.cookShowIng}">${S.cookShowIng ? 'Steps' : 'Ingredients'}</button></div>
-    <div class="prog" aria-hidden="true"><i style="width:${n ? ((i+1)/n*100) : 0}%"></i></div>
-    ${!S.cookShowIng && n > 1 && i === 0 ? `<p class="hint" style="text-align:center;margin:8px 0 0">Swipe left or right to move between steps</p>` : ''}
+      <span class="eyebrow" style="text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dual ? 'Two dishes' : esc(r.title)}</span>
+      <div class="row"><button class="icon-btn ${S.handsFree ? 'live' : ''}" data-act="handsfree" aria-pressed="${S.handsFree}" aria-label="${S.handsFree ? 'Turn off hands-free' : 'Hands-free: read steps aloud and listen for commands'}">${I.mic}</button>
+      <button class="btn small" data-act="cooking" aria-pressed="${S.cookShowIng}">${S.cookShowIng ? 'Steps' : 'Ingredients'}</button></div></div>
+    ${dual ? '' : `<div class="prog" aria-hidden="true"><i style="width:${n ? ((i + 1) / n * 100) : 0}%"></i></div>`}
+    ${hint}
     <div class="body">${S.cookShowIng
-      ? `<ul class="ings">${(r.ingredients || []).map((l, j) => `<li><label><input type="checkbox" data-chg="tick" data-i="${j}" ${(S.checked[r.id] || {})[j] ? 'checked' : ''}><span style="font-size:19px">${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>`
-      : n ? (() => { const need = stepIngs(r, steps[i], f); return `<div class="num">${i+1}<span style="font-size:22px;color:var(--muted)"> / ${n}</span></div><p class="big">${esc(showLine(steps[i]))}</p>
-          ${durations(steps[i]).length ? `<div class="tbtns">${timerBtns(r, steps[i], i+1)}</div>` : ''}
-          ${need.length ? `<div class="need"><span class="eyebrow">For this step</span><ul>${need.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>` : ''}`; })()
-        : `<p class="big">No steps written yet.</p>`}</div>
-    <div class="foot"><button class="btn" data-act="step" data-d="-1" ${i === 0 ? 'disabled' : ''}>Back</button>
-      ${i < n-1 ? `<button class="btn primary" data-act="step" data-d="1">Next step</button>` : `<button class="btn primary" data-act="finish">${madeToday(r) ? 'Finish' : 'Finish · we made this'}</button>`}</div>
+      ? cookIngs(r, dual) + (dual ? cookIngs(r2, true) : '')
+      : dual ? cookPanel(r, S.cookStep, 1, true) + cookPanel(r2, S.cookStep2, 2, true)
+      : cookPanel(r, S.cookStep, 1, false) + `<button class="linkbtn second" data-act="cook2pick">Cooking something else at the same time? Add a second dish</button>`}</div>
+    ${dual ? '' : `<div class="foot"><button class="btn" data-act="step" data-d="-1" ${i === 0 ? 'disabled' : ''}>Back</button>
+      ${i < n - 1 ? `<button class="btn primary" data-act="step" data-d="1">Next step</button>` : `<button class="btn primary" data-act="finish">${madeToday(r) ? 'Finish' : 'Finish · we made this'}</button>`}</div>`}
   </div>`;
 }
 function blankDraft(){ return { id:null, title:'', category:'Mains', serves:'', source:'', ingredients:[], steps:[], photo:null, photos:[], note:'' }; }
@@ -648,6 +793,8 @@ function editView(){
       <div class="field"><label for="f-cat">Category</label><select id="f-cat">${CATS.map(c => `<option ${c === (d.category || 'Mains') ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>
       <div class="field"><label for="f-serves">Serves</label><input id="f-serves" value="${esc(d.serves || '')}" inputmode="numeric" placeholder="4"></div>
     </div>
+    <fieldset class="tagset"><legend>Tags</legend><div class="chips">${TAGS.map(t => `<label class="chip"><input type="checkbox" class="sr" name="f-tag" value="${esc(t)}" ${(d.tags || []).includes(t) ? 'checked' : ''}>${esc(t)}</label>`).join('')}</div></fieldset>
+    <div class="field"><label for="f-spice">How spicy?</label><select id="f-spice"><option value="">Not set</option>${SPICE.map((x, i) => `<option value="${i}" ${d.spice === i ? 'selected' : ''}>${i ? chillies(i) + ' ' : ''}${x}</option>`).join('')}</select></div>
     <div class="field"><label for="f-ing">Ingredients — one per line</label><textarea id="f-ing" rows="10">${esc((d.ingredients || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-steps">Method — one step per line</label><textarea id="f-steps" rows="10">${esc((d.steps || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-src">Original link (optional)</label><input id="f-src" type="url" value="${esc(d.source || '')}" placeholder="https://"></div>
@@ -658,19 +805,69 @@ function editView(){
 }
 function shopView(){
   const items = S.shop.items || [];
-  const groups = {}; items.forEach(it => { const k = it.aisle || it.from || 'Extras'; (groups[k] = groups[k] || []).push(it); });
-  const done = items.filter(i => i.done).length;
-  return topBar() + `<h1 class="hello">Shopping<br><em>list.</em></h1>
+  const open = items.filter(i => !i.done), done = items.filter(i => i.done);
+  const groupsOf = list => { const g = {}; list.forEach(it => { const k = it.aisle || it.from || 'Extras'; (g[k] = g[k] || []).push(it); }); return g; };
+  const li = it => `<li><label><input type="checkbox" data-chg="shoptick" data-id="${esc(it.id)}" ${it.done ? 'checked' : ''}><span>${esc(it.text)}</span></label></li>`;
+  const groupHtml = (g, cls) => Object.entries(g).map(([k, list]) => `<div class="group ${cls || ''}"><h3>${esc(k)}</h3><ul class="ings">${list.map(li).join('')}</ul></div>`).join('');
+  const usuals = S.pantry?.usuals || [];
+  const have = new Set(open.map(i => i.text.trim().toLowerCase()));
+  // shop mode: big text, and anything ticked drops into the trolley at the bottom
+  const listHtml = S.shopMode
+    ? groupHtml(groupsOf(open)) + (done.length ? `<div class="group trolley"><h3>In the trolley · ${done.length}</h3><ul class="ings">${done.map(li).join('')}</ul></div>` : '')
+    : groupHtml(groupsOf(items));
+  return topBar() + `<h1 class="hello">${S.shopMode ? `${open.length ? open.length + ' to' : 'All'}<br><em>${open.length ? 'get.' : 'done.'}</em>` : 'Shopping<br><em>list.</em>'}</h1>
   <form class="shop-add" data-act="noop" onsubmit="return false"><label class="sr" for="shopIn">Add an item</label><input id="shopIn" placeholder="Add an item, e.g. milk" autocomplete="off"><button class="btn primary" data-act="additem" type="button">Add</button></form>
-  ${items.length ? `<div class="actions" style="margin-top:14px">
-      <button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>
-      ${done ? `<button class="btn small" data-act="clearDone">Clear ${done} ticked</button>` : ''}
-      <button class="btn small danger" data-act="clearAll">${S.confirmClear ? 'Tap again to empty' : 'Empty list'}</button></div>
-    <div id="aisleMsg"></div>
-    ${Object.entries(groups).map(([k, list]) => `<div class="group"><h3>${esc(k)}</h3><ul class="ings">${list.map(it => `<li><label><input type="checkbox" data-chg="shoptick" data-id="${esc(it.id)}" ${it.done ? 'checked' : ''}><span>${esc(it.text)}</span></label></li>`).join('')}</ul></div>`).join('')}`
-  : `<div class="empty"><h2>Nothing on the list</h2>Open a recipe and tap “Add to shopping”, or add things above.</div>`}`;
+  ${usuals.length ? `<div class="usuals"><span class="eyebrow">Usuals · tap to add</span><div class="chips">${usuals.map(u => { const on = have.has(u.trim().toLowerCase()); return `<button class="chip" data-act="usual" data-text="${esc(u)}" aria-pressed="${on}">${on ? '✓' : '+'} ${esc(u)}</button>`; }).join('')}</div></div>` : ''}
+  <div class="shopbar">
+    ${items.length ? `<button class="btn small ${S.shopMode ? 'on' : ''}" data-act="shopmode" aria-pressed="${S.shopMode}">${S.shopMode ? '✓ Shop mode' : 'Shop mode'}</button>` : ''}
+    <button class="btn small" data-act="pantry">Cupboard &amp; usuals</button>
+    ${items.length ? `<button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>
+      ${done.length ? `<button class="btn small" data-act="clearDone">Clear ${done.length} ticked</button>` : ''}
+      <button class="btn small danger" data-act="clearAll">${S.confirmClear ? 'Tap again to empty' : 'Empty list'}</button>` : ''}</div>
+  <div id="aisleMsg"></div>
+  <div class="${S.shopMode ? 'shopmode' : ''}">${items.length ? listHtml : `<div class="empty"><h2>Nothing on the list</h2>Open a recipe and tap “Add to shopping”, or add things above.</div>`}</div>`;
 }
-
+function pantrySheet(focus){
+  const st = staples(), us = S.pantry?.usuals || [];
+  const chip = (x, act) => `<button class="chip pchip" data-act="${act}" data-text="${esc(x)}" aria-label="Remove ${esc(x)}">${esc(x)} <span aria-hidden="true">×</span></button>`;
+  openSheet('Cupboard and usuals', `<h2>Cupboard &amp; usuals</h2>
+    <h3 class="sub">Always in the cupboard</h3>
+    <p class="hint">Left off the list when you add a recipe or the week’s plan, so you’re not told to buy salt every week.</p>
+    <div class="chips" style="margin-top:4px">${st.map(x => chip(x, 'unstaple')).join('') || '<span class="hint">Nothing yet.</span>'}</div>
+    <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="stapleIn">Add a cupboard staple</label><input id="stapleIn" placeholder="e.g. olive oil" autocomplete="off"><button class="btn" data-act="addstaple" type="button">Add</button></form>
+    <h3 class="sub">Usuals</h3>
+    <p class="hint">Things you buy most weeks. They sit at the top of the shopping list, one tap to add.</p>
+    <div class="chips" style="margin-top:4px">${us.map(x => chip(x, 'unusual')).join('') || '<span class="hint">Nothing yet.</span>'}</div>
+    <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="usualIn">Add a usual</label><input id="usualIn" placeholder="e.g. milk, bread, bananas" autocomplete="off"><button class="btn" data-act="addusual" type="button">Add</button></form>
+    <button class="btn" data-act="closesheet">Done</button>`);
+  if (focus) overlay.querySelector('#' + focus)?.focus();
+}
+async function setPantry(p){
+  const next = { staples: staples(), usuals: S.pantry?.usuals || [], ...p, updatedAt: Date.now() };
+  S.pantry = next;
+  try { await db.doc('lists/pantry').set(next); } catch (e) { toast(saveErr(e)); }
+}
+function binView(){
+  const list = [...S.bin].sort((a, b) => b.deletedAt - a.deletedAt);
+  const left = r => Math.max(1, 30 - Math.floor((Date.now() - r.deletedAt) / DAY));
+  return `<div class="top"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a><span class="eyebrow">Recently deleted</span><span style="width:44px"></span></div>
+  <h1 class="hello">Recently<br><em>deleted.</em></h1>
+  <p class="hint">Deleted recipes wait here for 30 days in case you change your mind, then they’re gone for good.</p>
+  ${list.length ? `<ul class="binlist">${list.map(r => `<li><span class="thumb ph">${phOrImg(r)}</span><span class="txt"><span class="t">${esc(r.title)}</span>
+      <span class="s">Deleted ${ago(r.deletedAt)}${r.deletedBy && r.deletedBy !== S.me ? ' by ' + esc(S.names[r.deletedBy] || 'someone') : ''} · ${left(r)} day${left(r) > 1 ? 's' : ''} left</span></span>
+      <span class="row"><button class="btn small" data-act="restore" data-id="${esc(r.id)}">Restore</button><button class="btn small danger" data-act="purge" data-id="${esc(r.id)}">${S.confirmPurge === r.id ? 'Sure?' : 'Delete now'}</button></span></li>`).join('')}</ul>`
+    : `<div class="empty">Nothing in here.</div>`}`;
+}
+function upgradeSheet(reason){
+  const p = Backend.plan || { limit: 50 }; const url = Backend.checkoutUrl(); const price = window.SPOONBOOK_CONFIG?.plusPrice;
+  openSheet('Spoonbook Plus', `<h2>Spoonbook Plus</h2>
+    ${p.plus ? `<p class="hint">Plus is on for this cookbook${p.until ? ', renewing or ending on ' + new Date(p.until).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}. Thank you for supporting Spoonbook.</p>`
+      : `<p class="hint">${reason === 'limit' ? `This cookbook has reached its ${p.limit} free recipes.` : `Free cookbooks hold up to ${p.limit} recipes.`} Plus lifts the limit for everyone sharing the cookbook.</p>
+    <ul class="hint" style="padding-left:18px;margin:0;line-height:1.7"><li>Unlimited recipes and photos</li><li>Everyone in the cookbook gets it, not just you</li><li>Helps keep Spoonbook going, with no adverts</li></ul>
+    ${url ? `<a class="btn primary" href="${esc(url)}" target="_blank" rel="noopener">Get Plus${price ? ' · ' + esc(price) : ''}</a><p class="hint" style="font-size:12px">Payment is handled securely by our payment provider. Plus switches on within a minute of paying. Reopen Spoonbook if it doesn’t.</p>`
+        : `<p class="hint">Upgrades aren’t open yet.</p>`}`}
+    <button class="btn" data-act="closesheet">Close</button>`);
+}
 function planView(){
   const days = weekDays(S.week), today = dayKey(new Date());
   const plan = S.plan.days || {};
@@ -712,13 +909,13 @@ function dayPickSheet(){
     <button class="btn" data-act="closesheet">Cancel</button>`);
 }
 function recipePickList(q){
-  q = (q || '').toLowerCase();
-  const list = S.recipes.filter(r => !q || r.title.toLowerCase().includes(q)).slice(0, 60);
-  return list.map(r => `<li><button class="pickrow" data-act="planthis" data-id="${esc(r.id)}"><span class="thumb ph">${phOrImg(r)}</span><span class="t">${esc(r.title)}</span></button></li>`).join('') || `<li class="hint">No matches.</li>`;
+  q = (q || '').toLowerCase(); const act = S.pickAct || 'planthis';
+  const list = S.recipes.filter(r => (!q || r.title.toLowerCase().includes(q)) && (act !== 'cook2this' || (r.id !== S.id && (r.steps || []).length))).slice(0, 60);
+  return list.map(r => `<li><button class="pickrow" data-act="${act}" data-id="${esc(r.id)}"><span class="thumb ph">${phOrImg(r)}</span><span class="t">${esc(r.title)}</span></button></li>`).join('') || `<li class="hint">No matches.</li>`;
 }
-function recipePickSheet(day){
-  S.pickDay = day;
-  openSheet('Pick a recipe', `<h2>${esc(dayName(new Date(day + 'T12:00:00')))}</h2>
+function recipePickSheet(day, act){
+  S.pickDay = day; S.pickAct = act || 'planthis';
+  openSheet('Pick a recipe', `<h2>${act === 'cook2this' ? 'Second dish' : esc(dayName(new Date(day + 'T12:00:00')))}</h2>
     <label class="search">${I.search}<span class="sr">Find a recipe</span><input id="pickQ" placeholder="Find a recipe" autocomplete="off"></label>
     <ul class="list picklist" id="pickList">${recipePickList('')}</ul>
     <button class="btn" data-act="closesheet">Done</button>`);
@@ -741,9 +938,12 @@ function moreSheet(){
     <label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
     <div id="importMsg"></div>
+    <button class="opt" data-act="gobin"><span><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back a recipe deleted in the last 30 days.</span></span></button>
+    ${Backend.plan?.enabled ? `<button class="opt" data-act="upgrade"><span><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook.' : `Free cookbooks hold ${Backend.plan.limit} recipes. Plus has no limit.`}</span></span></button>` : ''}
     <p class="hint" style="font-size:12px">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>
     <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
-    <button class="btn" data-act="closesheet">Close</button>`);
+    <button class="btn" data-act="closesheet">Close</button>
+    <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p>`);
 }
 function recipeText(r){
   const f = factor(r);
@@ -834,7 +1034,13 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
 
 /* ---------- data writes ---------- */
 async function patch(id, data){ try { await db.collection('recipes').doc(id).update({ ...data, updatedAt: Date.now() }); } catch (e) { toast(saveErr(e)); throw e; } }
-const saveErr = e => e?.code === 'quota_exceeded' ? 'The cookbook is full. Delete a few recipes first.' : 'Couldn’t save that. Check your connection and try again.';
+const saveErr = e => e?.code === 'free_limit' ? 'This cookbook is full on the free plan.' : e?.code === 'quota_exceeded' ? 'The cookbook is full. Delete a few recipes first.' : 'Couldn’t save that. Check your connection and try again.';
+async function purgeRecipe(r){
+  try {
+    await db.collection('recipes').doc(r.id).delete();
+    if (assets) for (const id of [r.photo, ...(r.photos || [])].filter(Boolean)) assets.delete(id).catch(() => {});
+  } catch {}
+}
 async function setShop(items){ try { await db.doc('lists/shopping').set({ items, updatedAt: Date.now() }); } catch (e) { toast(saveErr(e)); } }
 async function shrink(file){
   try {
@@ -859,7 +1065,7 @@ function render(force){
   if (!force && busy()){ S.pending = true; return; }
   S.pending = false;
   const v = S.view;
-  const html = v === 'recipe' ? recipeView() : v === 'cook' ? cookView() : (v === 'edit' || v === 'add') ? editView() : v === 'shopping' ? shopView() : v === 'favourites' ? favView() : v === 'plan' ? planView() : v === 'fridge' ? fridgeView() : bookView();
+  const html = v === 'recipe' ? recipeView() : v === 'cook' ? cookView() : (v === 'edit' || v === 'add') ? editView() : v === 'shopping' ? shopView() : v === 'favourites' ? favView() : v === 'plan' ? planView() : v === 'fridge' ? fridgeView() : v === 'bin' ? binView() : bookView();
   if (S.status === 'loading' && !S.recipes.length && v !== 'add') return;
   const y = window.scrollY;
   app.innerHTML = html;
@@ -867,7 +1073,7 @@ function render(force){
   const left = (S.shop.items || []).filter(i => !i.done).length;
   nav.hidden = ['cook','edit','add','recipe'].includes(v);
   nav.querySelectorAll('a').forEach(a => {
-    a.setAttribute('aria-current', a.dataset.tab === (v === 'fridge' ? 'book' : v) ? 'page' : 'false');
+    a.setAttribute('aria-current', a.dataset.tab === (['fridge', 'bin'].includes(v) ? 'book' : v) ? 'page' : 'false');
     if (a.dataset.tab === 'shopping'){ const bd = a.querySelector('.badge'); bd.textContent = left; bd.hidden = !left; a.setAttribute('aria-label', 'Shopping' + (left ? `, ${left} to buy` : '')); }
   });
 }
@@ -899,25 +1105,58 @@ const A = {
   async reviewed(){ await patch(S.id, { needsReview: false, reviewNote: null }); toast('Marked as checked'); },
   editnote(){ S.noteEdit = true; render(true); document.getElementById('noteIn')?.focus(); },
   cancelnote(){ S.noteEdit = false; render(true); },
-  async savenote(){ const v = document.getElementById('noteIn').value.trim(); S.noteEdit = false; document.activeElement?.blur(); await patch(S.id, { note: v }); render(true); toast(v ? 'Note saved' : 'Note removed'); },
+  async savenote(){ const v = document.getElementById('noteIn').value.trim(); S.noteEdit = false; document.activeElement?.blur(); await patch(S.id, { note: v, editedBy: S.me, editedAt: Date.now() }); render(true); toast(v ? 'Note saved' : 'Note removed'); },
   show(b){ S.cover[S.id] = b.dataset.shot; render(); },
   async makecover(){ const r = byId(S.id); const pick = S.cover[r.id]; const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== pick); await patch(r.id, { photo: pick, photos: rest }); delete S.cover[r.id]; toast('Cover photo updated'); },
   async toshop(){
     const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
-    const add = (r.ingredients || []).map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }));
-    await setShop([...have, ...add]); toast(add.length + ' items added to shopping');
+    const lines = r.ingredients || [], skip = lines.filter(isStaple);
+    const add = lines.filter(l => !isStaple(l)).map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }));
+    await setShop([...have, ...add]);
+    toast(add.length + ' items added to shopping' + (skip.length ? ` · ${skip.length} left off as cupboard staples` : ''));
   },
   async del(){
     if (!S.confirmDel){ S.confirmDel = true; render(); return; }
     const r = byId(S.id);
     try {
-      await db.collection('recipes').doc(r.id).delete();
-      if (assets) for (const id of [r.photo, ...(r.photos || [])].filter(Boolean)) assets.delete(id).catch(() => {});
-      S.confirmDel = false; go('book'); toast('Deleted ' + r.title);
-    } catch (e) { toast(saveErr(e)); }
+      // goes to Recently deleted for 30 days rather than straight away
+      await patch(r.id, { deletedAt: Date.now(), deletedBy: S.me });
+      S.confirmDel = false; go('book'); toast('Moved to Recently deleted');
+    } catch {}
+  },
+  gobin(){ closeSheet(); go('bin'); },
+  async restore(b){ const r = S.bin.find(x => x.id === b.dataset.id); if (!r) return; await patch(r.id, { deletedAt: null, deletedBy: null }); toast(r.title + ' is back in the book'); },
+  async purge(b){
+    const id = b.dataset.id;
+    if (S.confirmPurge !== id){ S.confirmPurge = id; render(); return; }
+    S.confirmPurge = null; const r = S.bin.find(x => x.id === id); if (r) await purgeRecipe(r); toast('Deleted for good');
+  },
+  seen(){ const n = newsItems(); S.seen = Math.max(Date.now(), ...(n ? [...n.fresh.map(r => r.createdAt || 0), ...n.changed.map(r => r.editedAt || 0)] : [])) + 1; ls.set('sb-seen-' + Backend.household.id, String(S.seen)); render(); },
+  tag(b){ S.tag = S.tag === b.dataset.tag ? null : b.dataset.tag; render(); },
+  upgrade(){ upgradeSheet(); Backend.refreshPlan?.(); },
+  shopmode(){ S.shopMode = !S.shopMode; ls.set('sb-shopmode', S.shopMode ? 'on' : 'off'); render(); },
+  pantry(){ pantrySheet(); },
+  async addstaple(){ const v = overlay.querySelector('#stapleIn').value.trim().toLowerCase(); if (!v) return; if (!staples().includes(v)) await setPantry({ staples: [...staples(), v] }); pantrySheet('stapleIn'); },
+  async unstaple(b){ await setPantry({ staples: staples().filter(x => x !== b.dataset.text) }); pantrySheet(); },
+  async addusual(){ const us = S.pantry?.usuals || []; const vs = overlay.querySelector('#usualIn').value.split(',').map(x => x.trim()).filter(Boolean).filter(x => !us.some(u => u.toLowerCase() === x.toLowerCase())); if (vs.length) await setPantry({ usuals: [...us, ...vs] }); pantrySheet('usualIn'); },
+  async unusual(b){ await setPantry({ usuals: (S.pantry?.usuals || []).filter(x => x !== b.dataset.text) }); pantrySheet(); },
+  async usual(b){
+    const t = b.dataset.text, items = S.shop.items || [];
+    const hit = items.find(i => !i.done && i.text.trim().toLowerCase() === t.trim().toLowerCase());
+    await setShop(hit ? items.filter(i => i !== hit) : [...items, { id: rid(), text: t, from: 'Usuals', done: false }]);
   },
   cooking(){ S.cookShowIng = !S.cookShowIng; render(true); },
-  step(b){ S.cookStep = Math.max(0, S.cookStep + +b.dataset.d); render(true); },
+  step(b){ moveStep(b.dataset.w === '2' ? 2 : 1, +b.dataset.d); },
+  handsfree(){ handsFree(!S.handsFree); },
+  cook2pick(){ recipePickSheet(null, 'cook2this'); },
+  cook2this(b){ S.cook2 = b.dataset.id; S.cookStep2 = 0; closeSheet(); render(true); if (S.handsFree) readStep(2); },
+  cook2off(){ S.cook2 = null; render(true); },
+  async madeid(b){
+    const r = byId(b.dataset.id); if (!r) return; const c = r.cooked || [];
+    if (madeToday(r)) await patch(r.id, { cooked: c.filter(t => dayKey(new Date(t)) !== dayKey(new Date())) });
+    else { await patch(r.id, { cooked: [...c, Date.now()].slice(-200) }); toast(r.title + ' logged as made today'); }
+    render(true);
+  },
   canceledit(){ S.draft = null; },
   async save(){
     const g = id => document.getElementById(id).value;
@@ -927,17 +1166,18 @@ const A = {
     const d = S.draft;
     const body = { title, category: g('f-cat'), serves: g('f-serves').trim(), source: g('f-src').trim(),
       ingredients: lines(g('f-ing')), steps: lines(g('f-steps')), photo: d.photo || null,
-      bestCook: g('f-best').trim(), story: g('f-story').trim(), updatedAt: Date.now() };
+      bestCook: g('f-best').trim(), story: g('f-story').trim(), updatedAt: Date.now(),
+      tags: [...document.querySelectorAll('input[name="f-tag"]:checked')].map(x => x.value), spice: g('f-spice') === '' ? null : +g('f-spice') };
     // the calorie estimate no longer matches once the ingredients change
     if (d.nutrition && JSON.stringify(body.ingredients) !== JSON.stringify(d.ingredients || [])) body.nutrition = null;
     try {
-      if (d.id){ await db.collection('recipes').doc(d.id).update(body); S.draft = null; go('recipe-' + d.id); toast('Saved'); }
+      if (d.id){ await db.collection('recipes').doc(d.id).update({ ...body, editedBy: S.me, editedAt: Date.now() }); S.draft = null; go('recipe-' + d.id); toast('Saved'); }
       else {
         const id = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60) + '-' + rid().slice(0, 4);
         await db.collection('recipes').doc(id).set({ ...body, photos: d.photos || [], note: '', favourite: false, totalMins: d.totalMins || null, addedBy: S.me, createdAt: Date.now() });
         S.draft = null; go('recipe-' + id); toast('Added to the book');
       }
-    } catch (e) { toast(saveErr(e)); }
+    } catch (e) { if (e?.code === 'free_limit') upgradeSheet('limit'); else toast(saveErr(e)); }
   },
   async additem(){
     const inp = document.getElementById('shopIn'); const v = inp.value.trim(); if (!v) return;
@@ -1037,7 +1277,7 @@ const A = {
   async shopweek(b){
     const ids = weekDays(S.week).flatMap(d => S.plan.days?.[dayKey(d)] || []);
     const add = [];
-    ids.forEach(id => { const r = byId(id); if (r) (r.ingredients || []).forEach(l => add.push({ id: rid(), text: showLine(l), from: r.title, done: false })); });
+    ids.forEach(id => { const r = byId(id); if (r) (r.ingredients || []).filter(l => !isStaple(l)).forEach(l => add.push({ id: rid(), text: showLine(l), from: r.title, done: false })); });
     if (!add.length) return;
     b.disabled = true;
     await setShop([...(S.shop.items || []), ...add]);
@@ -1055,6 +1295,8 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.sheet) closeSheet();
   if (e.key === 'Enter' && e.target.id === 'shopIn'){ e.preventDefault(); A.additem(); }
+  if (e.key === 'Enter' && e.target.id === 'stapleIn'){ e.preventDefault(); A.addstaple(); }
+  if (e.key === 'Enter' && e.target.id === 'usualIn'){ e.preventDefault(); A.addusual(); }
 });
 document.addEventListener('input', e => {
   if (e.target.id === 'fridgeIn'){ S.fridge = e.target.value; document.getElementById('fridgeList').innerHTML = fridgeResults(); return; }
@@ -1072,7 +1314,7 @@ document.addEventListener('change', async e => {
     return;
   }
   if (k === 'sort'){ S.sort = t.value; ls.set('sb-sort', t.value); t.blur(); document.getElementById('list').innerHTML = listHtml(); return; }
-  if (k === 'tick'){ const m = S.checked[S.id] = S.checked[S.id] || {}; m[t.dataset.i] = t.checked; }
+  if (k === 'tick'){ const key = t.dataset.rid || S.id; const m = S.checked[key] = S.checked[key] || {}; m[t.dataset.i] = t.checked; }
   if (k === 'shoptick'){ const items = (S.shop.items || []).map(i => i.id === t.dataset.id ? { ...i, done: t.checked } : i); await setShop(items); }
   if (k === 'photo' && t.files[0]){
     const r = byId(S.id); toast('Uploading photo…');
@@ -1085,8 +1327,9 @@ document.addEventListener('change', async e => {
     toast('Uploading photo…');
     try { S.draft.title = document.getElementById('f-title').value; const id = await uploadPhoto(t.files[0]);
       const keep = { title: S.draft.title };
-      const FIELDS = ['f-cat','f-serves','f-ing','f-steps','f-src','f-best','f-story'];
+      const FIELDS = ['f-cat','f-serves','f-ing','f-steps','f-src','f-best','f-story','f-spice'];
       FIELDS.forEach(f => keep[f] = document.getElementById(f).value);
+      S.draft.tags = [...document.querySelectorAll('input[name="f-tag"]:checked')].map(x => x.value);
       S.draft.photo = id; render(true);
       document.getElementById('f-title').value = keep.title; FIELDS.forEach(f => document.getElementById(f).value = keep[f]);
       toast('Photo ready. Save to keep it');
@@ -1101,7 +1344,7 @@ document.addEventListener('change', async e => {
 /* ---------- swipe between steps in cooking mode ---------- */
 let touch0 = null;
 document.addEventListener('touchstart', e => {
-  touch0 = (S.view === 'cook' && !S.cookShowIng && e.touches.length === 1 && e.target.closest('.cook') && !e.target.closest('button,a'))
+  touch0 = (S.view === 'cook' && !S.cookShowIng && !S.cook2 && e.touches.length === 1 && e.target.closest('.cook') && !e.target.closest('button,a'))
     ? { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() } : null;
 }, { passive: true });
 document.addEventListener('touchend', e => {
@@ -1109,11 +1352,92 @@ document.addEventListener('touchend', e => {
   const t = e.changedTouches[0], dx = t.clientX - touch0.x, dy = t.clientY - touch0.y, quick = Date.now() - touch0.t < 800;
   touch0 = null;
   if (!quick || Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-  const r = byId(S.id); const n = (r?.steps || []).length;
-  const next = S.cookStep + (dx < 0 ? 1 : -1);
-  if (next < 0 || next >= n) return;
-  S.cookStep = next; render(true);
+  moveStep(1, dx < 0 ? 1 : -1);
 }, { passive: true });
+
+/* ---------- hands-free cooking ----------
+   Reads each step out loud and listens for a few short commands, all on the phone (the browser's own
+   speech engines). Listening pauses while Spoonbook is talking so it doesn't hear itself. */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recog = null, speaking = false;
+function moveStep(w, d){
+  const r = byId(w === 2 ? S.cook2 : S.id); const n = (r?.steps || []).length; if (!n) return false;
+  const cur = w === 2 ? S.cookStep2 : S.cookStep, next = cur + d;
+  if (next < 0 || next >= n) return false;
+  if (w === 2) S.cookStep2 = next; else S.cookStep = next;
+  render(true);
+  if (S.handsFree) readStep(w);
+  return true;
+}
+function say(text){
+  if (!('speechSynthesis' in window) || !text) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.lang = 'en-GB'; u.rate = 0.95;
+  const v = speechSynthesis.getVoices().find(x => x.lang === 'en-GB'); if (v) u.voice = v;
+  speaking = true; try { recog?.abort(); } catch {}
+  u.onend = u.onerror = () => { speaking = false; setTimeout(listen, 200); };
+  speechSynthesis.speak(u);
+}
+function readStep(w){
+  const r = byId(w === 2 ? S.cook2 : S.id); if (!r) return;
+  const steps = r.steps || []; if (!steps.length) return say('There are no steps written for this one.');
+  const i = Math.min(w === 2 ? S.cookStep2 : S.cookStep, steps.length - 1);
+  say(`${S.cook2 ? r.title + '. ' : ''}Step ${i + 1}${i === steps.length - 1 ? ', the last step' : ''}. ${showLine(steps[i])}`);
+}
+function readIngredients(w){
+  const r = byId(w === 2 ? S.cook2 : S.id); if (!r) return; const f = factor(r);
+  say((r.ingredients || []).length ? 'You need: ' + r.ingredients.map(l => showLine(scaleLine(l, f))).join('. ') : 'No ingredients are written for this one.');
+}
+function listen(){
+  if (!S.handsFree || !SR || speaking || recog || S.view !== 'cook' || document.visibilityState !== 'visible') return;
+  const me = recog = new SR();
+  me.lang = 'en-GB'; me.continuous = true; me.interimResults = false;
+  me.onresult = e => { const res = e.results[e.results.length - 1]; if (res?.isFinal) command(res[0].transcript); };
+  me.onerror = e => {
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed'){ toast('Spoonbook needs the microphone for voice commands. Steps will still be read out.'); S.noMic = true; }
+  };
+  me.onend = () => { if (recog === me) recog = null; if (S.handsFree && !speaking && !S.noMic) setTimeout(listen, 300); };
+  try { me.start(); } catch { recog = null; }
+}
+function stopListening(){ const r = recog; recog = null; try { r?.abort(); } catch {} }
+function handsFree(on){
+  S.handsFree = on;
+  if (on){ S.noMic = false; readStep(1); if (!SR) toast('This phone can’t listen for commands, but each step will be read out'); }
+  else { stopListening(); try { speechSynthesis.cancel(); } catch {} speaking = false; }
+  if (S.view === 'cook') render(true);
+}
+function stopRinging(){
+  const ringing = T.list.filter(t => t.done); if (!ringing.length) return false;
+  T.list = T.list.filter(t => !t.done); saveTimers(); paintTimers(true); return true;
+}
+function command(raw){
+  const t = ' ' + raw.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  if (t.trim().split(' ').length > 6) return; // a short command, not someone chatting in the kitchen
+  const w = S.cook2 && /\b(second|two|2|other)\b/.test(t) ? 2 : 1;
+  const has = re => re.test(t);
+  if (has(/\b(stop|cancel|quiet|silence|enough|shut up)\b/)){ if (!stopRinging()) { try { speechSynthesis.cancel(); } catch {} } return; }
+  if (has(/\b(next|forward|continue|done)\b/)){ if (!moveStep(w, 1)) say('That’s the last step.'); return; }
+  if (has(/\b(back|previous|last one)\b/)){ if (!moveStep(w, -1)) say('That’s the first step.'); return; }
+  if (has(/\bingredients?\b|what do i need/)){ S.cookShowIng = true; render(true); return readIngredients(w); }
+  if (has(/\b(steps?|method)\b/)){ S.cookShowIng = false; render(true); return readStep(w); }
+  if (has(/\btimer\b/)){
+    const r = byId(w === 2 ? S.cook2 : S.id); const steps = r?.steps || []; const i = Math.min(w === 2 ? S.cookStep2 : S.cookStep, steps.length - 1);
+    const d = durations(steps[i] || '')[0];
+    if (!d) return say('There’s no time in this step. Say how long, like ten minute timer.');
+    startTimer(r.title + ' · step ' + (i + 1), d.mins); return say(timerLabel(d.mins).replace('hr', 'hour').replace('min', 'minute').replace('sec', 'second') + ' timer started.');
+  }
+  if (has(/\b(read|repeat|again|what)\b/)) return readStep(w);
+}
+// "ten minute timer" or "set a timer for 5 minutes": a timer with any length
+const WORDNUM = { one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, ten:10, fifteen:15, twenty:20, thirty:30, forty:40, 'forty five':45, sixty:60 };
+const _command = command;
+command = raw => {
+  let t = raw.toLowerCase(); for (const [k, v] of Object.entries(WORDNUM).sort((a, b) => b[0].length - a[0].length)) t = t.replace(new RegExp('\\b' + k + '\\b', 'g'), v);
+  const m = t.match(/(\d+(?:\.\d+)?)\s*(hours?|minutes?|mins?|seconds?)\b.*timer|timer\b.*?(\d+(?:\.\d+)?)\s*(hours?|minutes?|mins?|seconds?)/);
+  if (m){ const n = +(m[1] || m[3]), u = (m[2] || m[4])[0]; const mins = u === 'h' ? n * 60 : u === 's' ? n / 60 : n; if (mins > 0 && mins <= 1440){ startTimer('Timer', mins); return say(timerLabel(mins).replace('hr', 'hour').replace('min', 'minute').replace('sec', 'second') + ' timer started.'); } }
+  return _command(raw);
+};
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') listen(); else stopListening(); });
 
 /* ---------- screen wake ---------- */
 // Keeps the phone awake the whole time Spoonbook is open on screen. Phones drop the lock whenever the
@@ -1144,12 +1468,20 @@ Backend.start(async caps => {
   S.canPhoto = !!assets; S.canSave = !!downloads;
   S.me = await user.id();
 
+  const seenKey = 'sb-seen-' + Backend.household.id;
+  S.seen = +ls.get(seenKey) || 0;
+  if (!S.seen){ S.seen = Date.now(); ls.set(seenKey, String(S.seen)); } // a new phone starts with nothing "new"
+  const purged = new Set();
   db.collection('recipes').onSnapshot(snap => {
-    S.recipes = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'en', { sensitivity: 'base' }));
+    const all = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.title || '').localeCompare(b.title || '', 'en', { sensitivity: 'base' }));
+    S.recipes = all.filter(r => !r.deletedAt); S.bin = all.filter(r => r.deletedAt);
     S.status = 'ok';
     if (S.view === 'edit' && !S.draft) parse();
     render(); resolveNames();
+    S.bin.filter(r => Date.now() - r.deletedAt > 30 * DAY && !purged.has(r.id)).forEach(r => { purged.add(r.id); purgeRecipe(r); });
+    setTimeout(handleShared, 0);
   }, () => { S.status = 'none'; render(true); });
+  db.doc('lists/pantry').onSnapshot(s => { S.pantry = s.exists ? s.data() : null; if (S.view === 'shopping') render(); });
   db.doc('lists/shopping').onSnapshot(s => { S.shop = s.exists ? s.data() : { items: [] }; if (S.view !== 'cook') render(); });
   db.doc('lists/plan').onSnapshot(s => { S.plan = s.exists ? s.data() : { days: {} }; if (S.view === 'plan') render(); });
 });

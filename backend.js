@@ -13,8 +13,23 @@ function merge(a, b){ for (const k in b){ const v = b[k]; if (v && typeof v === 
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12));
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
 
-let session = null, household = null, members = [];
+let session = null, household = null, members = [], plan = null;
 const rerender = () => window.__spoonbookRender?.();
+
+/* ---------- working with no signal ----------
+   The last good copy of the cookbook is kept on the phone, so Spoonbook opens and works with no signal.
+   Changes made while offline wait in an outbox and are sent as soon as the connection comes back. */
+let offline = false, pending = 0;
+const isNetErr = e => !navigator.onLine || /fetch|network|load failed|timed? ?out|aborted/i.test(String(e?.message || e || ''));
+const isAuthErr = e => /jwt|auth|401/i.test(String(e?.message || e?.code || ''));
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timed out')), ms))]);
+const cacheKey = uid => 'sb-offline-' + uid;
+function readCache(uid){ try { return JSON.parse(store.get(cacheKey(uid)) || 'null'); } catch { return null; } }
+function setOffline(v){ if (offline !== v){ offline = v; rerender(); } }
+function storedSession(){
+  try { const k = Object.keys(localStorage).find(k => /^sb-.*-auth-token$/.test(k)); const s = k && JSON.parse(localStorage.getItem(k)); return s?.user?.id ? s : null; } catch { return null; }
+}
+addEventListener('offline', () => setOffline(true));
 
 /* ---------- photos: private bucket, shown through signed links cached for a few days ---------- */
 const BLANK = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
@@ -24,8 +39,9 @@ function photoUrl(path){
   if (!path) return BLANK;
   const hit = urlCache[path];
   if (hit && hit.exp > Date.now()) return hit.url;
-  wanted.add(path); clearTimeout(fetchTimer); fetchTimer = setTimeout(fetchUrls, 30);
-  return BLANK;
+  if (navigator.onLine){ wanted.add(path); clearTimeout(fetchTimer); fetchTimer = setTimeout(fetchUrls, 30); }
+  // an old link still works offline: the phone keeps each photo it has shown, whatever the link says
+  return hit ? hit.url : BLANK;
 }
 async function fetchUrls(){
   const paths = [...wanted]; wanted.clear(); if (!paths.length) return;
@@ -39,23 +55,56 @@ async function fetchUrls(){
 }
 
 /* ---------- db: the same doc/collection calls the app already makes ---------- */
-function makeDb(hh){
-  const rows = { recipes: new Map(), lists: new Map() };
+function makeDb(hh, uid, cached){
+  const rows = { recipes: new Map(Object.entries(cached?.recipes || {})), lists: new Map(Object.entries(cached?.lists || {})) };
   const listeners = { recipes: new Set(), lists: new Map() };
   const snap = (id, d) => ({ id, exists: !!d, data: () => d && clone(d) });
-  const emitRecipes = () => { const docs = [...rows.recipes].map(([id, d]) => snap(id, d)); listeners.recipes.forEach(cb => cb({ docs })); };
-  const emitList = id => (listeners.lists.get(id) || new Set()).forEach(cb => cb(snap(id, rows.lists.get(id))));
+  let saveTimer = null;
+  const persist = () => { clearTimeout(saveTimer); saveTimer = setTimeout(() => store.set(cacheKey(uid), JSON.stringify({ household, members, recipes: Object.fromEntries(rows.recipes), lists: Object.fromEntries(rows.lists), at: Date.now() })), 500); };
+  const emitRecipes = () => { const docs = [...rows.recipes].map(([id, d]) => snap(id, d)); listeners.recipes.forEach(cb => cb({ docs })); persist(); };
+  const emitList = id => { (listeners.lists.get(id) || new Set()).forEach(cb => cb(snap(id, rows.lists.get(id)))); persist(); };
+  const emit = (table, id) => table === 'recipes' ? emitRecipes() : emitList(id);
+
+  // the outbox: changes waiting for a connection, oldest first, one entry per row (the latest wins)
+  const OUT = 'sb-outbox-' + hh;
+  let outbox = []; try { outbox = JSON.parse(store.get(OUT) || '[]'); } catch {}
+  const saveOut = () => { store.set(OUT, JSON.stringify(outbox)); if (pending !== outbox.length){ pending = outbox.length; rerender(); } };
+  pending = outbox.length;
+  function queue(job){ const i = outbox.findIndex(j => j.table === job.table && j.id === job.id); if (i >= 0) outbox[i] = job; else outbox.push(job); saveOut(); setOffline(true); }
+  let flushing = null;
+  function flush(){
+    if (!outbox.length) return Promise.resolve();
+    return flushing = flushing || (async () => {
+      try {
+        await sb.auth.getSession(); // refreshes the sign-in first if it ran out while offline
+        while (outbox.length){
+          const j = outbox[0];
+          const { error } = j.op === 'delete'
+            ? await sb.from(j.table).delete().eq('household_id', hh).eq('id', j.id)
+            : await sb.from(j.table).upsert({ household_id: hh, id: j.id, data: j.data, updated_at: new Date(j.at).toISOString() });
+          if (error && (isNetErr(error) || isAuthErr(error))) throw error;
+          if (error) console.warn('Spoonbook: a saved change was refused', error.message);
+          outbox.shift(); saveOut();
+        }
+      } finally { flushing = null; }
+    })();
+  }
   async function load(){
+    await flush();
     const [r, l] = await Promise.all([
       sb.from('recipes').select('id,data').eq('household_id', hh),
       sb.from('lists').select('id,data').eq('household_id', hh)
     ]);
     if (r.error) throw r.error;
+    if (l.error) throw l.error;
     rows.recipes = new Map((r.data || []).map(x => [x.id, x.data]));
     rows.lists = new Map((l.data || []).map(x => [x.id, x.data]));
+    // anything still waiting to send stays as it is on this phone
+    for (const j of outbox){ if (j.op === 'delete') rows[j.table].delete(j.id); else rows[j.table].set(j.id, clone(j.data)); }
+    setOffline(false);
     emitRecipes(); for (const id of listeners.lists.keys()) emitList(id);
   }
-  const ready = load();
+  const ready = load().catch(e => { if (cached){ setOffline(true); return; } throw e; });
   sb.channel('hh-' + hh)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'recipes', filter: 'household_id=eq.' + hh }, p => {
       if (p.eventType === 'DELETE') rows.recipes.delete(p.old.id); else rows.recipes.set(p.new.id, p.new.data);
@@ -67,16 +116,23 @@ function makeDb(hh){
       emitList(id);
     })
     .subscribe();
-  // phones pause live updates in the background, so catch up when the app comes back
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') load().catch(() => {}); });
+  // phones pause live updates in the background, so catch up when the app comes back or the signal returns
+  const catchUp = () => load().catch(e => { if (isNetErr(e) || isAuthErr(e)) setOffline(true); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') catchUp(); });
+  addEventListener('online', catchUp);
+  setInterval(() => { if (outbox.length && navigator.onLine) catchUp(); }, 30000);
 
-  const fail = e => { throw { code: /quota|limit/i.test(e?.message || '') ? 'quota_exceeded' : 'unavailable', message: e?.message }; };
+  const fail = e => { throw { code: /free_limit/i.test(e?.message || '') ? 'free_limit' : /quota|limit/i.test(e?.message || '') ? 'quota_exceeded' : 'unavailable', message: e?.message }; };
   const ref = (table, id) => ({
     async set(data){
       const before = rows[table].get(id);
-      rows[table].set(id, clone(data)); table === 'recipes' ? emitRecipes() : emitList(id);
-      const { error } = await sb.from(table).upsert({ household_id: hh, id, data, updated_at: new Date().toISOString() });
-      if (error){ before ? rows[table].set(id, before) : rows[table].delete(id); table === 'recipes' ? emitRecipes() : emitList(id); fail(error); }
+      rows[table].set(id, clone(data)); emit(table, id);
+      const job = { op: 'set', table, id, data: clone(data), at: Date.now() };
+      if (outbox.length){ queue(job); flush().catch(() => {}); return; } // keep changes in order
+      let error;
+      try { ({ error } = await sb.from(table).upsert({ household_id: hh, id, data, updated_at: new Date().toISOString() })); } catch (e) { error = e; }
+      if (error && isNetErr(error)){ queue(job); return; }
+      if (error){ before ? rows[table].set(id, before) : rows[table].delete(id); emit(table, id); fail(error); }
     },
     async update(patch){
       const cur = rows[table].get(id); if (!cur) throw { code: 'invalid_argument' };
@@ -84,12 +140,17 @@ function makeDb(hh){
     },
     async delete(){
       const before = rows[table].get(id);
-      rows[table].delete(id); table === 'recipes' ? emitRecipes() : emitList(id);
-      const { error } = await sb.from(table).delete().eq('household_id', hh).eq('id', id);
-      if (error){ if (before) rows[table].set(id, before); emitRecipes(); fail(error); }
+      rows[table].delete(id); emit(table, id);
+      const job = { op: 'delete', table, id, at: Date.now() };
+      if (outbox.length){ queue(job); flush().catch(() => {}); return; }
+      let error;
+      try { ({ error } = await sb.from(table).delete().eq('household_id', hh).eq('id', id)); } catch (e) { error = e; }
+      if (error && isNetErr(error)){ queue(job); return; }
+      if (error){ if (before) rows[table].set(id, before); emit(table, id); fail(error); }
     },
     onSnapshot(cb){
       const set = listeners.lists.get(id) || new Set(); set.add(cb); listeners.lists.set(id, set);
+      if (cached) cb(snap(id, rows.lists.get(id)));
       ready.then(() => cb(snap(id, rows.lists.get(id)))).catch(() => {});
       return () => set.delete(cb);
     }
@@ -97,7 +158,12 @@ function makeDb(hh){
   return {
     collection: name => ({
       doc: id => ref('recipes', id),
-      onSnapshot(cb, err){ listeners.recipes.add(cb); ready.then(emitRecipes).catch(e => err?.({ code: 'unavailable', message: e.message })); return () => listeners.recipes.delete(cb); }
+      onSnapshot(cb, err){
+        listeners.recipes.add(cb);
+        if (cached) cb({ docs: [...rows.recipes].map(([id, d]) => snap(id, d)) }); // open instantly from the saved copy
+        ready.then(emitRecipes).catch(e => err?.({ code: 'unavailable', message: e.message }));
+        return () => listeners.recipes.delete(cb);
+      }
     }),
     doc: path => { const [, id] = path.split('/'); return ref('lists', id); },
     reload: load
@@ -189,6 +255,7 @@ function signInScreen(mode = 'in'){
     <div class="actions" style="margin:0">
       ${mode !== 'in' ? '<button class="btn small" type="button" data-auth="in">I have an account</button>' : '<button class="btn small" type="button" data-auth="up">I’m new here</button><button class="btn small" type="button" data-auth="reset">Forgot password</button>'}
     </div>
+    <p class="hint" style="font-size:12px">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a>. See how your data is looked after in the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
   </form>`);
   app().querySelectorAll('[data-auth]').forEach(b => b.onclick = () => signInScreen(b.dataset.auth));
   document.getElementById('authForm').onsubmit = async e => {
@@ -258,30 +325,67 @@ async function run(){
 }
 async function runInner(){
   if (!CFG.supabaseUrl || /YOUR_/.test(CFG.supabaseUrl)){ screen(`<div class="empty"><h2>Almost ready</h2>Spoonbook needs its Supabase details in config.js.</div>`); return; }
-  const { data } = await sb.auth.getSession(); session = data.session;
+  let got; try { got = await sb.auth.getSession(); } catch (e) { got = { data: {}, error: e }; }
+  session = got.data?.session || null;
+  if (!session){
+    // no signal and the sign-in needs renewing: carry on with the saved cookbook and renew once back online
+    const saved = storedSession();
+    if (saved && (got.error || !navigator.onLine) && readCache(saved.user.id)) session = saved;
+  }
   if (!session) return signInScreen();
-  const m = await sb.from('members').select('household_id, display_name, households(id, name, join_code)').eq('user_id', session.user.id).limit(1);
+  const cached = readCache(session.user.id);
+  const ask = sb.from('members').select('household_id, display_name, households(id, name, join_code)').eq('user_id', session.user.id).limit(1);
+  let m; try { m = await (cached ? withTimeout(ask, 5000) : ask); } catch (e) { m = { error: e }; }
+  if (m.error && cached?.household && isNetErr(m.error)){
+    household = cached.household; members = cached.members || []; offline = true;
+    return boot(cached);
+  }
   if (m.error){ screen(`<div class="empty"><h2>Can’t reach your cookbook</h2>${esc(m.error.message)}</div>`); return; }
   if (!m.data?.length) return householdScreen();
   household = m.data[0].households;
   const all = await sb.from('members').select('user_id, display_name').eq('household_id', household.id);
-  members = all.data || [];
+  members = all.data || (cached?.members || []);
+  boot(cached?.household?.id === household.id ? cached : null);
+  loadPlan();
+}
+function boot(cached){
   if (booted) return;
   booted = true; document.getElementById('nav').hidden = false;
-  onReady?.({ db: makeDb(household.id), assets: makeAssets(household.id), user: makeUser(), downloads });
+  onReady?.({ db: makeDb(household.id, session.user.id, cached), assets: makeAssets(household.id), user: makeUser(), downloads });
+}
+/* ---------- Spoonbook Plus: only matters once the paywall is switched on in app_settings ---------- */
+async function loadPlan(){
+  try {
+    const [s, h] = await Promise.all([
+      sb.from('app_settings').select('paywall_enabled, free_recipe_limit').eq('id', 1).maybeSingle(),
+      sb.from('households').select('plan, plus_until').eq('id', household.id).maybeSingle()
+    ]);
+    if (s.error || !s.data) return;
+    const until = h.data?.plus_until ? new Date(h.data.plus_until) : null;
+    plan = { enabled: !!s.data.paywall_enabled, limit: s.data.free_recipe_limit || 50, plus: h.data?.plan === 'plus' && (!until || until > new Date()), until };
+    rerender();
+  } catch {}
 }
 // Supabase locks up if its own functions are called from inside this event, so anything that needs
 // Supabase is queued with setTimeout to run just after the event has finished.
 sb.auth.onAuthStateChange((event, s) => {
   if (event === 'PASSWORD_RECOVERY'){ session = s; setTimeout(newPasswordScreen, 0); return; }
   if (event === 'SIGNED_IN' && !booted && s?.user?.id !== session?.user?.id){ session = s; setTimeout(start, 0); }
-  if (event === 'SIGNED_OUT'){ session = null; if (booted) location.reload(); else setTimeout(signInScreen, 0); }
+  if (event === 'SIGNED_OUT'){ session = null; try { Object.keys(localStorage).filter(k => /^sb-(offline|outbox)-/.test(k)).forEach(k => localStorage.removeItem(k)); } catch {} if (booted) location.reload(); else setTimeout(signInScreen, 0); }
 });
 
 window.Backend = {
   start(cb){ onReady = cb; start(); },
   photoUrl, clip, importBackup,
   get household(){ return household; }, get members(){ return members; },
+  get offline(){ return offline; }, get pending(){ return pending; }, get plan(){ return plan; }, refreshPlan: loadPlan,
+  checkoutUrl(){
+    if (!CFG.checkoutUrl) return '';
+    const u = new URL(CFG.checkoutUrl);
+    u.searchParams.set('checkout[custom][household_id]', household.id);
+    if (session?.user?.email) u.searchParams.set('checkout[email]', session.user.email);
+    return u.href;
+  },
   async rename(name){ await sb.from('members').update({ display_name: name }).eq('household_id', household.id).eq('user_id', session.user.id); const me = members.find(m => m.user_id === session.user.id); if (me) me.display_name = name; },
   signOut: () => sb.auth.signOut(),
   email: () => session?.user?.email || ''

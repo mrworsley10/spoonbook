@@ -113,3 +113,5 @@ create policy "household photos change" on storage.objects for update
 drop policy if exists "household photos remove" on storage.objects;
 create policy "household photos remove" on storage.objects for delete
   using (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
+
+-- Spoonbook Plus (paywall, off by default) lives in plus.sql. Run that file too.

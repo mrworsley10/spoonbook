@@ -37,10 +37,31 @@ In this repository on GitHub: **Settings → Pages → Build and deployment → 
 2. Enter your name and leave the code blank to start a new cookbook.
 3. Tap **⋯ → Import a backup** and choose `spoonbook-backup.zip`. It takes a minute or two for the photos.
 
-### 7. Add your wife (or anyone else)
+### 7. Spoonbook Plus (optional, switched off)
+Spoonbook has a free tier and a paid "Plus" upgrade built in, but it's **off** until you choose to sell it. Nothing changes for anyone until then.
+1. Now: run [`supabase/plus.sql`](supabase/plus.sql) in the SQL Editor once. It adds the plan columns and the switch, with the paywall off.
+2. When you're ready to charge: set up a product in [Lemon Squeezy](https://www.lemonsqueezy.com) (it handles VAT and card payments as the seller). Put its checkout link and price in `config.js` (`checkoutUrl`, `plusPrice`).
+3. Deploy [`supabase/functions/billing/index.ts`](supabase/functions/billing/index.ts) as a function called `billing` with **Verify JWT turned off**, and add a secret `LEMONSQUEEZY_SIGNING_SECRET` under **Edge Functions → Secrets**.
+4. In Lemon Squeezy, add a webhook pointing at `https://YOUR-PROJECT.supabase.co/functions/v1/billing` with the same signing secret, sending the subscription events.
+5. Switch it on: `update public.app_settings set paywall_enabled = true where id = 1;` (free cookbooks then hold 50 recipes; change `free_recipe_limit` to adjust).
+
+### 8. Add your wife (or anyone else)
 Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates her own account and enters the 6-letter code. You'll both see the same recipes, plan and shopping list, live.
 
 ---
+
+## Features worth knowing about
+- **Share to Spoonbook:** once installed, Spoonbook appears in Android's share sheet. Share a recipe page from Chrome (or a recipe's text from anywhere) and it opens ready to save.
+- **No signal:** the cookbook, lists and every photo you've looked at are kept on the phone. Changes made offline sync when you're back online.
+- **Hands-free cooking:** tap the microphone in cooking mode. Steps are read out, and you can say "next", "back", "read it again", "ingredients", "start timer", "ten minute timer" or "stop".
+- **Two dishes at once:** in cooking mode, tap "Add a second dish" to follow two recipes side by side, each with its own steps and timers.
+- **Shop mode, cupboard staples and usuals:** on the shopping list. Staples (salt, pepper…) are left off when you add a recipe; usuals are one tap to add.
+- **Tags and spice level:** set them when editing a recipe, then filter the book by them.
+- **Recently deleted:** deleted recipes wait 30 days under **⋯ → Recently deleted**.
+- **New in the book:** when the other cook adds or changes a recipe, it shows at the top of the book.
+
+## Before sharing beyond family
+`privacy.html` and `terms.html` are drafts. Replace everything in square brackets (your name, contact email, Supabase region, date), and have them checked properly before you charge money. You'll also need a way for people to delete their account (for now the privacy policy says to email you).
 
 ## Things to know
 - **Free Supabase projects pause after a week with no use.** If the app ever says it can't reach the cookbook after a long break, open supabase.com and press **Restore** on the project.
@@ -56,7 +77,8 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 | `nutrition.js` | Nutrition values for about 150 everyday ingredients, from UK government data |
 | `config.js` | Your Supabase address and public key |
 | `manifest.webmanifest`, `sw.js`, `icons/` | What makes it installable and quick to open |
-| `supabase/` | Database setup and the link-clipping function |
+| `privacy.html`, `terms.html` | Draft privacy policy and terms (fill in the placeholders) |
+| `supabase/` | Database setup, the paywall switch (`plus.sql`), the link-clipping function and the billing function |
 
 ## Credits
 Calorie and nutrient estimates use McCance and Widdowson's *The Composition of Foods Integrated Dataset* 2021 (Public Health England). Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
