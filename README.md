@@ -50,6 +50,12 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 
 ---
 
+### 9. Email me when someone joins (optional)
+1. Sign up free at [resend.com](https://resend.com) and create an API key.
+2. In Supabase → **Edge Functions → Secrets**, add `RESEND_API_KEY` (the key) and `NOTIFY_EMAIL` (the email you used for Resend).
+3. Deploy [`supabase/functions/notify/index.ts`](supabase/functions/notify/index.ts) as a function called `notify` (leave Verify JWT on).
+4. **Database → Webhooks → Create a new hook:** table `members`, event **Insert**, type **Supabase Edge Functions**, function `notify`, and add the auth header.
+
 ## Features worth knowing about
 - **Share to Spoonbook:** once installed, Spoonbook appears in Android's share sheet. Share a recipe page from Chrome (or a recipe's text from anywhere) and it opens ready to save.
 - **No signal:** the cookbook, lists and every photo you've looked at are kept on the phone. Changes made offline sync when you're back online.
@@ -82,7 +88,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 | `manifest.webmanifest`, `sw.js`, `icons/` | What makes it installable and quick to open |
 | `r.html` | The public page for a recipe shared as a link |
 | `privacy.html`, `terms.html` | Draft privacy policy and terms (fill in the placeholders) |
-| `supabase/` | Database setup, the paywall switch (`plus.sql`), the link-clipping function and the billing function |
+| `supabase/` | Database setup, the sign-up email alert (`functions/notify`), the paywall switch (`plus.sql`), the link-clipping function and the billing function |
 
 ## Credits
 Calorie and nutrient estimates use McCance and Widdowson's *The Composition of Foods Integrated Dataset* 2021 (Public Health England). Contains public sector information licensed under the [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/).
