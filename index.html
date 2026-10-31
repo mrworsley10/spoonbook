@@ -1355,7 +1355,7 @@ const A = {
     if (!url){
       b.disabled = true; m.innerHTML = `<div class="thinking"><span class="spin"></span>Making a link…</div>`;
       try { const res = await Backend.shareRecipe(r); url = res.url; patch(r.id, { share: { id: res.id, sig } }).catch(() => {}); }
-      catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'offline' || !navigator.onLine ? 'You need a connection to make a link. Send it as text instead.' : 'Couldn’t make a link just now. Try again, or send it as text.'}</p>`; return; }
+      catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'offline' || !navigator.onLine ? 'You need a connection to make a link. Send it as text instead.' : 'Couldn’t make a link just now. Try again, or send it as text.'}${e?.message ? `<br><span style="font-size:12px;opacity:.8">Details: ${esc(e.message)}</span>` : ''}</p>`; return; }
       b.disabled = false;
     }
     S.shareUrl = url;
