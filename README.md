@@ -61,7 +61,7 @@ Tap **⋯ → Copy invite** and send it to her. She installs Spoonbook, creates 
 - **New in the book:** when the other cook adds or changes a recipe, it shows at the top of the book.
 
 ## Before sharing beyond family
-`privacy.html` and `terms.html` are drafts. Replace everything in square brackets (your name, contact email, Supabase region, date), and have them checked properly before you charge money. You'll also need a way for people to delete their account (for now the privacy policy says to email you).
+`privacy.html` and `terms.html` are drafts. Replace everything in square brackets (your name, contact email, Supabase region, date), and have them checked properly before you charge money. People can delete their own account under **⋯ → Delete my account** (this needs the latest `schema.sql` run in Supabase).
 
 ## Things to know
 - **Free Supabase projects pause after a week with no use.** If the app ever says it can't reach the cookbook after a long break, open supabase.com and press **Restore** on the project.

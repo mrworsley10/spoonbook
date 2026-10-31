@@ -943,6 +943,7 @@ function moreSheet(){
     <p class="hint" style="font-size:12px">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>
     <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
     <button class="btn" data-act="closesheet">Close</button>
+    <button class="linkbtn" data-act="delacct" style="color:var(--danger);align-self:center">Delete my account</button>
     <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p>`);
 }
 function recipeText(r){
@@ -1209,6 +1210,27 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('Invite copied'); } catch { toast('Code: ' + Backend.household.join_code); }
   },
   signout(){ Backend.signOut(); },
+  delacct(){
+    const others = Backend.members.filter(m => m.user_id !== S.me).map(m => m.display_name || 'someone');
+    openSheet('Delete my account', `<h2>Delete my account</h2>
+      ${others.length
+        ? `<p class="hint">Your account and sign-in are deleted for good. ${esc(others.join(' and '))} still share${others.length > 1 ? '' : 's'} this cookbook, so the recipes, photos and lists stay with them.</p>`
+        : `<p class="hint">Your account <b>and the whole cookbook</b> are deleted for good: ${(n => n === 1 ? 'the 1 recipe' : 'all ' + n + ' recipes')(S.recipes.length + S.bin.length)}, photos, plans and lists. Nobody else shares it, and this can’t be undone.</p>
+           ${S.canSave ? `<button class="btn" data-act="export" data-fmt="json">Back up my recipes first</button>` : ''}`}
+      <div class="field"><label for="delConfirm">Type DELETE to confirm</label><input id="delConfirm" autocomplete="off" autocapitalize="characters" style="height:48px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px"></div>
+      <div id="delMsg"></div>
+      <button class="btn danger" data-act="delacctgo">Delete my account</button>
+      <button class="btn" data-act="closesheet">Cancel</button>`);
+    overlay.querySelector('#delConfirm')?.focus();
+  },
+  async delacctgo(b){
+    const m = overlay.querySelector('#delMsg');
+    if (overlay.querySelector('#delConfirm').value.trim().toUpperCase() !== 'DELETE'){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Type DELETE in the box first.</p>'; return; }
+    if (Backend.offline || !navigator.onLine){ m.innerHTML = '<p class="hint" style="color:var(--danger)">You need a connection to delete your account.</p>'; return; }
+    b.disabled = true;
+    try { await Backend.deleteAccount(t => { m.innerHTML = `<div class="thinking"><span class="spin"></span>${esc(t)}</div>`; }); }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">That didn’t work: ${esc(e?.message || 'try again')}.</p>`; }
+  },
   async shareapp(){
     const url = location.origin + location.pathname;
     const text = `Try Spoonbook, a cookbook app for your recipes, meal plans and shopping list. Open ${url} in Chrome on Android (tap ⋮ then Install app) or Safari on iPhone (tap Share then Add to Home Screen).`;

@@ -246,7 +246,8 @@ function screen(html){ app().innerHTML = `<div class="top"><p class="brand">Spoo
 function msg(t, bad){ const m = document.getElementById('authMsg'); if (m){ m.textContent = t; m.style.color = bad ? 'var(--danger)' : 'var(--muted)'; } }
 
 function signInScreen(mode = 'in'){
-  screen(`<h1 class="hello">${mode === 'in' ? 'Welcome<br><em>back.</em>' : 'Make your<br><em>cookbook.</em>'}</h1>
+  let gone = false; try { gone = sessionStorage.getItem('sb-account-deleted') === '1'; sessionStorage.removeItem('sb-account-deleted'); } catch {}
+  screen((gone ? `<p class="offline" role="status">Your account has been deleted. Thanks for using Spoonbook.</p>` : '') + `<h1 class="hello">${mode === 'in' ? 'Welcome<br><em>back.</em>' : 'Make your<br><em>cookbook.</em>'}</h1>
   <form class="form" id="authForm" novalidate>
     <div class="field"><label for="a-email">Email</label><input id="a-email" type="email" autocomplete="email" required></div>
     ${mode === 'reset' ? '' : `<div class="field"><label for="a-pass">Password</label><input id="a-pass" type="password" autocomplete="${mode === 'in' ? 'current-password' : 'new-password'}" minlength="6" required></div>`}
@@ -388,6 +389,28 @@ window.Backend = {
   },
   async rename(name){ await sb.from('members').update({ display_name: name }).eq('household_id', household.id).eq('user_id', session.user.id); const me = members.find(m => m.user_id === session.user.id); if (me) me.display_name = name; },
   signOut: () => sb.auth.signOut(),
+  // Deletes this person's account. If nobody else shares the cookbook, its recipes, lists and photos go too;
+  // otherwise the cookbook stays with the others.
+  async deleteAccount(progress){
+    const all = await sb.from('members').select('user_id').eq('household_id', household.id);
+    if (all.error) throw all.error;
+    const alone = (all.data || []).every(m => m.user_id === session.user.id);
+    if (alone){
+      progress?.('Deleting photos…');
+      for (let round = 0; round < 50; round++){
+        const { data, error } = await sb.storage.from('photos').list(household.id, { limit: 1000 });
+        if (error || !data?.length) break;
+        const { error: e2 } = await sb.storage.from('photos').remove(data.map(f => `${household.id}/${f.name}`));
+        if (e2 || data.length < 1000) break;
+      }
+    }
+    progress?.('Deleting your account…');
+    const { error } = await sb.rpc('delete_my_account');
+    if (error) throw error;
+    try { Object.keys(localStorage).filter(k => /^sb-/.test(k)).forEach(k => localStorage.removeItem(k)); sessionStorage.setItem('sb-account-deleted', '1'); } catch {}
+    await sb.auth.signOut({ scope: 'local' }).catch(() => {});
+    location.reload();
+  },
   email: () => session?.user?.email || ''
 };
 })();

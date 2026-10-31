@@ -115,3 +115,20 @@ create policy "household photos remove" on storage.objects for delete
   using (bucket_id = 'photos' and public.is_member(((storage.foldername(name))[1])::uuid));
 
 -- Spoonbook Plus (paywall, off by default) lives in plus.sql. Run that file too.
+
+-- Delete my account: removes the person and, if nobody else shares their cookbook, the cookbook with it.
+-- (The app deletes the photos first, because Supabase only lets photos be removed through its storage API.)
+create or replace function public.delete_my_account() returns text
+language plpgsql security definer set search_path = public, auth as $$
+declare me uuid := auth.uid(); hh uuid; others int; result text := 'left_cookbook';
+begin
+  if me is null then raise exception 'Not signed in'; end if;
+  for hh in select household_id from public.members where user_id = me loop
+    select count(*) into others from public.members where household_id = hh and user_id <> me;
+    if others = 0 then delete from public.households where id = hh; result := 'deleted_cookbook'; end if;
+  end loop;
+  delete from auth.users where id = me;
+  return result;
+end $$;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
