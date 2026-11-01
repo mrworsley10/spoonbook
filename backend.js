@@ -353,7 +353,9 @@ function resetCodeScreen(email){
     if (p.length < 6) return msg('Passwords need at least 6 characters.', true);
     msg('One moment…');
     resetting = true;
-    const { error } = await sb.auth.verifyOtp({ email, token, type: 'recovery' });
+    let { error } = await sb.auth.verifyOtp({ email, token, type: 'recovery' });
+    // Supabase sometimes sends its sign-in email instead of the reset one; that code works too
+    if (error) ({ error } = await sb.auth.verifyOtp({ email, token, type: 'email' }));
     if (error){ resetting = false; return msg(/expired|invalid/i.test(error.message) ? 'That code didn’t work. Check it, or tap “Send a new code”.' : error.message, true); }
     const { error: e2 } = await sb.auth.updateUser({ password: p });
     resetting = false;
