@@ -320,6 +320,17 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .mrow>span[style]>b{font-size:16px}
 body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px))}
 .mhead{margin:10px 0 0;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+.guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
+.guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
+.gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
+.guide ol{list-style:none;margin:0;padding:0}
+.gstep{display:flex;gap:12px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;padding:10px 0;color:var(--fg);font:inherit;border-bottom:1px solid var(--line);cursor:pointer}
+.guide li:last-child .gstep{border-bottom:0}
+.gstep b{display:block;font-weight:600}.gstep span span{display:block;color:var(--muted);font-size:14px;margin-top:2px}
+.gnum{flex:none;width:28px;height:28px;border-radius:50%;border:2px solid var(--accent);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px}
+.gstep.done b{color:var(--muted);text-decoration:line-through;font-weight:500}.gstep.done .gnum{background:var(--accent);color:var(--on-accent,var(--bg))}.gnum svg{width:16px;height:16px}
+.pulse{animation:sb-pulse 1.4s ease-in-out 3}@keyframes sb-pulse{0%,100%{box-shadow:0 0 0 0 transparent}50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 45%,transparent)}}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none;outline:3px solid var(--accent)}.gbar i{transition:none}}
 .bookcard{display:block}
 .bookcard .hint{display:block;margin-top:2px}
 .bookname{display:flex;align-items:baseline;gap:10px;justify-content:space-between}.bookname b{min-width:0;overflow-wrap:anywhere}
@@ -769,7 +780,7 @@ function parse(){
   if (S.view === 'recipe' && S._lastId !== S.id){ S.tab = 'ing'; S.noteEdit = false; S.confirmDel = false; S._lastId = S.id; }
   if (S.view === 'edit' && (!S.draft || S.draft.id !== S.id)){ const r = byId(S.id); S.draft = r ? JSON.parse(JSON.stringify(r)) : null; }
   if (S.view === 'add' && !S.draft) S.draft = blankDraft();
-  if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; }
+  if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; if (Backend.userId?.()) guideMark('cook'); }
 }
 const go = h => { location.hash = h; };
 window.addEventListener('hashchange', () => { parse(); render(true); window.scrollTo(0,0); app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); });
@@ -827,6 +838,35 @@ function listHtml(){
     <span class="s">${[r.totalMins ? mins(r.totalMins) : esc(r.category || 'Mains'), avg ? '★ ' + (Math.round(avg * 10) / 10) : '', r.spice ? chillies(r.spice) : ''].filter(Boolean).join(' · ')}</span></a></li>`; }).join('')}</ul>`;
   return `<ul class="list">${list.map(r => rowHtml(r)).join('')}</ul>`;
 }
+/* ---------- "Get started" checklist for new cooks: each step ticks itself off when they actually do it ---------- */
+const guideKey = () => 'sb-guide-' + Backend.userId();
+function guideGet(){ try { return JSON.parse(ls.get(guideKey()) || 'null'); } catch { return null; } }
+function guideSet(g){ ls.set(guideKey(), JSON.stringify(g)); }
+function guideMark(k){ const g = guideGet(); if (g && !g.done?.[k]){ g.done = { ...(g.done || {}), [k]: 1 }; guideSet(g); } }
+function guideSteps(){
+  const d = guideGet()?.done || {};
+  const planned = Object.values(S.plan?.days || {}).some(v => v && (Array.isArray(v) ? v.length : typeof v === 'object' ? Object.values(v).some(Boolean) : true));
+  return [
+    { k: 'save', t: 'Add your first recipe', tip: 'Paste a link from any website and the recipe and photo come in together.', done: d.save || S.recipes.some(r => !r.sample) },
+    { k: 'plan', t: 'Plan a meal for this week', tip: 'Pick what you’re having and when. Everyone in the cookbook sees it.', done: d.plan || planned },
+    { k: 'shop', t: 'Fill the shopping list', tip: 'One tap adds a recipe’s ingredients, sorted by aisle.', done: d.shop || S.shop.items.length > 0 },
+    { k: 'cook', t: 'Try cooking mode', tip: 'Big steps, built-in timers, and it can read each step out loud.', done: d.cook },
+    { k: 'invite', t: 'Invite someone to cook with you', tip: 'Share the cookbook, the plan and the shopping list with family.', done: d.invite || Backend.members.length > 1 }
+  ];
+}
+function guideHtml(){
+  const g = guideGet();
+  if (!S.canEdit || !g || g.hide) return '';
+  const steps = guideSteps(), n = steps.filter(x => x.done).length;
+  if (n === steps.length) return `<section class="guide all"><p class="ghead"><b>You’re all set 🎉</b></p><p class="hint" style="margin:0">That’s everything Spoonbook does best. Enjoy your cooking.</p><button class="btn small" data-act="guidehide" style="margin-top:10px">Close</button></section>`;
+  return `<section class="guide" aria-label="Get started">
+    <p class="ghead"><b>Get started</b><span class="hint">${n} of ${steps.length} done</span><button class="linkbtn" data-act="guidehide">Hide</button></p>
+    <div class="gbar" aria-hidden="true"><i style="width:${Math.round(n / steps.length * 100)}%"></i></div>
+    <ol>${steps.map((x, i) => `<li><button class="gstep${x.done ? ' done' : ''}" data-act="guidego" data-k="${x.k}"><span class="gnum" aria-hidden="true">${x.done ? I.check : i + 1}</span><span><b>${x.t}</b>${x.done ? '' : `<span>${x.tip}</span>`}</span></button></li>`).join('')}</ol>
+  </section>`;
+}
+// a recipe to show someone how a step works: one of their own if they have one
+const guideRecipe = () => S.recipes.find(r => !r.sample) || S.recipes[0];
 function bookView(){
   if (S.status === 'none') return topBar() + `<div class="empty"><h2>Can’t reach the cookbook</h2>Check your internet connection, then close and reopen Spoonbook.</div>`;
   if (!S.recipes.length) return topBar() + (S.canEdit ? welcomeHtml() : `<h1 class="hello">Nothing here<br><em>yet.</em></h1><div class="empty">When recipes are added to ${esc(Backend.household.name)}, they’ll appear here.</div>`);
@@ -836,7 +876,7 @@ function bookView(){
   const nf = filterCount();
   return topBar() + `
   <h1 class="hello">${greeting()}</h1>
-  ${newsHtml()}
+  ${guideHtml() || newsHtml()}
   <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
@@ -1359,6 +1399,7 @@ function moreSheet(){
     <div id="importMsg"></div>` : ''}
     <h3 class="mhead">Spoonbook</h3>
     <div class="menu">
+      ${S.canEdit ? `<button class="mrow" data-act="guideshow"><b>Show me around</b><span>A quick checklist of the best bits</span></button>` : ''}
       <button class="mrow" data-act="shareapp"><b>Share Spoonbook</b><span>Send the app to friends and family</span></button>
       ${Backend.plan?.enabled ? `<button class="mrow" data-act="upgrade"><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook' : `Free cookbooks hold ${Backend.plan.limit} recipes`}</span></button>` : ''}
       <button class="mrow" data-act="feedback"><b>Send feedback</b><span>Problems or ideas, straight to the maker</span></button>
@@ -1615,6 +1656,7 @@ const A = {
   },
   async makecover(){ const r = byId(S.id); const pick = S.cover[r.id]; const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== pick); await patch(r.id, { photo: pick, photos: rest }); delete S.cover[r.id]; toast('Cover photo updated'); },
   async toshop(){
+    guideMark('shop');
     if (S.sheet) closeSheet();
     const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
     const lines = r.ingredients || [], skip = lines.filter(isStaple);
@@ -1811,6 +1853,21 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
+  guidehide(){ const g = guideGet() || { done: {} }; g.hide = 1; guideSet(g); render(); },
+  guideshow(){ const g = guideGet() || { done: {} }; g.hide = 0; guideSet(g); closeSheet(); if (S.view !== 'book') go('#book'); else render(); window.scrollTo(0, 0); },
+  guidego(b){
+    const k = b.dataset.k, r = guideRecipe();
+    if (k === 'save') return clipSheet('link');
+    if (k === 'invite') return peopleSheet();
+    if (!r){ toast('Add a recipe first'); return clipSheet('link'); }
+    go('#recipe-' + r.id);
+    setTimeout(() => {
+      const hint = { plan: ['[data-act="planpick"]', 'Tap Plan to pick a day for this'], shop: ['[data-act="toshop"]', 'Tap Shop to add what you need'], cook: ['.dock .btn.primary', 'Tap Start cooking'] }[k];
+      const el = hint && document.querySelector(hint[0]);
+      if (el){ el.scrollIntoView({ block: 'center', behavior: 'smooth' }); el.classList.add('pulse'); setTimeout(() => el.classList.remove('pulse'), 4200); }
+      if (hint) toast(hint[1]);
+    }, 350);
+  },
   switchbook(b){ if (b.dataset.id !== Backend.household.id) Backend.switchTo(b.dataset.id); else closeSheet(); },
   async joinbook(b){
     const code = (b.dataset.code || overlay.querySelector('#joinIn')?.value || '').trim(); const m = overlay.querySelector('#bookMsg');
@@ -1849,6 +1906,7 @@ const A = {
     try { await Backend.leave(); } catch (e) { b.disabled = false; toast(e.message || 'Couldn’t leave. Try again.'); }
   },
   async invite(b){
+    guideMark('invite');
     const hh = Backend.household, view = b.dataset.kind === 'view', code = view ? hh.view_code : hh.join_code;
     const url = appBase() + '?join=' + code;
     const t = view ? `Have a look at our Spoonbook recipes: ${url} (or open Spoonbook and enter the code ${code}). You'll be able to browse them and copy any you like into your own cookbook.`

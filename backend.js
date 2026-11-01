@@ -402,6 +402,8 @@ function householdScreen(){
     if (error) return msg(/code/i.test(error.message) ? 'No cookbook has that code. Check it and try again.' : error.message, true);
     if (code) clearPendingJoin();
     if (data?.id) store.set(currentKey(), data.id);
+    // a brand-new cook gets the "Get started" checklist on their Book page
+    if (!store.get('sb-guide-' + session.user.id)) store.set('sb-guide-' + session.user.id, JSON.stringify({ done: {} }));
     start();
   };
 }
