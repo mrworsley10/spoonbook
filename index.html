@@ -279,7 +279,55 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .num span{font-size:22px;color:var(--muted)}
 .second{display:block;margin:26px auto 0}
 .ingtitle{margin:18px 0 0;font-family:var(--display);font-size:19px}
-.legal{font-size:12px;margin-top:4px}
+.intro{display:flex;flex-direction:column;gap:10px;margin:-6px 0 22px}
+.intro img{border-radius:16px}
+.intro p{margin:0;font-size:17px;line-height:1.45}
+.intro ul{margin:0;padding-left:18px;color:var(--muted);font-size:15px;line-height:1.7}
+.legal{font-size:12px;margin-top:4px;display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+/* polish: book */
+.cats{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:0 16px 4px;scrollbar-width:none;scroll-padding-inline:16px}
+.cats::-webkit-scrollbar{display:none}
+.cats .chip{flex:none}
+.chip.filt{display:inline-flex;gap:6px;align-items:center;height:34px}
+.activef{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.activef .chip{height:30px;font-size:13px;background:var(--raise);color:var(--fg);border-color:transparent}
+.phfill{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:hsl(var(--h) 34% 30%);color:hsl(var(--h) 60% 86%);font-family:var(--display);font-style:italic;font-size:1em}
+.ph{position:relative}
+:root[data-theme="light"] .phfill{background:hsl(var(--h) 52% 84%);color:hsl(var(--h) 45% 32%)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) .phfill{background:hsl(var(--h) 52% 84%);color:hsl(var(--h) 45% 32%)}}
+.hero .phfill{font-size:110px}
+.pick .img .phfill{font-size:72px}
+/* polish: recipe */
+.quick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:16px}
+.quick button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font-size:13px;font-weight:600;color:var(--fg)}
+.quick button svg{color:var(--accent)}
+.quick button.on{border-color:var(--accent);color:var(--accent)}
+.details{margin-top:30px;padding-top:18px;border-top:1px solid var(--line)}
+.details>.eyebrow{margin:0 0 6px}
+.details .rate{margin-top:6px}
+/* polish: menus */
+.sheet>*{flex-shrink:0}
+.menu{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--bg)}
+.mrow{display:flex;gap:12px;align-items:center;text-align:left;width:100%;padding:13px 14px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);text-decoration:none;cursor:pointer}
+.mrow:last-child{border-bottom:0}
+.mrow b{display:flex;gap:10px;align-items:center;font-weight:600}
+.mrow b svg{color:var(--accent);flex:none}
+.mrow>span:not(.switch),.mrow>b+span{font-size:13px;color:var(--muted)}
+.mrow:not(:has(> span[style])){flex-direction:column;align-items:flex-start;gap:2px}
+.mrow span span{display:block;font-size:13px;color:var(--muted)}
+.mrow.danger b{color:var(--danger)}
+.mrow>span[style]{font-size:inherit;color:inherit}
+.mrow>span[style]>b{font-size:16px}
+body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px))}
+.mhead{margin:10px 0 0;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+.bookcard{display:block}
+.bookcard .hint{display:block;margin-top:2px}
+.icon-btn.small{width:38px;height:38px}
+.shopbar{align-items:center}
+/* polish: plan */
+.day.empty{padding:8px 0}
+.day.empty .dh{font-size:17px;color:var(--muted)}
+.day.empty .btn{height:32px}
 .dietline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border:0;background:none;padding:0;text-align:left;color:var(--muted);font-size:13px}
 .dietline .contains{line-height:1.4}
 .dietline .info{color:var(--accent);font-size:14px}
@@ -376,6 +424,10 @@ const I = {
   starF:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
   moon:'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
   share:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  cal:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  cart:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  check:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
+  sliders:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
   mic:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const app = document.getElementById('app'), overlay = document.getElementById('overlay'), nav = document.getElementById('nav');
@@ -537,8 +589,10 @@ function factor(r){ const b = baseServes(r), v = S.scale[r.id]; if (v == null) r
 /* ---------- helpers ---------- */
 const byId = id => S.recipes.find(r => r.id === id);
 const img = id => Backend.photoUrl(id);
+const CAT_HUE = { 'Curries': 32, 'Chicken': 44, 'Beef & pork': 8, 'Pasta & rice': 52, 'Pies & bakes': 26, 'Soups & stews': 16, 'Sides & starters': 100, 'Sauces & pastes': 356, 'Bread & dough': 38, 'Puddings & treats': 330, 'Mains': 20 };
+function phFill(r){ return `<span class="phfill" style="--h:${CAT_HUE[r.category] ?? 20}">${esc((r.title || '?').trim().charAt(0).toUpperCase())}</span>`; }
 function phOrImg(r, cls){
-  return r.photo ? `<img src="${img(r.photo)}" alt="" loading="lazy">` : esc((r.title || '?').trim().charAt(0).toUpperCase());
+  return r.photo ? `<img src="${img(r.photo)}" alt="" loading="lazy">` : phFill(r);
 }
 function host(u){ try { return new URL(u).hostname.replace(/^www\./,''); } catch { return ''; } }
 function who(r){ if (!r.addedBy) return r.importedFrom ? 'From ChefTap' : ''; const n = S.names[r.addedBy]; return 'Added by ' + (n || 'someone'); }
@@ -735,28 +789,55 @@ function bookView(){
   const favs = S.recipes.filter(r => r.favourite);
   const picks = favs.length >= 3 ? [...favs].sort((a, b) => lastMade(a) - lastMade(b)).slice(0, 8) : dailyPicks(S.recipes);
   const counts = {}; S.recipes.forEach(r => counts[r.category || 'Mains'] = (counts[r.category || 'Mains'] || 0) + 1);
-  const tc = {}; S.recipes.forEach(r => { (r.tags || []).forEach(t => tc[t] = (tc[t] || 0) + 1); if (r.spice != null) tc['spice:' + r.spice] = (tc['spice:' + r.spice] || 0) + 1; });
-  const tagKeys = [...TAGS.filter(t => tc[t]), ...[0, 1, 2, 3].map(i => 'spice:' + i).filter(k => tc[k])];
+  const nf = filterCount();
   return topBar() + `
   <h1 class="hello">${greeting()}</h1>
   ${newsHtml()}
-  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
+  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
     <div class="picks" aria-label="${favs.length >= 3 ? 'Your favourites' : 'Ideas for tonight'}">
       ${picks.map(r => `<a class="pick" href="#recipe-${esc(r.id)}"><span class="img ph">${phOrImg(r)}<span class="tag">${esc(r.category || 'Mains')}</span></span><span class="t">${esc(r.title)}</span></a>`).join('')}
     </div>
   </div>
-  <div class="chips" role="group" aria-label="Filter by category">
+  <div class="cats" role="group" aria-label="Filter by category">
     ${['All', ...CATS.filter(c => counts[c])].map(c => `<button class="chip" data-act="cat" data-cat="${esc(c)}" aria-pressed="${S.cat === c}">${esc(c)}${c !== 'All' ? ' · ' + counts[c] : ''}</button>`).join('')}
   </div>
-  <div class="chips tags"><button class="chip" data-act="diet" aria-pressed="${!!dietActive()}">${dietActive() ? '✓ ' + esc(dietSummary()) : 'Allergies &amp; diet'}</button></div>
-  ${tagKeys.length ? `<div class="chips tags" role="group" aria-label="Filter by tag or spice">${tagKeys.map(k => `<button class="chip" data-act="tag" data-tag="${esc(k)}" aria-pressed="${S.tag === k}">${esc(tagName(k))} · ${tc[k]}</button>`).join('')}</div>` : ''}
   ${freeNote()}
-  <div class="sec"><h2 class="eyebrow" style="margin:0">The whole book · ${S.recipes.length}</h2>
-    <label class="sortsel"><span class="sr">Sort by</span><select id="sortSel" data-chg="sort">${Object.entries(SORTS).map(([k, v]) => `<option value="${k}" ${S.sort === k ? 'selected' : ''}>${v}</option>`).join('')}</select></label></div>
+  <div class="sec"><h2 class="eyebrow" style="margin:0" id="bookCount">${bookCount()}</h2>
+    <button class="chip filt" data-act="filters" aria-pressed="${nf > 0}">${I.sliders} ${nf ? 'Filters · ' + nf : 'Filter &amp; sort'}</button></div>
+  ${activeFilters()}
   <div id="list">${listHtml()}</div>`;
 }
+// the Book's filters: tags and spice, allergies and diet, and sort order, all in one sheet
+const filterCount = () => (S.tag ? 1 : 0) + S.dietFilter.avoid.length + (S.dietFilter.diet ? 1 : 0) + (S.sort !== 'az' ? 1 : 0);
+function bookCount(){ const n = filtered().length; return n === S.recipes.length ? `The whole book · ${n}` : `${n} of ${S.recipes.length} recipes`; }
+function activeFilters(){
+  const bits = [];
+  if (S.tag) bits.push(`<button class="chip on" data-act="untag">${esc(tagName(S.tag))} ✕</button>`);
+  if (S.dietFilter.diet) bits.push(`<button class="chip on" data-act="dietpick" data-diet="">${S.dietFilter.diet === 'vegan' ? 'Vegan' : 'Vegetarian'} ✕</button>`);
+  S.dietFilter.avoid.forEach(a => bits.push(`<button class="chip on" data-act="dietavoid" data-a="${a}">No ${a.toLowerCase()} ✕</button>`));
+  if (S.sort !== 'az') bits.push(`<button class="chip on" data-act="sortpick" data-sort="az">${SORTS[S.sort]} ✕</button>`);
+  return bits.length ? `<div class="activef">${bits.join('')}</div>` : '';
+}
+function filtersSheet(){
+  const tc = {}; S.recipes.forEach(r => { (r.tags || []).forEach(t => tc[t] = (tc[t] || 0) + 1); if (r.spice != null) tc['spice:' + r.spice] = (tc['spice:' + r.spice] || 0) + 1; });
+  const tagKeys = [...TAGS.filter(t => tc[t]), ...[0, 1, 2, 3].map(i => 'spice:' + i).filter(k => tc[k])];
+  const f = S.dietFilter, n = filtered().length;
+  S.sheetKind = 'filters';
+  openSheet('Filter and sort', `<h2>Filter &amp; sort</h2>
+    <h3 class="sub">Sort by</h3>
+    <div class="chips" style="margin-top:6px">${Object.entries(SORTS).map(([k, v]) => `<button class="chip" data-act="sortpick" data-sort="${k}" aria-pressed="${S.sort === k}">${v}</button>`).join('')}</div>
+    ${tagKeys.length ? `<h3 class="sub">Tags &amp; spice</h3><div class="chips" style="margin-top:6px">${tagKeys.map(k => `<button class="chip" data-act="tag" data-tag="${esc(k)}" aria-pressed="${S.tag === k}">${esc(tagName(k))} · ${tc[k]}</button>`).join('')}</div>` : ''}
+    <h3 class="sub">Diet</h3>
+    <div class="chips" style="margin-top:6px">${[['', 'Anything'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']].map(([k, nm]) => `<button class="chip" data-act="dietpick" data-diet="${k}" aria-pressed="${f.diet === k}">${nm}</button>`).join('')}</div>
+    <h3 class="sub">Leave out recipes with</h3>
+    <div class="chips" style="margin-top:6px">${Diet.NAMES.map(nm => `<button class="chip" data-act="dietavoid" data-a="${nm}" aria-pressed="${f.avoid.includes(nm)}">${nm}</button>`).join('')}</div>
+    <p class="hint" style="margin-top:4px">Allergens are worked out from each recipe’s ingredients, so always check labels if someone has an allergy.</p>
+    <div class="actions" style="margin:0"><button class="btn primary" data-act="closesheet" id="dietCount">Show ${n} recipe${n === 1 ? '' : 's'}</button>${filterCount() ? '<button class="btn" data-act="filtersclear">Clear all</button>' : ''}</div>`);
+}
+const refreshFilters = () => { if (S.sheet && S.sheetKind === 'filters') filtersSheet(); render(); };
+
 // what the other cook has added or changed since this phone last looked
 function newsItems(){
   if (!S.seen) return null;
@@ -861,10 +942,11 @@ function recipeView(){
   const chk = S.checked[r.id] || {};
   const scaleLabel = b ? `Serves ${S.scale[r.id] ?? b}` : `×${fmt(S.scale[r.id] ?? 1)}`;
   return `
-  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : esc(r.title.charAt(0).toUpperCase())}
+  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : phFill(r)}
     <div class="bar"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a>
       <span style="display:flex;gap:8px"><button class="icon-btn" data-act="copy" aria-label="Share this recipe">${I.share}</button>
-      <button class="icon-btn" data-act="fav" ${S.canEdit ? '' : 'hidden'} aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button></span></div>
+      <button class="icon-btn" data-act="fav" ${S.canEdit ? '' : 'hidden'} aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button>
+      ${S.canEdit ? `<button class="icon-btn" data-act="recipemenu" aria-label="More for this recipe">${I.more}</button>` : ''}</span></div>
     <div class="ttl"><div class="eyebrow">${esc(r.category || 'Mains')}${r.serves ? ' · Serves ' + esc(r.serves) : ''}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</div><h1>${esc(r.title)}</h1></div>
   </div>
   <div class="meta">${esc(who(r))}${who(r) && r.source ? ' · ' : ''}${r.source ? `<a href="${esc(r.source)}" target="_blank" rel="noopener">${esc(host(r.source) || 'original recipe')}</a>` : ''}</div>
@@ -872,18 +954,14 @@ function recipeView(){
   ${dietBadges(r)}
   ${(r.tags || []).length || r.spice != null ? `<div class="tagline">${r.spice != null ? `<span class="tg">${r.spice ? chillies(r.spice) + ' ' : ''}${SPICE[r.spice]}</span>` : ''}${(r.tags || []).map(t => `<span class="tg">${esc(t)}</span>`).join('')}</div>` : ''}
   ${r.aiNote ? `<p class="ainote">${I.pen}<span>${esc(r.aiNote)}</span></p>` : ''}
-  ${S.me && S.canEdit ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
   ${r.needsReview && S.canEdit ? `<div class="review"><span>${esc(r.reviewNote || 'This one came across from ChefTap a bit jumbled. Give it a quick check.')}</span>
      <div class="actions" style="margin:0"><a class="btn small" href="#edit-${esc(r.id)}">Fix it</a><button class="btn small" data-act="reviewed">Looks fine</button>${r.duplicateOf ? `<button class="btn small danger" data-act="del">${S.confirmDel ? 'Tap again to delete' : 'Delete this copy'}</button>` : ''}</div></div>` : ''}
-  <div class="strip" aria-label="Photos">
-    ${shots.map(id => `<button class="shot" data-act="show" data-shot="${esc(id)}" aria-current="${id === shown}" aria-label="Show photo"><img src="${img(id)}" alt="" loading="lazy"></button>`).join('')}
-    ${S.canPhoto ? `<label class="addshot" for="photoIn">${I.cam}<span>${shots.length ? 'Ours' : 'Photo'}</span></label><input id="photoIn" type="file" accept="image/*" class="sr" data-chg="photo">` : ''}
-    ${shown && S.canPhoto ? `<span style="display:flex;flex-direction:column;gap:6px;align-self:center">${shown !== r.photo ? `<button class="btn small" data-act="makecover">Use as cover</button>` : ''}<button class="btn small danger" data-act="delphoto">${S.confirmPhoto === shown ? 'Tap again to remove' : 'Remove photo'}</button></span>` : ''}
-  </div>
-  ${!S.canEdit ? (r.note ? `<div class="note"><span class="eyebrow">Their note</span><q>${esc(r.note)}</q></div>` : '') : S.noteEdit ? `<div class="note"><label class="eyebrow" for="noteIn">Our note</label><textarea id="noteIn" rows="3" placeholder="e.g. we use 1 tsp chilli and add spinach">${esc(r.note || '')}</textarea>
-      <div class="actions" style="margin:0"><button class="btn small primary" data-act="savenote">Save note</button><button class="btn small" data-act="cancelnote">Cancel</button></div></div>`
-    : r.note ? `<div class="note"><span class="eyebrow">Our note</span><q>${esc(r.note)}</q><button class="btn small" data-act="editnote" style="align-self:flex-start">Edit note</button></div>`
-    : `<div class="actions" style="margin-top:16px"><button class="btn small" data-act="editnote">${I.pen} Add our note</button></div>`}
+  ${S.canEdit ? `<div class="quick">
+    <button data-act="planpick">${I.cal}<span>Plan</span></button>
+    <button data-act="toshop">${I.cart}<span>Shop</span></button>
+    <button data-act="made" class="${madeToday(r) ? 'on' : ''}" aria-pressed="${madeToday(r)}">${I.check}<span>${madeToday(r) ? 'Made today' : 'We made it'}</span></button>
+    <button data-act="copy">${I.share}<span>Share</span></button></div>`
+  : `<div class="actions"><button class="btn small primary" data-act="copyto">Copy to my cookbook</button><button class="btn small" data-act="copy">Share recipe</button></div>`}
   ${r.story || r.bestCook ? `<div class="story">${r.bestCook ? `<span class="eyebrow">Made best by</span><p class="best">${esc(r.bestCook)}</p>` : ''}${r.story ? `<span class="eyebrow">The story</span><p>${esc(r.story)}</p>` : ''}</div>` : ''}
   ${hasUS(r) ? `<div class="units"><span>${S.metric ? 'Converted to metric from cups, pounds and ounces' : 'Showing the original US measures'}</span>
     <button class="chip" data-act="units" aria-pressed="${!S.metric}">${S.metric ? 'Show original' : 'Show metric'}</button></div>` : ''}
@@ -903,15 +981,18 @@ function recipeView(){
   ${r.nutrition ? (() => { const n = r.nutrition; return `<div class="kcal" id="kcalBox"><div class="kc"><b>${n.kcal}</b><span>kcal</span></div><div class="kc"><b>${n.protein}g</b><span>protein</span></div><div class="kc"><b>${n.carbs}g</b><span>carbs</span></div><div class="kc"><b>${n.fat}g</b><span>fat</span></div>
       <p class="hint">Per portion, ${n.portionsAssumed ? 'assuming it makes ' + n.portions + ' (add “Serves” to the recipe to be exact)' : 'if it makes ' + n.portions}. A rough guide worked out from UK government food data${n.total ? `, counting ${n.counted} of ${n.total} ingredients` : ''}${n.missed?.length ? ` (not counted: ${esc(n.missed.slice(0, 4).join('; '))}${n.missed.length > 4 ? '…' : ''})` : ''}. <button class="linkbtn" data-act="kcal">Work it out again</button></p></div>`; })()
     : (r.ingredients || []).length && S.canEdit ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
-  ${!S.canEdit ? `<div class="actions"><button class="btn small primary" data-act="copyto">Copy to my cookbook</button><button class="btn small" data-act="copy">Share recipe</button></div>` : ''}
-  <div class="actions" ${S.canEdit ? '' : 'hidden'}>
-    <button class="btn small ${madeToday(r) ? 'on' : ''}" data-act="made" aria-pressed="${madeToday(r)}">${madeToday(r) ? '✓ Made today' : 'We made this'}</button>
-    <button class="btn small" data-act="planpick">Add to plan</button>
-    <button class="btn small" data-act="toshop">Add to shopping</button>
-    <button class="btn small" data-act="copy">Share recipe</button>
-    <a class="btn small" href="#edit-${esc(r.id)}">${I.pen} Edit</a>
-    ${!r.duplicateOf || !r.needsReview ? `<button class="btn small danger" data-act="del">${S.confirmDel ? 'Tap again to delete' : 'Delete'}</button>` : ''}
+  <section class="details"><h2 class="eyebrow">${S.canEdit ? 'Your notes &amp; photos' : 'Notes &amp; photos'}</h2>
+  ${S.me && S.canEdit ? `<div class="rate"><span class="eyebrow">Your rating</span><span class="stars" role="group" aria-label="Your rating">${[1,2,3,4,5].map(n => `<button data-act="rate" data-n="${n}" aria-label="${n} star${n > 1 ? 's' : ''}" aria-pressed="${(r.ratings || {})[S.me] === n}">${(r.ratings || {})[S.me] >= n ? I.starF : I.star}</button>`).join('')}</span>${(() => { const others = Object.entries(r.ratings || {}).filter(([k, v]) => k !== S.me && v > 0); return others.length ? `<span class="meta" style="margin:0">${others.map(([k, v]) => esc(S.names[k] || 'Someone') + ' ★' + v).join(', ')}</span>` : ''; })()}</div>` : ''}
+  <div class="strip" aria-label="Photos">
+    ${shots.map(id => `<button class="shot" data-act="show" data-shot="${esc(id)}" aria-current="${id === shown}" aria-label="Show photo"><img src="${img(id)}" alt="" loading="lazy"></button>`).join('')}
+    ${S.canPhoto ? `<label class="addshot" for="photoIn">${I.cam}<span>${shots.length ? 'Ours' : 'Photo'}</span></label><input id="photoIn" type="file" accept="image/*" class="sr" data-chg="photo">` : ''}
+    ${shown && S.canPhoto ? `<span style="display:flex;flex-direction:column;gap:6px;align-self:center">${shown !== r.photo ? `<button class="btn small" data-act="makecover">Use as cover</button>` : ''}<button class="btn small danger" data-act="delphoto">${S.confirmPhoto === shown ? 'Tap again to remove' : 'Remove photo'}</button></span>` : ''}
   </div>
+  ${!S.canEdit ? (r.note ? `<div class="note"><span class="eyebrow">Their note</span><q>${esc(r.note)}</q></div>` : '') : S.noteEdit ? `<div class="note"><label class="eyebrow" for="noteIn">Our note</label><textarea id="noteIn" rows="3" placeholder="e.g. we use 1 tsp chilli and add spinach">${esc(r.note || '')}</textarea>
+      <div class="actions" style="margin:0"><button class="btn small primary" data-act="savenote">Save note</button><button class="btn small" data-act="cancelnote">Cancel</button></div></div>`
+    : r.note ? `<div class="note"><span class="eyebrow">Our note</span><q>${esc(r.note)}</q><button class="btn small" data-act="editnote" style="align-self:flex-start">Edit note</button></div>`
+    : `<div class="actions" style="margin-top:16px"><button class="btn small" data-act="editnote">${I.pen} Add our note</button></div>`}
+  </section>
   <div class="dock"><div class="in"><a class="btn primary" href="#cook-${esc(r.id)}" ${steps.length ? '' : 'aria-disabled="true"'}>Start cooking</a></div></div>`;
 }
 function mins(m){ const h = Math.floor(m/60), mm = m % 60; return (h ? h + ' hr' : '') + (h && mm ? ' ' : '') + (mm ? mm + ' min' : ''); }
@@ -954,14 +1035,14 @@ function cookView(){
     <div class="head"><a class="icon-btn" href="#recipe-${esc(r.id)}" aria-label="Stop cooking">${I.close}</a>
       <span class="eyebrow" style="text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dual ? 'Two dishes' : esc(r.title)}</span>
       <div class="row"><button class="icon-btn ${S.handsFree ? 'live' : ''}" data-act="handsfree" aria-pressed="${S.handsFree}" aria-label="${S.handsFree ? 'Turn off hands-free' : 'Hands-free: read steps aloud and listen for commands'}">${I.mic}</button>
-      <button class="btn small" data-act="cooking" aria-pressed="${S.cookShowIng}">${S.cookShowIng ? 'Steps' : 'Ingredients'}</button></div></div>
+      <button class="btn small" data-act="cooking" aria-pressed="${S.cookShowIng}">${S.cookShowIng ? 'Steps' : 'Ingredients'}</button>
+      <button class="icon-btn" data-act="cookmenu" aria-label="Cooking options">${I.more}</button></div></div>
     ${dual ? '' : `<div class="prog" aria-hidden="true"><i style="width:${n ? ((i + 1) / n * 100) : 0}%"></i></div>`}
     ${hint}
     <div class="body">${S.cookShowIng
       ? cookIngs(r, dual) + (dual ? cookIngs(r2, true) : '')
       : dual ? cookPanel(r, S.cookStep, 1, true) + cookPanel(r2, S.cookStep2, 2, true)
-      : cookPanel(r, S.cookStep, 1, false) + `<button class="linkbtn second" data-act="cook2pick">Cooking something else at the same time? Add a second dish</button>`}
-      ${S.cookShowIng ? '' : `<button class="linkbtn second" data-act="simple">${S.simple ? 'Simple mode is on · turn off' : 'New to cooking? Turn on simple mode'}</button>`}</div>
+      : cookPanel(r, S.cookStep, 1, false)}</div>
     ${dual ? '' : `<div class="foot"><button class="btn" data-act="step" data-d="-1" ${i === 0 ? 'disabled' : ''}>Back</button>
       ${i < n - 1 ? `<button class="btn primary" data-act="step" data-d="1">Next step</button>` : `<button class="btn primary" data-act="finish">${madeToday(r) ? 'Finish' : 'Finish · we made this'}</button>`}</div>`}
   </div>`;
@@ -1011,14 +1092,23 @@ function shopView(){
   <form class="shop-add" data-act="noop" onsubmit="return false"><label class="sr" for="shopIn">Add an item</label><input id="shopIn" placeholder="Add an item, e.g. milk" autocomplete="off"><button class="btn primary" data-act="additem" type="button">Add</button></form>
   ${usuals.length ? `<div class="usuals"><span class="eyebrow">Usuals · tap to add</span><div class="chips">${usuals.map(u => { const on = have.has(u.trim().toLowerCase()); return `<button class="chip" data-act="usual" data-text="${esc(u)}" aria-pressed="${on}">${on ? '✓' : '+'} ${esc(u)}</button>`; }).join('')}</div></div>` : ''}
   <div class="shopbar">
-    ${items.length ? `<button class="btn small ${S.shopMode ? 'on' : ''}" data-act="shopmode" aria-pressed="${S.shopMode}">${S.shopMode ? '✓ Shop mode' : 'Shop mode'}</button>` : ''}
-    <button class="btn small" data-act="pantry">Cupboard &amp; usuals</button>
-    ${open.length ? `<button class="btn small" data-act="sendlist">Send list</button>` : ''}
-    ${items.length ? `<button class="btn small" data-act="aisle">Combine &amp; sort by aisle</button>
-      ${done.length ? `<button class="btn small" data-act="clearDone">Clear ${done.length} ticked</button>` : ''}
-      <button class="btn small danger" data-act="clearAll">${S.confirmClear ? 'Tap again to empty' : 'Empty list'}</button>` : ''}</div>
+    ${items.length ? `<button class="btn small ${S.shopMode ? 'on' : ''}" data-act="shopmode" aria-pressed="${S.shopMode}">${S.shopMode ? '✓ Shop mode' : 'Shop mode'}</button>
+      <button class="btn small" data-act="aisle">Sort by aisle</button>` : ''}
+    ${open.length ? `<button class="btn small" data-act="sendlist">Send</button>` : ''}
+    <button class="icon-btn small" data-act="shopmenu" aria-label="More shopping options">${I.more}</button></div>
   <div id="aisleMsg"></div>
   <div class="${S.shopMode ? 'shopmode' : ''}">${items.length ? listHtml : `<div class="empty"><h2>Nothing on the list</h2>Open a recipe and tap “Add to shopping”, or add things above.</div>`}</div>`;
+}
+function shopMenu(){
+  const items = S.shop.items || [], done = items.filter(i => i.done).length;
+  openSheet('Shopping options', `<h2>Shopping list</h2>
+    <div class="menu">
+      <button class="mrow" data-act="pantry"><b>Cupboard &amp; usuals</b><span>Things you always have in, and things you buy most weeks</span></button>
+      ${items.length ? `<button class="mrow" data-act="aisle"><b>Combine &amp; sort by aisle</b><span>Merges duplicates like 2 onions + 1 onion</span></button>` : ''}
+      ${done ? `<button class="mrow" data-act="clearDone"><b>Clear ${done} ticked</b></button>` : ''}
+      ${items.length ? `<button class="mrow danger" data-act="clearAll"><b>${S.confirmClear ? 'Tap again to empty the list' : 'Empty the list'}</b></button>` : ''}
+    </div>
+    <button class="btn" data-act="closesheet">Close</button>`);
 }
 function pantrySheet(focus){
   const st = staples(), us = S.pantry?.usuals || [];
@@ -1073,8 +1163,8 @@ function planView(){
     <button class="icon-btn" data-act="week" data-d="1" aria-label="Next week" style="transform:scaleX(-1)">${I.back}</button></div>
   ${count ? `<div class="actions" style="margin-top:12px"><button class="btn small primary" data-act="shopweek">Shop for ${S.week === 0 ? 'this week' : 'this week’s plan'} · ${count} recipe${count > 1 ? 's' : ''}</button></div>` : ''}
   <ol class="days">${days.map(d => { const k = dayKey(d); const ids = plan[k] || [];
-    return `<li class="day${k === today ? ' today' : ''}"><div class="dh"><span>${k === today ? 'Today · ' : ''}${dayName(d)}</span><button class="btn small" data-act="planadd" data-day="${k}">${I.plus} Add</button></div>
-      ${ids.length ? `<ul class="list">${ids.map(id => { const r = byId(id); if (!r) return ''; return `<li class="prow">${rowHtml(r).replace(/^<li>|<\/li>$/g, '')}<button class="icon-btn" data-act="unplan" data-day="${k}" data-id="${esc(id)}" aria-label="Remove ${esc(r.title)} from ${dayName(d)}">${I.close}</button></li>`; }).join('')}</ul>` : `<p class="hint">Nothing planned.</p>`}</li>`; }).join('')}</ol>`;
+    return `<li class="day${k === today ? ' today' : ''}${ids.length ? '' : ' empty'}"><div class="dh"><span>${k === today ? 'Today · ' : ''}${dayName(d)}</span><button class="btn small" data-act="planadd" data-day="${k}">${I.plus} Add</button></div>
+      ${ids.length ? `<ul class="list">${ids.map(id => { const r = byId(id); if (!r) return ''; return `<li class="prow">${rowHtml(r).replace(/^<li>|<\/li>$/g, '')}<button class="icon-btn" data-act="unplan" data-day="${k}" data-id="${esc(id)}" aria-label="Remove ${esc(r.title)} from ${dayName(d)}">${I.close}</button></li>`; }).join('')}</ul>` : ''}</li>`; }).join('')}</ol>`;
 }
 function fridgeResults(){
   const terms = S.fridge.toLowerCase().split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 1);
@@ -1179,32 +1269,38 @@ function feedbackSheet(){
     <button class="btn" data-act="closesheet">Cancel</button>`);
 }
 function moreSheet(){
-  const awakeHint = S.awake === 'unsupported' ? 'This phone or browser can’t keep the screen on from an app.'
-    : S.awake === 'blocked' ? 'Your phone said no this time. Tap anywhere in the app to try again, or turn off Low Power Mode.'
-    : S.awakeOn ? 'The screen stays on while Spoonbook is open.' : 'Your phone will sleep as normal.';
+  const awakeHint = S.awake === 'unsupported' ? 'Not possible on this phone' : S.awake === 'blocked' ? 'Your phone said no. Tap anywhere to try again' : S.awakeOn ? 'Stays on while Spoonbook is open' : 'Sleeps as normal';
   const hh = Backend.household;
   openSheet('More', `<h2>More</h2>
-    <div class="opt" style="display:block"><b>${esc(hh.name)}</b>
-      <span class="hint" style="display:block;margin-top:2px">${S.canEdit ? 'You can add and change recipes' : 'View only'} · ${Backend.members.length} ${Backend.members.length === 1 ? 'person' : 'people'}${Backend.cookbooks.length > 1 ? ` · one of your ${Backend.cookbooks.length} cookbooks` : ''}</span>
+    <div class="opt bookcard"><b>${esc(hh.name)}</b>
+      <span class="hint">${S.canEdit ? 'You can add and change recipes' : 'View only'} · ${Backend.members.length} ${Backend.members.length === 1 ? 'person' : 'people'}${Backend.cookbooks.length > 1 ? ` · ${Backend.cookbooks.length} cookbooks` : ''}</span>
       <div class="actions" style="margin-top:10px"><button class="btn small" data-act="people">${S.canEdit ? 'People &amp; invites' : 'People'}</button><button class="btn small" data-act="books">${Backend.cookbooks.length > 1 ? 'Switch cookbook' : 'Your cookbooks'}</button></div></div>
-    <button class="opt" data-act="shareapp"><span class="ic">${I.link}</span><span><b>Share Spoonbook</b><span>Send the app to friends or family so they can start their own cookbook.</span></span></button>
-    <button class="opt" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>For less confident cooks: one action at a time, cooking words explained, a prep list before you start, and safety tips. Recipes aren’t changed.</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
-    <button class="opt" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
-    ${S.canSave ? `<button class="opt" data-act="export" data-fmt="json"><span><b>Back up all recipes</b><span>One file with everything, ready to bring into another app later.</span></span></button>
-    <button class="opt" data-act="export" data-fmt="md"><span><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes as a text document you can print or read anywhere.</span></span></button>`
-    : `<p class="hint">Downloads aren’t available in this view.</p>`}
-    ${S.canEdit ? `<label class="opt" for="zipIn"><span><b>Import a backup</b><span>Bring in recipes and photos from a Spoonbook backup file (.zip).</span></span></label>
+    <h3 class="mhead">Settings</h3>
+    <div class="menu">
+      <button class="mrow" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>Extra help for less confident cooks</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+      <button class="mrow" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+      <button class="mrow" data-act="theme"><span style="flex:1"><b>${isDark() ? 'Light' : 'Dark'} look</b><span>Switch to the ${isDark() ? 'light' : 'dark'} colours</span></span></button>
+    </div>
+    ${S.canEdit ? `<h3 class="mhead">Recipes</h3>
+    <div class="menu">
+      <button class="mrow" data-act="sheet" data-mode="bulk"><b>Import from emails or other apps</b><span>Lots at once: saved emails, ChefTap and more</span></button>
+      <label class="mrow" for="zipIn"><b>Import a Spoonbook backup</b><span>A .zip made by “Back up all recipes”</span></label>
+      ${S.canSave ? `<button class="mrow" data-act="export" data-fmt="json"><b>Back up all recipes</b><span>One file with everything, photos included</span></button>
+      <button class="mrow" data-act="export" data-fmt="md"><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes in one document</span></button>` : ''}
+      <button class="mrow" data-act="gobin"><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back anything from the last 30 days</span></button>
+    </div>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
-    <button class="opt" data-act="sheet" data-mode="bulk"><span><b>Import from old emails or files</b><span>Bring in lots of recipes at once from saved emails, an email folder or text files.</span></span></button>
-    <div id="importMsg"></div>
-    <button class="opt" data-act="gobin"><span><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back a recipe deleted in the last 30 days.</span></span></button>` : ''}
-    <button class="opt" data-act="feedback"><span><b>Send feedback</b><span>Spotted a problem or got an idea? It goes straight to the person who makes Spoonbook.</span></span></button>
-    ${Backend.plan?.enabled ? `<button class="opt" data-act="upgrade"><span><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook.' : `Free cookbooks hold ${Backend.plan.limit} recipes. Plus has no limit.`}</span></span></button>` : ''}
-    <p class="hint" style="font-size:12px">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>
+    <div id="importMsg"></div>` : ''}
+    <h3 class="mhead">Spoonbook</h3>
+    <div class="menu">
+      <button class="mrow" data-act="shareapp"><b>Share Spoonbook</b><span>Send the app to friends and family</span></button>
+      ${Backend.plan?.enabled ? `<button class="mrow" data-act="upgrade"><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook' : `Free cookbooks hold ${Backend.plan.limit} recipes`}</span></button>` : ''}
+      <button class="mrow" data-act="feedback"><b>Send feedback</b><span>Problems or ideas, straight to the maker</span></button>
+    </div>
     <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
     <button class="btn" data-act="closesheet">Close</button>
-    <button class="linkbtn" data-act="delacct" style="color:var(--danger);align-self:center">Delete my account</button>
-    <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy policy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p>`);
+    <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <button class="linkbtn" data-act="delacct" style="color:var(--danger);font-size:12px">Delete my account</button></p>
+    <p class="hint" style="font-size:11px;opacity:.75">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>`);
 }
 function recipeText(r){
   const f = factor(r);
@@ -1258,7 +1354,7 @@ function clipSheet(mode){
   overlay.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
   overlay.querySelector('textarea,button,label')?.focus?.();
 }
-function closeSheet(){ S.sheet = null; S.aiCtl?.abort(); overlay.innerHTML = ''; }
+function closeSheet(){ S.sheet = null; S.sheetKind = null; S.aiCtl?.abort(); overlay.innerHTML = ''; }
 
 function guessCategory(title, ings){
   const t = (title + ' ' + ings.join(' ')).toLowerCase(), n = title.toLowerCase();
@@ -1399,7 +1495,7 @@ document.addEventListener('focusout', () => setTimeout(() => { if (S.pending && 
 
 /* ---------- events ---------- */
 const A = {
-  theme(){ const t = isDark() ? 'light' : 'dark'; applyTheme(t); ls.set('sb-theme', t); render(); },
+  theme(b){ const t = isDark() ? 'light' : 'dark'; applyTheme(t); ls.set('sb-theme', t); render(); if (b?.closest?.('.sheet')) moreSheet(); },
   clip(){ clipSheet('menu'); },
   sheet(b){ clipSheet(b.dataset.mode); },
   closesheet: closeSheet,
@@ -1437,6 +1533,7 @@ const A = {
   },
   async makecover(){ const r = byId(S.id); const pick = S.cover[r.id]; const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== pick); await patch(r.id, { photo: pick, photos: rest }); delete S.cover[r.id]; toast('Cover photo updated'); },
   async toshop(){
+    if (S.sheet) closeSheet();
     const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
     const lines = r.ingredients || [], skip = lines.filter(isStaple);
     const add = lines.filter(l => !isStaple(l)).map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }));
@@ -1461,10 +1558,11 @@ const A = {
     S.confirmPurge = null; const r = S.bin.find(x => x.id === id); if (r) await purgeRecipe(r); toast('Deleted for good');
   },
   seen(){ const n = newsItems(); S.seen = Math.max(Date.now(), ...(n ? [...n.fresh.map(r => r.createdAt || 0), ...n.changed.map(r => r.editedAt || 0)] : [])) + 1; ls.set('sb-seen-' + Backend.household.id, String(S.seen)); render(); },
-  tag(b){ S.tag = S.tag === b.dataset.tag ? null : b.dataset.tag; render(); },
+  tag(b){ S.tag = S.tag === b.dataset.tag ? null : b.dataset.tag; refreshFilters(); },
   upgrade(){ upgradeSheet(); Backend.refreshPlan?.(); },
   shopmode(){ S.shopMode = !S.shopMode; ls.set('sb-shopmode', S.shopMode ? 'on' : 'off'); render(); },
   pantry(){ pantrySheet(); },
+  shopmenu(){ shopMenu(); },
   async addstaple(){ const v = overlay.querySelector('#stapleIn').value.trim().toLowerCase(); if (!v) return; if (!staples().includes(v)) await setPantry({ staples: [...staples(), v] }); pantrySheet('stapleIn'); },
   async unstaple(b){ await setPantry({ staples: staples().filter(x => x !== b.dataset.text) }); pantrySheet(); },
   async addusual(){ const us = S.pantry?.usuals || []; const vs = overlay.querySelector('#usualIn').value.split(',').map(x => x.trim()).filter(Boolean).filter(x => !us.some(u => u.toLowerCase() === x.toLowerCase())); if (vs.length) await setPantry({ usuals: [...us, ...vs] }); pantrySheet('usualIn'); },
@@ -1476,20 +1574,29 @@ const A = {
   },
   cooking(){ S.cookShowIng = !S.cookShowIng; render(true); },
   step(b){ moveStep(b.dataset.w === '2' ? 2 : 1, +b.dataset.d); },
-  handsfree(){ handsFree(!S.handsFree); },
+  handsfree(){ if (S.sheet) closeSheet(); handsFree(!S.handsFree); },
   simple(b){
     // keep your place in cooking mode when switching
     const r = S.view === 'cook' ? byId(S.id) : null; let at = 0;
     if (r){ const steps = r.steps || []; const before = csteps(r)[S.cookStep]; at = steps.findIndex(st => S.simple ? Simple.splitStep(st).includes(before) : st === before); }
     S.simple = !S.simple; ls.set('sb-simple', S.simple ? 'on' : 'off');
     if (r && at >= 0){ const steps = r.steps || []; S.cookStep = S.simple ? steps.slice(0, at).flatMap(st => Simple.splitStep(st)).length : at; }
-    if (b.closest('.sheet')) moreSheet(); else render(true);
+    if (b.closest('.sheet')){ if (S.view === 'cook'){ closeSheet(); render(true); } else moreSheet(); } else render(true);
     toast(S.simple ? 'Simple mode on' : 'Simple mode off');
   },
   term(b){ const g = Simple.term(b.dataset.g); if (!g) return; openSheet('What it means', `<h2>${esc(b.textContent.trim().replace(/^./, c => c.toUpperCase()))}</h2><p style="margin:0;font-size:18px;line-height:1.55">${esc(g.d)}</p><button class="btn primary" data-act="closesheet">Got it</button>`); },
   cook2pick(){ recipePickSheet(null, 'cook2this'); },
+  cookmenu(){
+    openSheet('Cooking options', `<h2>Cooking options</h2>
+      <div class="menu">
+        ${S.cook2 ? `<button class="mrow" data-act="cook2off"><b>Stop cooking the second dish</b></button>` : `<button class="mrow" data-act="cook2pick"><b>Cook a second dish alongside</b><span>Two recipes side by side, each with its own steps and timers</span></button>`}
+        <button class="mrow" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>One action at a time, cooking words explained</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+        <button class="mrow" data-act="handsfree" role="switch" aria-checked="${S.handsFree}"><span style="flex:1"><b>Hands-free</b><span>Reads steps aloud and listens for “next”, “back”, “timer”</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+      </div>
+      <button class="btn" data-act="closesheet">Done</button>`);
+  },
   cook2this(b){ S.cook2 = b.dataset.id; S.cookStep2 = 0; closeSheet(); render(true); if (S.handsFree) readStep(2); },
-  cook2off(){ S.cook2 = null; render(true); },
+  cook2off(){ if (S.sheet) closeSheet(); S.cook2 = null; render(true); },
   async madeid(b){
     const r = byId(b.dataset.id); if (!r) return; const c = r.cooked || [];
     if (madeToday(r)) await patch(r.id, { cooked: c.filter(t => dayKey(new Date(t)) !== dayKey(new Date())) });
@@ -1522,9 +1629,9 @@ const A = {
     const inp = document.getElementById('shopIn'); const v = inp.value.trim(); if (!v) return;
     inp.value = ''; await setShop([...(S.shop.items || []), { id: rid(), text: v, from: 'Extras', done: false }]); inp.focus();
   },
-  async clearDone(){ await setShop((S.shop.items || []).filter(i => !i.done)); },
-  async clearAll(){ if (!S.confirmClear){ S.confirmClear = true; render(); setTimeout(() => { S.confirmClear = false; }, 4000); return; } S.confirmClear = false; await setShop([]); },
-  async aisle(b){ b.disabled = true; await sortAisles(document.getElementById('aisleMsg')); b.disabled = false; },
+  async clearDone(){ if (S.sheet) closeSheet(); await setShop((S.shop.items || []).filter(i => !i.done)); },
+  async clearAll(){ if (!S.confirmClear){ S.confirmClear = true; if (S.sheet) shopMenu(); else render(); setTimeout(() => { S.confirmClear = false; }, 4000); return; } S.confirmClear = false; if (S.sheet) closeSheet(); await setShop([]); },
+  async aisle(b){ if (S.sheet) closeSheet(); b.disabled = true; await sortAisles(document.getElementById('aisleMsg')); b.disabled = false; },
   timer(b){ startTimer(b.dataset.label, +b.dataset.m); },
   killtimer(b){ T.list = T.list.filter(t => t.id !== b.dataset.id); saveTimers(); paintTimers(true); },
   async made(){
@@ -1543,10 +1650,33 @@ const A = {
   },
   more(){ moreSheet(); },
   books(){ booksSheet(); },
-  diet(){ dietSheet(); },
-  dietpick(b){ S.dietFilter.diet = b.dataset.diet; ls.set('sb-diet', JSON.stringify(S.dietFilter)); dietSheet(); render(); },
-  dietavoid(b){ const a = b.dataset.a, l = S.dietFilter.avoid; S.dietFilter.avoid = l.includes(a) ? l.filter(x => x !== a) : [...l, a]; ls.set('sb-diet', JSON.stringify(S.dietFilter)); dietSheet(); render(); },
-  dietclear(){ S.dietFilter = { avoid: [], diet: '' }; ls.set('sb-diet', JSON.stringify(S.dietFilter)); closeSheet(); render(); },
+  recipemenu(){
+    const r = byId(S.id); S.confirmDel = false;
+    openSheet('Recipe options', `<h2>${esc(r.title)}</h2>
+      <div class="menu">
+        <a class="mrow" href="#edit-${esc(r.id)}" data-act="closesheetnav"><b>${I.pen} Edit recipe</b></a>
+        ${S.canPhoto ? `<label class="mrow" for="photoIn"><b>${I.cam} Add a photo</b></label>` : ''}
+        <button class="mrow" data-act="planpick"><b>${I.cal} Add to the plan</b></button>
+        <button class="mrow" data-act="toshop"><b>${I.cart} Add ingredients to shopping</b></button>
+        ${(r.ingredients || []).length ? `<button class="mrow" data-act="kcal"><b>Work out calories per portion</b></button>` : ''}
+        <button class="mrow" data-act="print"><b>Print it</b></button>
+        <button class="mrow danger" data-act="delmenu"><b>${S.confirmDelMenu ? 'Tap again to delete' : 'Delete recipe'}</b><span>Goes to Recently deleted for 30 days</span></button>
+      </div>
+      <button class="btn" data-act="closesheet">Close</button>`);
+  },
+  closesheetnav(){ closeSheet(); },
+  async delmenu(){
+    if (!S.confirmDelMenu){ S.confirmDelMenu = true; A.recipemenu(); setTimeout(() => { S.confirmDelMenu = false; }, 4000); return; }
+    S.confirmDelMenu = false; closeSheet(); S.confirmDel = true; await A.del();
+  },
+  diet(){ filtersSheet(); },
+  filters(){ filtersSheet(); },
+  dietpick(b){ S.dietFilter.diet = b.dataset.diet; ls.set('sb-diet', JSON.stringify(S.dietFilter)); refreshFilters(); },
+  dietavoid(b){ const a = b.dataset.a, l = S.dietFilter.avoid; S.dietFilter.avoid = l.includes(a) ? l.filter(x => x !== a) : [...l, a]; ls.set('sb-diet', JSON.stringify(S.dietFilter)); refreshFilters(); },
+  dietclear(){ A.filtersclear(); },
+  filtersclear(){ S.dietFilter = { avoid: [], diet: '' }; ls.set('sb-diet', JSON.stringify(S.dietFilter)); S.tag = null; S.sort = 'az'; ls.set('sb-sort', 'az'); closeSheet(); render(); },
+  sortpick(b){ S.sort = b.dataset.sort; ls.set('sb-sort', S.sort); refreshFilters(); },
+  untag(){ S.tag = null; render(); },
   dietinfo(){
     const r = byId(S.id); const d = dietOf(r);
     openSheet('Allergens', `<h2>Allergy &amp; diet guide</h2>
@@ -1686,6 +1816,7 @@ const A = {
   },
   units(){ S.metric = !S.metric; ls.set('sb-units', S.metric ? 'metric' : 'us'); render(); },
   async kcal(){
+    if (S.sheet) closeSheet();
     const r = byId(S.id); if (!r) return;
     const n = Local.nutrition(r);
     await patch(r.id, { nutrition: { portions: n.portions, portionsAssumed: n.portionsAssumed, kcal: n.kcal, protein: n.protein, carbs: n.carbs, fat: n.fat, counted: n.counted, total: n.total, missed: n.missed.slice(0, 12), source: 'CoFID', estimatedAt: Date.now() } });
@@ -1761,7 +1892,7 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('Recipe copied — paste it into a message'); }
     catch { openSheet('Copy recipe', `<h2>Copy recipe</h2><p class="hint">Select all and copy.</p><textarea id="copyBox" readonly style="min-height:300px">${esc(t)}</textarea><button class="btn" data-act="closesheet">Done</button>`); const box = document.getElementById('copyBox'); box.focus(); box.select(); }
   },
-  planpick(){ dayPickSheet(); },
+  planpick(){ closeSheet(); dayPickSheet(); },
   async planon(b){
     const days = { ...(S.plan.days || {}) }; const k = b.dataset.day;
     days[k] = [...(days[k] || []), S.id]; closeSheet(); await setPlan(days);
@@ -1792,17 +1923,18 @@ const A = {
   }
 };
 // things only editors can do; a viewer is told the cookbook is view only
-const EDIT_ACTS = new Set(['clip','typein','readpaste','cliplink','fav','reviewed','editnote','savenote','makecover','delphoto','toshop','del','save','additem','clearDone','clearAll','aisle','made','madeid','rate','planpick','planon','planadd','planthis','unplan','shopweek','restore','purge','usual','addstaple','unstaple','addusual','unusual','pantry','kcal','samples','shoptick']);
+const EDIT_ACTS = new Set(['shopmenu','recipemenu','delmenu','clip','typein','readpaste','cliplink','fav','reviewed','editnote','savenote','makecover','delphoto','toshop','del','save','additem','clearDone','clearAll','aisle','made','madeid','rate','planpick','planon','planadd','planthis','unplan','shopweek','restore','purge','usual','addstaple','unstaple','addusual','unusual','pantry','kcal','samples','shoptick']);
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const fn = A[b.dataset.act]; if (!fn) return;
   if (!S.canEdit && EDIT_ACTS.has(b.dataset.act)){ e.preventDefault(); toast('This cookbook is view only'); return; }
-  if (b.tagName === 'A' && !['canceledit','done'].includes(b.dataset.act) && !(b.dataset.act === 'closesheet' && b.target === '_blank')) e.preventDefault();
+  if (b.tagName === 'A' && !['canceledit','done','closesheetnav'].includes(b.dataset.act) && !(b.dataset.act === 'closesheet' && b.target === '_blank')) e.preventDefault();
   fn(b, e);
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.sheet) closeSheet();
   if (e.key === 'Enter' && e.target.id === 'shopIn'){ e.preventDefault(); A.additem(); }
+  if (e.key === 'Enter' && (e.target.id === 'q' || e.target.id === 'fridgeIn')){ e.preventDefault(); e.target.blur(); const l = document.getElementById(e.target.id === 'q' ? 'bookCount' : 'fridgeList'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (S.pending) render(); }
   if (e.key === 'Enter' && e.target.id === 'stapleIn'){ e.preventDefault(); A.addstaple(); }
   if (e.key === 'Enter' && e.target.id === 'usualIn'){ e.preventDefault(); A.addusual(); }
   if (e.key === 'Enter' && e.target.id === 'joinIn'){ e.preventDefault(); A.joinbook(overlay.querySelector('[data-act="joinbook"]')); }
@@ -1810,7 +1942,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'fridgeIn'){ S.fridge = e.target.value; document.getElementById('fridgeList').innerHTML = fridgeResults(); return; }
   if (e.target.id === 'pickQ'){ document.getElementById('pickList').innerHTML = recipePickList(e.target.value); return; }
-  if (e.target.id === 'q'){ S.q = e.target.value; const l = document.getElementById('list'); if (l) l.innerHTML = listHtml(); const p = document.getElementById('picksWrap'); if (p) p.hidden = !!S.q; }
+  if (e.target.id === 'q'){ S.q = e.target.value; const l = document.getElementById('list'); if (l) l.innerHTML = listHtml(); const p = document.getElementById('picksWrap'); if (p) p.hidden = !!S.q; const c = document.getElementById('bookCount'); if (c) c.textContent = bookCount(); }
 });
 document.addEventListener('change', async e => {
   const t = e.target, k = t.dataset.chg; if (!k) return;
