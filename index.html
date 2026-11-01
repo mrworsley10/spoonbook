@@ -855,7 +855,7 @@ function bookView(){
 }
 // the Book's filters: tags and spice, allergies and diet, and sort order, all in one sheet
 const filterCount = () => (S.tag ? 1 : 0) + S.dietFilter.avoid.length + (S.dietFilter.diet ? 1 : 0) + (S.sort !== 'az' ? 1 : 0);
-function bookCount(){ const n = filtered().length; return n === S.recipes.length ? `The whole book · ${n}` : `${n} of ${S.recipes.length} recipes`; }
+function bookCount(){ const n = filtered().length; return n === S.recipes.length ? `The whole book · ${n}` : `${n} of ${S.recipes.length} recipe${S.recipes.length === 1 ? '' : 's'}`; }
 function activeFilters(){
   const bits = [];
   if (S.tag) bits.push(`<button class="chip on" data-act="untag">${esc(tagName(S.tag))} ✕</button>`);
@@ -953,7 +953,7 @@ function dietSheet(){
     <div class="chips" style="margin-top:6px">${[['', 'Anything'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']].map(([k, n]) => `<button class="chip" data-act="dietpick" data-diet="${k}" aria-pressed="${f.diet === k}">${n}</button>`).join('')}</div>
     <h3 class="sub">Leave out recipes with</h3>
     <div class="chips" style="margin-top:6px">${Diet.NAMES.map(n => `<button class="chip" data-act="dietavoid" data-a="${n}" aria-pressed="${f.avoid.includes(n)}">${n}</button>`).join('')}</div>
-    <p class="hint" id="dietCount" style="margin-top:4px">${S.recipes.filter(dietPasses).length} of ${S.recipes.length} recipes suit.</p>
+    <p class="hint" id="dietCount" style="margin-top:4px">${S.recipes.filter(dietPasses).length} of ${S.recipes.length} recipe${S.recipes.length === 1 ? '' : 's'} suit${S.recipes.filter(dietPasses).length === 1 && S.recipes.length === 1 ? 's' : ''}.</p>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="closesheet">Show recipes</button>${dietActive() ? '<button class="btn" data-act="dietclear">Clear</button>' : ''}</div>`);
 }
 function dietBadges(r){
@@ -1218,7 +1218,7 @@ function fridgeResults(){
   const scored = S.recipes.map(r => { const hay = (r.ingredients || []).join(' ').toLowerCase(); const hit = terms.filter(t => hay.includes(t.replace(/(es|s)$/, ''))); return { r, hit }; })
     .filter(x => x.hit.length).sort((a, b) => b.hit.length - a.hit.length || (a.r.ingredients || []).length - (b.r.ingredients || []).length);
   if (!scored.length) return `<div class="empty">No recipes use any of those. Try simpler words, like “chicken” or “cream”.</div>`;
-  return `<ul class="list">${scored.slice(0, 40).map(({ r, hit }) => rowHtml(r, `Uses ${hit.length} of ${terms.length}: ${esc(hit.join(', '))} · ${(r.ingredients || []).length} ingredients`)).join('')}</ul>`;
+  return `<ul class="list">${scored.slice(0, 40).map(({ r, hit }) => rowHtml(r, `Uses ${hit.length} of ${terms.length}: ${esc(hit.join(', '))} · ${(r.ingredients || []).length} ingredient${(r.ingredients || []).length === 1 ? '' : 's'}`)).join('')}</ul>`;
 }
 function fridgeView(){
   return `<div class="top"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a><span class="eyebrow">What can I make?</span><span style="width:44px"></span></div>
@@ -1351,7 +1351,7 @@ function moreSheet(){
       <button class="mrow" data-act="sheet" data-mode="bulk"><b>Import from emails or other apps</b><span>Lots at once: saved emails, ChefTap and more</span></button>
       <label class="mrow" for="zipIn"><b>Import a Spoonbook backup</b><span>A .zip made by “Back up all recipes”</span></label>
       ${S.canSave ? `<button class="mrow" data-act="export" data-fmt="json"><b>Back up all recipes</b><span>One file with everything, photos included</span></button>
-      <button class="mrow" data-act="export" data-fmt="md"><b>Download as a readable cookbook</b><span>All ${S.recipes.length} recipes in one document</span></button>` : ''}
+      <button class="mrow" data-act="export" data-fmt="md"><b>Download as a readable cookbook</b><span>${S.recipes.length === 1 ? 'Your recipe' : `All ${S.recipes.length} recipes`} in one document</span></button>` : ''}
       <button class="mrow" data-act="gobin"><b>Recently deleted${S.bin.length ? ' · ' + S.bin.length : ''}</b><span>Bring back anything from the last 30 days</span></button>
     </div>
     <input id="zipIn" type="file" accept=".zip,application/zip" class="sr" data-chg="importzip">
@@ -1375,7 +1375,7 @@ async function sortAisles(statusEl){
   const open = (S.shop.items || []).filter(i => !i.done); if (!open.length) return;
   const merged = Local.combine(open).map(i => ({ id: rid(), text: i.text, aisle: i.aisle, done: false }));
   await setShop([...merged, ...(S.shop.items || []).filter(i => i.done)]);
-  toast(merged.length < open.length ? `Combined into ${merged.length} items and sorted by aisle` : 'Sorted by aisle');
+  toast(merged.length < open.length ? `Combined into ${merged.length} item${merged.length === 1 ? '' : 's'} and sorted by aisle` : 'Sorted by aisle');
 }
 
 /* ---------- clip sheet ---------- */
@@ -2059,7 +2059,7 @@ document.addEventListener('change', async e => {
     const m = document.getElementById('importMsg');
     const say = x => { if (m) m.innerHTML = `<div class="thinking"><span class="spin"></span>${esc(x)}</div>`; };
     say('Opening the backup…');
-    try { const res = await Backend.importBackup(t.files[0], say); if (m) m.innerHTML = `<p class="hint">Imported ${res.recipes} recipes and ${res.photos} photos.</p>`; await db.reload?.(); toast('Backup imported'); }
+    try { const res = await Backend.importBackup(t.files[0], say); if (m) m.innerHTML = `<p class="hint">Imported ${res.recipes} recipe${res.recipes === 1 ? '' : 's'} and ${res.photos} photo${res.photos === 1 ? '' : 's'}.</p>`; await db.reload?.(); toast('Backup imported'); }
     catch (err) { if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(err?.message || 'The import didn’t work. Try again.')}</p>`; }
     return;
   }
