@@ -325,6 +325,10 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .icon-btn.small{width:38px;height:38px}
 .shopbar{align-items:center}
 /* polish: plan */
+.trolleybar{position:relative;margin:-6px 0 12px;padding:10px 14px;border-radius:12px;background:var(--surface);overflow:hidden;font-size:15px}
+.trolleybar span{position:relative;z-index:1}
+.trolleybar b{color:var(--accent)}
+.trolleybar i{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--accent) 18%,transparent);transition:width .3s}
 .day.empty{padding:8px 0}
 .day.empty .dh{font-size:17px;color:var(--muted)}
 .day.empty .btn{height:32px}
@@ -1088,7 +1092,8 @@ function shopView(){
   const listHtml = S.shopMode
     ? groupHtml(groupsOf(open)) + (done.length ? `<div class="group trolley"><h3>In the trolley · ${done.length}</h3><ul class="ings">${done.map(li).join('')}</ul></div>` : '')
     : groupHtml(groupsOf(items));
-  return topBar() + `<h1 class="hello">${S.shopMode ? `${open.length ? open.length + ' to' : 'All'}<br><em>${open.length ? 'get.' : 'done.'}</em>` : 'Shopping<br><em>list.</em>'}</h1>
+  return topBar() + `<h1 class="hello">Shopping<br><em>list.</em></h1>
+  ${S.shopMode && items.length ? `<div class="trolleybar" role="status"><span>${open.length ? `<b>${done.length} of ${items.length}</b> in the trolley · ${open.length} to get` : '<b>All done!</b> Everything’s in the trolley'}</span><i style="width:${Math.round(done.length / items.length * 100)}%"></i></div>` : ''}
   <form class="shop-add" data-act="noop" onsubmit="return false"><label class="sr" for="shopIn">Add an item</label><input id="shopIn" placeholder="Add an item, e.g. milk" autocomplete="off"><button class="btn primary" data-act="additem" type="button">Add</button></form>
   ${usuals.length ? `<div class="usuals"><span class="eyebrow">Usuals · tap to add</span><div class="chips">${usuals.map(u => { const on = have.has(u.trim().toLowerCase()); return `<button class="chip" data-act="usual" data-text="${esc(u)}" aria-pressed="${on}">${on ? '✓' : '+'} ${esc(u)}</button>`; }).join('')}</div></div>` : ''}
   <div class="shopbar">
