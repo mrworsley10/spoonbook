@@ -511,6 +511,17 @@ window.Backend = {
   },
   async rename(name){ await sb.from('members').update({ display_name: name }).eq('household_id', household.id).eq('user_id', session.user.id); const me = members.find(m => m.user_id === session.user.id); if (me) me.display_name = name; },
   signOut: () => sb.auth.signOut(),
+  // account settings
+  get provider(){ const p = session?.user?.app_metadata?.providers || [session?.user?.app_metadata?.provider]; return p.includes('google') && !p.includes('email') ? 'google' : 'email'; },
+  myName(){ return members.find(m => m.user_id === session?.user?.id)?.display_name || cookbooks[0]?.myName || ''; },
+  async setMyName(name){
+    // the same name in every cookbook this person belongs to
+    const { error } = await sb.from('members').update({ display_name: name }).eq('user_id', session.user.id);
+    if (error) throw error;
+    members.forEach(m => { if (m.user_id === session.user.id) m.display_name = name; }); cookbooks.forEach(c => c.myName = name);
+  },
+  async setEmail(email){ const { error } = await sb.auth.updateUser({ email }, { emailRedirectTo: location.origin + location.pathname }); if (error) throw error; },
+  async setPassword(password){ const { error } = await sb.auth.updateUser({ password }); if (error) throw error; },
   // Deletes this person's account. If nobody else shares the cookbook, its recipes, lists and photos go too;
   // otherwise the cookbook stays with the others.
   async deleteAccount(progress){

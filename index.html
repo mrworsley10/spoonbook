@@ -330,6 +330,8 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .trolleybar b{color:var(--accent)}
 .trolleybar i{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--accent) 18%,transparent);transition:width .3s}
 .day.empty{padding:8px 0}
+.updatebar{position:fixed;z-index:55;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));display:flex;gap:14px;align-items:center;background:var(--accent);color:var(--on-accent);padding:10px 12px 10px 18px;border-radius:24px;font-size:15px;font-weight:600;box-shadow:0 6px 24px rgba(0,0,0,.3);white-space:nowrap;animation:sb-fade .2s}
+.updatebar button{border:0;border-radius:16px;padding:6px 14px;background:var(--on-accent);color:var(--accent);font-weight:700}
 /* movement */
 @keyframes sb-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 @keyframes sb-up{from{transform:translateY(100%)}to{transform:none}}
@@ -1261,6 +1263,23 @@ const SAMPLES = [
     steps: ['Whisk the flour, baking powder and sugar together in a bowl.', 'Beat the eggs with the milk and melted butter, then whisk into the flour until smooth.', 'Heat a non-stick frying pan over a medium heat and add a small knob of butter.', 'Pour in a small ladle of batter and cook for 1-2 mins until bubbles appear, then flip and cook for 1 min more.', 'Keep warm while you cook the rest, then serve with maple syrup and berries.'] }
 ];
 const roleName = r => r === 'viewer' ? 'View only' : 'Can edit';
+function accountSheet(){
+  const google = Backend.provider === 'google', p = Backend.plan;
+  openSheet('Your account', `<h2>Your account</h2>
+    <h3 class="sub">Your name</h3>
+    <p class="hint">What the other cooks see next to recipes you add.</p>
+    <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="acName">Your name</label><input id="acName" value="${esc(Backend.myName())}" autocomplete="given-name"><button class="btn" data-act="savename" type="button">Save</button></form>
+    <h3 class="sub">Signing in</h3>
+    ${google ? `<p class="hint">You sign in with Google as <b>${esc(Backend.email())}</b>. To change that, change it in your Google account.</p>`
+      : `<p class="hint">Email: <b>${esc(Backend.email())}</b></p>
+      <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="acEmail">New email</label><input id="acEmail" type="email" placeholder="New email address" autocomplete="email"><button class="btn" data-act="saveemail" type="button">Change</button></form>
+      <form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="acPass">New password</label><input id="acPass" type="password" placeholder="New password (6+ characters)" autocomplete="new-password"><button class="btn" data-act="savepass" type="button">Change</button></form>`}
+    ${p?.enabled ? `<h3 class="sub">Plan</h3><p class="hint">${p.plus ? '✓ Spoonbook Plus is on for this cookbook.' : `Free plan: up to ${p.limit} recipes.`} <button class="linkbtn" data-act="upgrade">${p.plus ? 'Details' : 'Get Plus'}</button></p>` : ''}
+    <div id="acMsg"></div>
+    <button class="btn" data-act="signout">Sign out</button>
+    <button class="btn" data-act="closesheet">Close</button>
+    <button class="linkbtn" data-act="delacct" style="color:var(--danger);align-self:center">Delete my account</button>`);
+}
 function booksSheet(){
   const books = Backend.cookbooks, cur = Backend.household.id;
   openSheet('Your cookbooks', `<h2>Your cookbooks</h2>
@@ -1321,6 +1340,7 @@ function moreSheet(){
       <div class="actions" style="margin-top:10px"><button class="btn small" data-act="people">${S.canEdit ? 'People &amp; invites' : 'People'}</button><button class="btn small" data-act="books">${Backend.cookbooks.length > 1 ? 'Switch cookbook' : 'Your cookbooks'}</button></div></div>
     <h3 class="mhead">Settings</h3>
     <div class="menu">
+      <button class="mrow" data-act="account"><b>Your account</b><span>${esc(Backend.myName() || 'Your name')} · ${esc(Backend.email())}</span></button>
       <button class="mrow" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>Extra help for less confident cooks</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
       <button class="mrow" data-act="awake" role="switch" aria-checked="${S.awakeOn}"><span style="flex:1"><b>Keep screen awake</b><span>${awakeHint}</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
       <button class="mrow" data-act="theme"><span style="flex:1"><b>${isDark() ? 'Light' : 'Dark'} look</b><span>Switch to the ${isDark() ? 'light' : 'dark'} colours</span></span></button>
@@ -1341,9 +1361,8 @@ function moreSheet(){
       ${Backend.plan?.enabled ? `<button class="mrow" data-act="upgrade"><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook' : `Free cookbooks hold ${Backend.plan.limit} recipes`}</span></button>` : ''}
       <button class="mrow" data-act="feedback"><b>Send feedback</b><span>Problems or ideas, straight to the maker</span></button>
     </div>
-    <button class="btn" data-act="signout">Sign out${Backend.email() ? ' · ' + esc(Backend.email()) : ''}</button>
     <button class="btn" data-act="closesheet">Close</button>
-    <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a> · <button class="linkbtn" data-act="delacct" style="color:var(--danger);font-size:12px">Delete my account</button></p>
+    <p class="hint legal"><a href="privacy.html" target="_blank" rel="noopener">Privacy</a> · <a href="terms.html" target="_blank" rel="noopener">Terms</a></p>
     <p class="hint" style="font-size:11px;opacity:.75">Calorie estimates use McCance and Widdowson’s Composition of Foods Integrated Dataset 2021. Contains public sector information licensed under the Open Government Licence v3.0.</p>`);
 }
 function recipeText(r){
@@ -1712,6 +1731,28 @@ const A = {
   },
   more(){ moreSheet(); },
   books(){ booksSheet(); },
+  account(){ accountSheet(); },
+  async savename(b){
+    const v = overlay.querySelector('#acName').value.trim(), m = overlay.querySelector('#acMsg');
+    if (!v){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Your name can’t be blank.</p>'; return; }
+    b.disabled = true;
+    try { await Backend.setMyName(v.slice(0, 40)); S.names[S.me] = v; toast('Name saved'); accountSheet(); render(); }
+    catch { b.disabled = false; m.innerHTML = '<p class="hint" style="color:var(--danger)">Couldn’t save that. Check your connection and try again.</p>'; }
+  },
+  async saveemail(b){
+    const v = overlay.querySelector('#acEmail').value.trim(), m = overlay.querySelector('#acMsg');
+    if (!/^\S+@\S+\.\S+$/.test(v)){ m.innerHTML = '<p class="hint" style="color:var(--danger)">That doesn’t look like an email address.</p>'; return; }
+    b.disabled = true;
+    try { await Backend.setEmail(v); m.innerHTML = `<p class="hint">Nearly done: we’ve sent a link to <b>${esc(v)}</b>. Tap it to confirm the change. Until then, keep using your current email.</p>`; }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message || 'Couldn’t change it. Try again.')}</p>`; }
+  },
+  async savepass(b){
+    const v = overlay.querySelector('#acPass').value, m = overlay.querySelector('#acMsg');
+    if (v.length < 6){ m.innerHTML = '<p class="hint" style="color:var(--danger)">Passwords need at least 6 characters.</p>'; return; }
+    b.disabled = true;
+    try { await Backend.setPassword(v); overlay.querySelector('#acPass').value = ''; b.disabled = false; m.innerHTML = '<p class="hint">Password changed. Use the new one next time you sign in.</p>'; }
+    catch (e) { b.disabled = false; m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(e.message || 'Couldn’t change it. Try again.')}</p>`; }
+  },
   recipemenu(){
     const r = byId(S.id); S.confirmDel = false;
     openSheet('Recipe options', `<h2>${esc(r.title)}</h2>
@@ -2217,6 +2258,18 @@ Backend.start(async caps => {
 })();
 </script>
 
-<script>if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+<div id="updateBar" class="updatebar" role="status" hidden><span>Spoonbook has been updated</span><button type="button" onclick="location.reload()">Refresh</button></div>
+<script>
+// When a new version is published, the phone picks it up in the background; this offers a one-tap refresh
+// rather than needing the app closed and opened twice.
+if ('serviceWorker' in navigator) addEventListener('load', async () => {
+  const had = !!navigator.serviceWorker.controller;
+  let reg; try { reg = await navigator.serviceWorker.register('sw.js'); } catch { return; }
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (had) document.getElementById('updateBar').hidden = false; });
+  const check = () => { if (document.visibilityState === 'visible') reg.update().catch(() => {}); };
+  document.addEventListener('visibilitychange', check);
+  setInterval(check, 30 * 60000);
+});
+</script>
 </body>
 </html>
