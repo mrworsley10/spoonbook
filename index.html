@@ -322,6 +322,7 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .mhead{margin:10px 0 0;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
 .bookcard{display:block}
 .bookcard .hint{display:block;margin-top:2px}
+.bookname{display:flex;align-items:baseline;gap:10px;justify-content:space-between}.bookname b{min-width:0;overflow-wrap:anywhere}
 .icon-btn.small{width:38px;height:38px}
 .shopbar{align-items:center}
 /* polish: plan */
@@ -1302,7 +1303,6 @@ function peopleSheet(){
       <div class="invite"><div><b>To cook and edit with you</b><span class="hint" style="display:block">They can add, change and delete recipes, and share the shopping list and plan. Code <span class="code">${esc(hh.join_code)}</span></span></div><button class="btn small primary" data-act="invite" data-kind="edit">Send invite</button></div>
       ${hh.view_code ? `<div class="invite"><div><b>To look and copy only</b><span class="hint" style="display:block">They can browse and cook from your recipes, and copy them into their own cookbook, but can’t change yours. Code <span class="code">${esc(hh.view_code)}</span></span></div><button class="btn small" data-act="invite" data-kind="view">Send invite</button></div>` : ''}
       ${manage ? `<button class="linkbtn" data-act="newcodes" style="align-self:flex-start">${S.confirmCodes ? 'Tap again: old invites will stop working' : 'Make new invite codes'}</button>` : ''}` : ''}
-    ${manage ? `<h3 class="sub">Cookbook name</h3><form class="shop-add" onsubmit="return false" style="margin-top:4px"><label class="sr" for="bookName">Cookbook name</label><input id="bookName" value="${esc(hh.name)}" autocomplete="off"><button class="btn" data-act="renamebook" type="button">Save</button></form>` : ''}
     <div id="peopleMsg"></div>
     <button class="btn danger" data-act="leavebook">${S.confirmLeave ? (ms.length === 1 ? 'Tap again: this deletes the cookbook and its recipes' : 'Tap again to leave') : 'Leave this cookbook'}</button>
     <button class="btn" data-act="closesheet">Close</button>`);
@@ -1336,7 +1336,8 @@ function moreSheet(){
   const awakeHint = S.awake === 'unsupported' ? 'Not possible on this phone' : S.awake === 'blocked' ? 'Your phone said no. Tap anywhere to try again' : S.awakeOn ? 'Stays on while Spoonbook is open' : 'Sleeps as normal';
   const hh = Backend.household;
   openSheet('More', `<h2>More</h2>
-    <div class="opt bookcard"><b>${esc(hh.name)}</b>
+    <div class="opt bookcard">${S.renaming ? `<form class="shop-add" onsubmit="return false" style="margin:0"><label class="sr" for="bookName">Cookbook name</label><input id="bookName" value="${esc(hh.name)}" autocomplete="off" maxlength="60" enterkeyhint="done"><button class="btn primary" data-act="renamebook" type="button">Save</button></form>`
+        : `<div class="bookname"><b>${esc(hh.name)}</b>${Backend.canManage ? '<button class="linkbtn" data-act="renamestart" aria-label="Rename this cookbook">Rename</button>' : ''}</div>`}
       <span class="hint">${S.canEdit ? 'You can add and change recipes' : 'View only'} · ${Backend.members.length} ${Backend.members.length === 1 ? 'person' : 'people'}${Backend.cookbooks.length > 1 ? ` · ${Backend.cookbooks.length} cookbooks` : ''}</span>
       <div class="actions" style="margin-top:10px"><button class="btn small" data-act="people">${S.canEdit ? 'People &amp; invites' : 'People'}</button><button class="btn small" data-act="books">${Backend.cookbooks.length > 1 ? 'Switch cookbook' : 'Your cookbooks'}</button></div></div>
     <h3 class="mhead">Settings</h3>
@@ -1732,7 +1733,7 @@ const A = {
     const r = byId(S.id); const n = +b.dataset.n; const cur = (r.ratings || {})[S.me];
     await patch(r.id, { ratings: { [S.me]: cur === n ? 0 : n } });
   },
-  more(){ moreSheet(); },
+  more(){ S.renaming = false; moreSheet(); },
   books(){ booksSheet(); },
   account(){ accountSheet(); },
   async savename(b){
@@ -1840,7 +1841,8 @@ const A = {
     S.confirmCodes = false;
     try { await Backend.newCodes(); toast('New invite codes made. Old invites no longer work'); peopleSheet(); } catch (e) { toast(e.message || 'Couldn’t change the codes'); }
   },
-  async renamebook(){ const v = overlay.querySelector('#bookName').value.trim(); if (!v) return; try { await Backend.renameCookbook(v); toast('Renamed'); peopleSheet(); render(); } catch { toast('Couldn’t rename it. Try again.'); } },
+  renamestart(){ S.renaming = true; moreSheet(); const i = overlay.querySelector('#bookName'); if (i){ i.focus(); i.select(); i.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); A.renamebook(); } }; } },
+  async renamebook(){ const v = overlay.querySelector('#bookName').value.trim(); if (!v) return; try { if (v !== Backend.household.name) await Backend.renameCookbook(v); S.renaming = false; toast('Renamed'); moreSheet(); render(); } catch { toast('Couldn’t rename it. Try again.'); } },
   async leavebook(b){
     if (!S.confirmLeave){ S.confirmLeave = true; peopleSheet(); setTimeout(() => { S.confirmLeave = false; }, 5000); return; }
     S.confirmLeave = false; b.disabled = true;

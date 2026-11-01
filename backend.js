@@ -380,6 +380,8 @@ function newPasswordScreen(){
 // a join link (?join=CODE) waiting from before sign-in
 function pendingJoin(){ try { return JSON.parse(sessionStorage.getItem('sb-shared') || 'null')?.join || ''; } catch { return ''; } }
 function clearPendingJoin(){ try { const v = JSON.parse(sessionStorage.getItem('sb-shared') || 'null'); if (v?.join){ delete v.join; sessionStorage.setItem('sb-shared', JSON.stringify(v)); } } catch {} }
+// a new cookbook is named after its cook: "Ian’s cookbook"
+const bookNameFor = n => { const f = String(n || '').trim().split(/\s+/)[0]; return f ? f + '’s cookbook' : 'Our cookbook'; };
 const currentKey = () => 'sb-current-' + session?.user?.id;
 function householdScreen(){
   screen(`<h1 class="hello">Set up your<br><em>cookbook.</em></h1>
@@ -396,7 +398,7 @@ function householdScreen(){
     const name = document.getElementById('h-name').value.trim(), code = document.getElementById('h-code').value.trim();
     if (!name) return msg('Add your name so the other cook knows who did what.', true);
     msg('One moment…');
-    const { data, error } = code ? await sb.rpc('join_household', { code, my_name: name }) : await sb.rpc('create_household', { cookbook_name: 'Our cookbook', my_name: name });
+    const { data, error } = code ? await sb.rpc('join_household', { code, my_name: name }) : await sb.rpc('create_household', { cookbook_name: bookNameFor(name), my_name: name });
     if (error) return msg(/code/i.test(error.message) ? 'No cookbook has that code. Check it and try again.' : error.message, true);
     if (code) clearPendingJoin();
     if (data?.id) store.set(currentKey(), data.id);
@@ -507,7 +509,7 @@ window.Backend = {
   switchTo(id){ store.set(currentKey(), id); location.hash = '#book'; location.reload(); },
   async createCookbook(name){
     const me = members.find(m => m.user_id === session.user.id)?.display_name || cookbooks[0]?.myName || '';
-    const { data, error } = await sb.rpc('create_household', { cookbook_name: name || 'Our cookbook', my_name: me });
+    const { data, error } = await sb.rpc('create_household', { cookbook_name: name || bookNameFor(me), my_name: me });
     if (error) throw error; return data;
   },
   async joinCookbook(code){
