@@ -6,6 +6,8 @@
 // Secrets (Supabase → Edge Functions → Secrets, never in the repo):
 //   RESEND_API_KEY   from resend.com → API Keys
 //   NOTIFY_EMAIL     where to send the alerts (must be the email you signed up to Resend with,
+//   MAIL_FROM        (optional) who the emails come from once your domain is verified in Resend,
+//                    e.g. Spoonbook <hello@spoonbook.co.uk>. Without it, Resend's test address is used.
 //                    until you verify your own domain there)
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are provided to functions automatically.
 // Keep "Verify JWT" ON: the webhook sends Supabase's own key, so strangers can't trigger emails.
@@ -16,7 +18,7 @@ const esc = (s: string) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&am
 const send = (subject: string, html: string) => fetch('https://api.resend.com/emails', {
   method: 'POST',
   headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
-  body: JSON.stringify({ from: 'Spoonbook <onboarding@resend.dev>', to: [Deno.env.get('NOTIFY_EMAIL')], subject, html })
+  body: JSON.stringify({ from: Deno.env.get('MAIL_FROM') || 'Spoonbook <onboarding@resend.dev>', to: [Deno.env.get('NOTIFY_EMAIL')], subject, html })
 });
 // feedback sent from the app (⋯ → Send feedback)
 async function feedback(f: any){
@@ -49,7 +51,7 @@ Deno.serve(async req => {
     method: 'POST',
     headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      from: 'Spoonbook <onboarding@resend.dev>',
+      from: Deno.env.get('MAIL_FROM') || 'Spoonbook <onboarding@resend.dev>',
       to: [Deno.env.get('NOTIFY_EMAIL')],
       subject: `🥄 ${name} ${others.length ? 'joined a cookbook' : 'started a cookbook'} on Spoonbook`,
       html: `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">
