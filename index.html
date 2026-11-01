@@ -330,6 +330,32 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .trolleybar b{color:var(--accent)}
 .trolleybar i{position:absolute;left:0;top:0;bottom:0;background:color-mix(in srgb,var(--accent) 18%,transparent);transition:width .3s}
 .day.empty{padding:8px 0}
+/* movement */
+@keyframes sb-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes sb-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes sb-fade{from{opacity:0}to{opacity:1}}
+#app.enter{animation:sb-in .22s ease-out}
+.sheet:not(.still){animation:sb-up .26s cubic-bezier(.2,.8,.2,1)}
+.scrim:not(.still){animation:sb-fade .2s ease-out}
+.toast:not([hidden]){animation:sb-fade .18s ease-out}
+.ings li{transition:opacity .18s,transform .18s,background .15s}
+.ings li.leaving{opacity:0;transform:translateX(24px)}
+@media (prefers-reduced-motion: reduce){#app.enter,.sheet,.scrim,.toast{animation:none!important}.ings li{transition:none}}
+/* swipe on the shopping list */
+#app .ings li[data-id]{touch-action:pan-y;position:relative}
+.ings li.sw-r{background:color-mix(in srgb,var(--ok) 22%,transparent)}
+.ings li.sw-l{background:color-mix(in srgb,var(--danger) 22%,transparent)}
+.toast .undo{margin-left:14px;border:0;background:none;color:var(--accent);font-weight:700;padding:0}
+/* sticky recipe tabs */
+.tabs{position:sticky;top:0;z-index:6;background:var(--bg);padding-top:env(safe-area-inset-top,0px)}
+/* photo grid */
+.grid{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}
+.grid a{display:flex;flex-direction:column;gap:6px;text-decoration:none;color:var(--fg)}
+.grid .img{aspect-ratio:1;border-radius:6px;overflow:hidden;display:block}
+.grid .img img{width:100%;height:100%;object-fit:cover;display:block}
+.grid .img .phfill{font-size:56px}
+.grid .t{font-family:var(--display);font-size:16px;line-height:1.25}
+.grid .s{font-size:12px;color:var(--muted)}
 .day.empty .dh{font-size:17px;color:var(--muted)}
 .day.empty .btn{height:32px}
 .dietline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;border:0;background:none;padding:0;text-align:left;color:var(--muted);font-size:13px}
@@ -428,6 +454,8 @@ const I = {
   starF:'<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>',
   moon:'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg>',
   share:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
+  gridv:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+  listv:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
   cal:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   cart:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
   check:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
@@ -600,7 +628,13 @@ function phOrImg(r, cls){
 }
 function host(u){ try { return new URL(u).hostname.replace(/^www\./,''); } catch { return ''; } }
 function who(r){ if (!r.addedBy) return r.importedFrom ? 'From ChefTap' : ''; const n = S.names[r.addedBy]; return 'Added by ' + (n || 'someone'); }
-function toast(msg){ const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
+function toast(msg, undo){
+  const t = document.getElementById('toast'); t.textContent = msg; t.hidden = false;
+  if (undo){ const b = document.createElement('button'); b.className = 'undo'; b.textContent = 'Undo'; b.onclick = () => { t.hidden = true; undo(); }; t.appendChild(b); }
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, undo ? 4500 : 2600);
+}
+// a tiny vibration to confirm a tap (Android; iPhones don't allow it from web apps)
+const buzz = (ms = 12) => { try { navigator.vibrate?.(ms); } catch {} };
 function busy(){ const a = document.activeElement; return a && app.contains(a) && /^(TEXTAREA|INPUT|SELECT)$/.test(a.tagName) && a.type !== 'checkbox'; }
 async function resolveNames(){
   if (!user) return;
@@ -644,7 +678,7 @@ function durations(step){
 }
 const timerLabel = m => m >= 60 ? (Math.floor(m/60) + ' hr' + (m % 60 ? ' ' + Math.round(m % 60) + ' min' : '')) : m < 1 ? Math.round(m*60) + ' sec' : Math.round(m) + ' min';
 function timerBtns(r, step, n){ return durations(step).map(d => `<button class="tbtn" data-act="timer" data-m="${d.mins}" data-label="${esc(r.title + ' · step ' + n)}">${I.clock} ${timerLabel(d.mins)} timer</button>`).join(''); }
-function startTimer(label, mins){ T.list.push({ id: rid(), label, end: Date.now() + mins*60000, done: false }); saveTimers(); paintTimers(true); toast(timerLabel(mins) + ' timer started'); }
+function startTimer(label, mins){ buzz(25); T.list.push({ id: rid(), label, end: Date.now() + mins*60000, done: false }); saveTimers(); paintTimers(true); toast(timerLabel(mins) + ' timer started'); }
 function left(t){ const s = Math.max(0, Math.ceil((t.end - Date.now())/1000)); const h = Math.floor(s/3600), m = Math.floor(s/60) % 60, ss = s % 60; return s ? (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(ss).padStart(2,'0') : 'Done!'; }
 function paintTimers(rebuild){
   const el = document.getElementById('timers');
@@ -734,12 +768,11 @@ function parse(){
   if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; }
 }
 const go = h => { location.hash = h; };
-window.addEventListener('hashchange', () => { parse(); render(true); window.scrollTo(0,0); });
+window.addEventListener('hashchange', () => { parse(); render(true); window.scrollTo(0,0); app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); });
 
 /* ---------- views ---------- */
 function topBar(){
   return `<div class="top"><p class="brand">Spoonbook</p><div class="row">
-    <button class="icon-btn" data-act="theme" aria-label="${isDark() ? 'Switch to light' : 'Switch to dark'}">${isDark() ? I.sun : I.moon}</button>
     <button class="icon-btn" data-act="more" aria-label="More options">${I.more}</button>
     ${S.canEdit ? `<button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button>` : ''}</div></div>${offlineNote()}${viewNote()}`;
 }
@@ -755,6 +788,7 @@ function offlineNote(){
 function rowHtml(r, extra){
   const avg = avgRating(r);
   const bits = [esc(r.category || 'Mains')];
+  if (r.totalMins) bits.push(mins(r.totalMins));
   if (avg) bits.push('★ ' + (Math.round(avg*10)/10));
   if (r.cooked?.length) bits.push('made ' + ago(lastMade(r)));
   if (r.spice) bits.push(chillies(r.spice));
@@ -785,6 +819,8 @@ function filtered(){
 function listHtml(){
   const list = filtered();
   if (!list.length) return S.q ? `<div class="empty">Nothing matches “${esc(S.q)}”. Try an ingredient, like <em>chorizo</em>.</div>` : `<div class="empty">No recipes ${S.tag || S.cat !== 'All' ? 'match that filter' : 'here'} yet.</div>`;
+  if (S.grid) return `<ul class="grid">${list.map(r => { const avg = avgRating(r); return `<li><a href="#recipe-${esc(r.id)}"><span class="img ph">${phOrImg(r)}</span><span class="t">${esc(r.title)}${r.favourite ? '<span class="dot" title="Favourite"></span>' : ''}</span>
+    <span class="s">${[r.totalMins ? mins(r.totalMins) : esc(r.category || 'Mains'), avg ? '★ ' + (Math.round(avg * 10) / 10) : '', r.spice ? chillies(r.spice) : ''].filter(Boolean).join(' · ')}</span></a></li>`; }).join('')}</ul>`;
   return `<ul class="list">${list.map(r => rowHtml(r)).join('')}</ul>`;
 }
 function bookView(){
@@ -809,7 +845,8 @@ function bookView(){
   </div>
   ${freeNote()}
   <div class="sec"><h2 class="eyebrow" style="margin:0" id="bookCount">${bookCount()}</h2>
-    <button class="chip filt" data-act="filters" aria-pressed="${nf > 0}">${I.sliders} ${nf ? 'Filters · ' + nf : 'Filter &amp; sort'}</button></div>
+    <span class="row" style="display:flex;gap:6px"><button class="chip filt" data-act="filters" aria-pressed="${nf > 0}">${I.sliders} ${nf ? 'Filters · ' + nf : 'Filter &amp; sort'}</button>
+    <button class="chip filt" data-act="grid" aria-label="${S.grid ? 'Show as a list' : 'Show as a photo grid'}" aria-pressed="${S.grid}">${S.grid ? I.listv : I.gridv}</button></span></div>
   ${activeFilters()}
   <div id="list">${listHtml()}</div>`;
 }
@@ -895,6 +932,7 @@ function dietOf(r){
 }
 function readFilter(){ try { return JSON.parse(ls.get('sb-diet') || 'null') || { avoid: [], diet: '' }; } catch { return { avoid: [], diet: '' }; } }
 S.dietFilter = readFilter();
+S.grid = ls.get('sb-grid') === 'on';
 const dietActive = () => S.dietFilter.avoid.length || S.dietFilter.diet;
 function dietPasses(r){
   const f = S.dietFilter; if (!dietActive()) return true;
@@ -1084,7 +1122,7 @@ function shopView(){
   const items = S.shop.items || [];
   const open = items.filter(i => !i.done), done = items.filter(i => i.done);
   const groupsOf = list => { const g = {}; list.forEach(it => { const k = it.aisle || it.from || 'Extras'; (g[k] = g[k] || []).push(it); }); return g; };
-  const li = it => `<li><label><input type="checkbox" data-chg="shoptick" data-id="${esc(it.id)}" ${it.done ? 'checked' : ''}><span>${esc(it.text)}</span></label></li>`;
+  const li = it => `<li data-id="${esc(it.id)}"><label><input type="checkbox" data-chg="shoptick" data-id="${esc(it.id)}" ${it.done ? 'checked' : ''}><span>${esc(it.text)}</span></label></li>`;
   const groupHtml = (g, cls) => Object.entries(g).map(([k, list]) => `<div class="group ${cls || ''}"><h3>${esc(k)}</h3><ul class="ings">${list.map(li).join('')}</ul></div>`).join('');
   const usuals = S.pantry?.usuals || [];
   const have = new Set(open.map(i => i.text.trim().toLowerCase()));
@@ -1188,7 +1226,8 @@ function fridgeView(){
 }
 function openSheet(label, inner){
   S.sheet = 'other';
-  overlay.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(label)}">${inner}</div></div>`;
+  const still = overlay.querySelector('.sheet') ? ' still' : ''; // redrawing an open sheet shouldn't replay the slide
+  overlay.innerHTML = `<div class="scrim${still}" data-act="scrim"><div class="sheet${still}" role="dialog" aria-modal="true" aria-label="${esc(label)}">${inner}</div></div>`;
   overlay.querySelector('input,button')?.focus?.();
 }
 function dayPickSheet(){
@@ -1356,7 +1395,8 @@ function clipSheet(mode){
     <input id="bulkIn" type="file" multiple accept=".eml,.mbox,.txt,.md,.html,.htm,.zip,application/zip,message/rfc822,text/plain,text/html,application/mbox" class="sr" data-chg="bulk">
     <div id="bulkMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
-  overlay.innerHTML = `<div class="scrim" data-act="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
+  const still = overlay.querySelector('.sheet') ? ' still' : '';
+  overlay.innerHTML = `<div class="scrim${still}" data-act="scrim"><div class="sheet${still}" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
   overlay.querySelector('textarea,button,label')?.focus?.();
 }
 function closeSheet(){ S.sheet = null; S.sheetKind = null; S.aiCtl?.abort(); overlay.innerHTML = ''; }
@@ -1456,6 +1496,16 @@ async function purgeRecipe(r){
     if (assets) for (const id of [r.photo, ...(r.photos || [])].filter(Boolean)) assets.delete(id).catch(() => {});
   } catch {}
 }
+async function tickShop(id, done, li){
+  if (S.shopMode && li){ li.classList.add('leaving'); await new Promise(r => setTimeout(r, 180)); }
+  await setShop((S.shop.items || []).map(i => i.id === id ? { ...i, done } : i));
+}
+async function removeShop(id){
+  const items = S.shop.items || [], i = items.findIndex(x => x.id === id); if (i < 0) return;
+  const gone = items[i];
+  await setShop(items.filter(x => x.id !== id));
+  toast('Removed ' + gone.text, async () => { const now = [...(S.shop.items || [])]; now.splice(Math.min(i, now.length), 0, gone); await setShop(now); });
+}
 async function setShop(items){ try { await db.doc('lists/shopping').set({ items, updatedAt: Date.now() }); } catch (e) { toast(saveErr(e)); } }
 async function shrink(file){
   try {
@@ -1513,7 +1563,13 @@ const A = {
     readLocally({ text: t, srcUrl: /^https?:\/\//.test(u) ? u : '' });
   },
   cat(b){ S.cat = b.dataset.cat; render(); },
-  tab(b){ S.tab = b.dataset.tab; render(); },
+  tab(b){
+    const tabs = document.querySelector('.tabs'); const top = tabs ? tabs.getBoundingClientRect().top + scrollY - 0 : 0;
+    const wasStuck = tabs && tabs.getBoundingClientRect().top <= 1 && scrollY > top - 2;
+    S.tab = b.dataset.tab; render();
+    // if the tabs were stuck at the top, show the start of the other tab rather than somewhere in the middle
+    const t2 = document.querySelector('.tabs'); if (wasStuck && t2){ const y = t2.getBoundingClientRect().top + scrollY - parseFloat(getComputedStyle(t2).top || 0); scrollTo(0, Math.max(0, y)); }
+  },
   scale(b){
     const r = byId(S.id); const base = baseServes(r); const d = +b.dataset.d;
     if (base){ const cur = S.scale[r.id] ?? base; S.scale[r.id] = Math.max(1, Math.min(40, cur + d)); }
@@ -1640,6 +1696,7 @@ const A = {
   timer(b){ startTimer(b.dataset.label, +b.dataset.m); },
   killtimer(b){ T.list = T.list.filter(t => t.id !== b.dataset.id); saveTimers(); paintTimers(true); },
   async made(){
+    buzz(20);
     const r = byId(S.id); const c = r.cooked || [];
     if (madeToday(r)){ await patch(r.id, { cooked: c.filter(t => dayKey(new Date(t)) !== dayKey(new Date())) }); toast('Removed today'); }
     else { await patch(r.id, { cooked: [...c, Date.now()].slice(-200) }); toast('Logged — nice one'); }
@@ -1682,6 +1739,7 @@ const A = {
   filtersclear(){ S.dietFilter = { avoid: [], diet: '' }; ls.set('sb-diet', JSON.stringify(S.dietFilter)); S.tag = null; S.sort = 'az'; ls.set('sb-sort', 'az'); closeSheet(); render(); },
   sortpick(b){ S.sort = b.dataset.sort; ls.set('sb-sort', S.sort); refreshFilters(); },
   untag(){ S.tag = null; render(); },
+  grid(){ S.grid = !S.grid; ls.set('sb-grid', S.grid ? 'on' : 'off'); render(); },
   dietinfo(){
     const r = byId(S.id); const d = dietOf(r);
     openSheet('Allergens', `<h2>Allergy &amp; diet guide</h2>
@@ -1961,8 +2019,8 @@ document.addEventListener('change', async e => {
     return;
   }
   if (k === 'sort'){ S.sort = t.value; ls.set('sb-sort', t.value); t.blur(); document.getElementById('list').innerHTML = listHtml(); return; }
-  if (k === 'tick'){ const key = t.dataset.rid || S.id; const m = S.checked[key] = S.checked[key] || {}; m[t.dataset.i] = t.checked; }
-  if (k === 'shoptick'){ const items = (S.shop.items || []).map(i => i.id === t.dataset.id ? { ...i, done: t.checked } : i); await setShop(items); }
+  if (k === 'tick'){ buzz(); const key = t.dataset.rid || S.id; const m = S.checked[key] = S.checked[key] || {}; m[t.dataset.i] = t.checked; }
+  if (k === 'shoptick'){ buzz(); await tickShop(t.dataset.id, t.checked, t.closest('li')); }
   if (k === 'photo' && t.files[0]){
     const r = byId(S.id); toast('Uploading photo…');
     try { const id = await uploadPhoto(t.files[0]);
@@ -1987,6 +2045,29 @@ document.addEventListener('change', async e => {
     const files = [...t.files].slice(0, S.imgMax || 1);
     readLocally({ files: [...t.files].slice(0, 4), keepPhoto: overlay.querySelector('#snapKeep')?.checked });
   }
+});
+
+/* ---------- swipe a shopping item: right to tick, left to remove ---------- */
+let sw = null;
+document.addEventListener('touchstart', e => {
+  const li = S.view === 'shopping' && e.touches.length === 1 && e.target.closest('#app .ings li[data-id]');
+  sw = li ? { li, x: e.touches[0].clientX, y: e.touches[0].clientY, dx: 0, on: false } : null;
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!sw) return; const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+  if (!sw.on){ if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)){ sw = null; return; } if (Math.abs(dx) > 14) sw.on = true; else return; }
+  sw.dx = dx; sw.li.style.transform = `translateX(${dx}px)`; sw.li.classList.toggle('sw-r', dx > 0); sw.li.classList.toggle('sw-l', dx < 0);
+}, { passive: true });
+document.addEventListener('touchend', () => {
+  if (!sw) return; const { li, dx, on } = sw; sw = null; if (!on) return;
+  // the tap that ends a swipe shouldn't also tick the box
+  const eat = ev => { ev.preventDefault(); ev.stopPropagation(); };
+  addEventListener('click', eat, { capture: true, once: true });
+  setTimeout(() => removeEventListener('click', eat, { capture: true }), 400);
+  const id = li.dataset.id, item = (S.shop.items || []).find(x => x.id === id);
+  if (dx > 90 && item){ buzz(); li.style.transform = 'translateX(100%)'; setTimeout(() => tickShop(id, !item.done), 150); }
+  else if (dx < -90 && item){ buzz(20); li.style.transform = 'translateX(-100%)'; setTimeout(() => removeShop(id), 150); }
+  else { li.style.transform = ''; li.classList.remove('sw-r', 'sw-l'); }
 });
 
 /* ---------- swipe between steps in cooking mode ---------- */
