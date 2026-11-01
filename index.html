@@ -4,7 +4,17 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Spoonbook</title>
-<meta name="description" content="Our shared cookbook: recipes, photos, meal plans and the shopping list.">
+<meta name="description" content="Every family recipe in one shared cookbook. Save recipes from any website, plan the week, shop together and cook hands-free. Free, no adverts.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Spoonbook">
+<meta property="og:url" content="https://spoonbook.co.uk/">
+<meta property="og:title" content="Spoonbook: every family recipe, one shared cookbook">
+<meta property="og:description" content="Save recipes from any website, plan the week, shop together and cook hands-free. Free, no adverts, made in the UK.">
+<meta property="og:image" content="https://spoonbook.co.uk/icons/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Spoonbook, the shared family cookbook app">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#1F1A17">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" type="image/png">
@@ -345,6 +355,13 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .mrow>span[style]>b{font-size:16px}
 body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px))}
 .mhead{margin:10px 0 0;font-size:12px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted)}
+.installbar{display:flex;align-items:center;gap:12px;border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:10px 8px 10px 12px;margin:0 0 14px}
+.installbar img{border-radius:10px;flex:none}.installbar>span{flex:1;min-width:0}.installbar b{display:block;font-size:15px;line-height:1.25}.installbar span span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.installbar .icon-btn{width:36px;height:36px;flex:none;border:0;background:none}
+.isteps{margin:6px 0 10px;padding:0;list-style:none;counter-reset:i;display:flex;flex-direction:column;gap:10px}
+.isteps li{counter-increment:i;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
+.isteps li::before{content:counter(i);flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
+.isteps li>span:first-of-type{flex:1}.iart{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--accent);text-align:center}.iart small{color:var(--muted);font-size:11px;max-width:110px}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -863,6 +880,41 @@ function listHtml(){
     <span class="s">${[r.totalMins ? mins(r.totalMins) : esc(r.category || 'Mains'), avg ? '★ ' + (Math.round(avg * 10) / 10) : '', r.spice ? chillies(r.spice) : ''].filter(Boolean).join(' · ')}</span></a></li>`; }).join('')}</ul>`;
   return `<ul class="list">${list.map(r => rowHtml(r)).join('')}</ul>`;
 }
+/* ---------- "Put Spoonbook on your home screen" ---------- */
+// Android and Chrome offer their own Install button; iPhones need showing where Add to Home Screen is
+let installEvt = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (S.view === 'book' && !S.sheet) render(); });
+addEventListener('appinstalled', () => { installEvt = null; ls.set('sb-install-hide', '1'); toast('Spoonbook is on your home screen'); if (S.view === 'book') render(); });
+const isInstalled = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isPhone = () => isIOS() || /android/i.test(navigator.userAgent);
+function installHtml(){
+  if (isInstalled() || ls.get('sb-install-hide') === '1' || (!installEvt && !isPhone())) return '';
+  return `<div class="installbar" role="region" aria-label="Install Spoonbook"><img src="icons/icon-192.png" alt="" width="40" height="40">
+    <span><b>Install Spoonbook</b><span>Open it from your home screen like an app. Works with no signal.</span></span>
+    <button class="btn small primary" data-act="install">${installEvt ? 'Install' : 'Show me'}</button>
+    <button class="icon-btn" data-act="installhide" aria-label="Not now">${I.x || '✕'}</button></div>`;
+}
+function installSheet(){
+  const ios = isIOS(), safari = ios && !/crios|fxios|edgios/i.test(navigator.userAgent);
+  const plusBox = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M12 8v8M8 12h8"/></svg>';
+  const dots = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>';
+  const steps = ios ? [
+      ...(safari ? [] : [['Open this page in <b>Safari</b>', '']]),
+      [`Tap the <b>Share</b> button`, I.share + `<small>${safari ? 'at the bottom of the screen (or the top on iPad)' : ''}</small>`],
+      ['Scroll down and tap <b>Add to Home Screen</b>', plusBox],
+      ['Tap <b>Add</b> in the top corner', '']
+    ] : [
+      ['Tap the <b>menu</b> button', dots + '<small>top right of the browser</small>'],
+      ['Tap <b>Install app</b> or <b>Add to Home screen</b>', plusBox],
+      ['Tap <b>Install</b> to confirm', '']
+    ];
+  openSheet('Install Spoonbook', `<h2>Put Spoonbook on your home screen</h2>
+    <p class="hint">It takes ten seconds. Then Spoonbook opens from its own icon, full screen, and works with no signal.</p>
+    <ol class="isteps">${steps.map(([t, art]) => `<li><span>${t}</span>${art ? `<span class="iart">${art}</span>` : ''}</li>`).join('')}</ol>
+    <button class="btn primary" data-act="closesheet">Got it</button>
+    <button class="btn" data-act="installhide">Don’t show this again</button>`);
+}
 /* ---------- "Get started" checklist for new cooks: each step ticks itself off when they actually do it ---------- */
 const guideKey = () => 'sb-guide-' + Backend.userId();
 function guideGet(){ try { return JSON.parse(ls.get(guideKey()) || 'null'); } catch { return null; } }
@@ -894,14 +946,14 @@ function guideHtml(){
 const guideRecipe = () => S.recipes.find(r => !r.sample) || S.recipes[0];
 function bookView(){
   if (S.status === 'none') return topBar() + `<div class="empty"><h2>Can’t reach the cookbook</h2>Check your internet connection, then close and reopen Spoonbook.</div>`;
-  if (!S.recipes.length) return topBar() + (S.canEdit ? welcomeHtml() : `<h1 class="hello">Nothing here<br><em>yet.</em></h1><div class="empty">When recipes are added to ${esc(Backend.household.name)}, they’ll appear here.</div>`);
+  if (!S.recipes.length) return topBar() + installHtml() + (S.canEdit ? welcomeHtml() : `<h1 class="hello">Nothing here<br><em>yet.</em></h1><div class="empty">When recipes are added to ${esc(Backend.household.name)}, they’ll appear here.</div>`);
   const favs = S.recipes.filter(r => r.favourite);
   const picks = favs.length >= 3 ? [...favs].sort((a, b) => lastMade(a) - lastMade(b)).slice(0, 8) : dailyPicks(S.recipes);
   const counts = {}; S.recipes.forEach(r => counts[r.category || 'Mains'] = (counts[r.category || 'Mains'] || 0) + 1);
   const nf = filterCount();
   return topBar() + `
   <h1 class="hello">${greeting()}</h1>
-  ${guideHtml() || newsHtml()}
+  ${installHtml()}${guideHtml() || newsHtml()}
   <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
@@ -1424,6 +1476,7 @@ function moreSheet(){
     <div id="importMsg"></div>` : ''}
     <h3 class="mhead">Spoonbook</h3>
     <div class="menu">
+      ${isInstalled() ? '' : `<button class="mrow" data-act="installshow"><b>Install Spoonbook</b><span>Put it on your home screen like an app</span></button>`}
       ${S.canEdit ? `<button class="mrow" data-act="guideshow"><b>Show me around</b><span>A quick checklist of the best bits</span></button>` : ''}
       <button class="mrow" data-act="shareapp"><b>Share Spoonbook</b><span>Send the app to friends and family</span></button>
       ${Backend.plan?.enabled ? `<button class="mrow" data-act="upgrade"><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook' : `Free cookbooks hold ${Backend.plan.limit} recipes`}</span></button>` : ''}
@@ -1878,6 +1931,13 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
+  async install(){
+    if (!installEvt) return installSheet();
+    const e = installEvt; installEvt = null;
+    try { e.prompt(); const r = await e.userChoice; if (r?.outcome !== 'accepted') render(); } catch { installSheet(); }
+  },
+  installhide(){ ls.set('sb-install-hide', '1'); if (S.sheet) closeSheet(); render(); toast('You can install it any time from ⋯ → Install Spoonbook'); },
+  installshow(){ ls.set('sb-install-hide', ''); closeSheet(); A.install(); },
   guidehide(){ const g = guideGet() || { done: {} }; g.hide = 1; guideSet(g); render(); },
   guideshow(){ const g = guideGet() || { done: {} }; g.hide = 0; guideSet(g); closeSheet(); if (S.view !== 'book') go('#book'); else render(); window.scrollTo(0, 0); },
   guidego(b){
