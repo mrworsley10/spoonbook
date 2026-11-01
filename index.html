@@ -877,7 +877,7 @@ function filtersSheet(){
     <div class="chips" style="margin-top:6px">${[['', 'Anything'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']].map(([k, nm]) => `<button class="chip" data-act="dietpick" data-diet="${k}" aria-pressed="${f.diet === k}">${nm}</button>`).join('')}</div>
     <h3 class="sub">Leave out recipes with</h3>
     <div class="chips" style="margin-top:6px">${Diet.NAMES.map(nm => `<button class="chip" data-act="dietavoid" data-a="${nm}" aria-pressed="${f.avoid.includes(nm)}">${nm}</button>`).join('')}</div>
-    <p class="hint" style="margin-top:4px">Allergens are worked out from each recipe’s ingredients. Recipes that only <i>might</i> contain one (from stock cubes or sauces, say) are left out too, to be safe. Always check labels if someone has an allergy.</p>
+    <p class="hint" style="margin-top:4px">Allergens are worked out from each recipe’s ingredients, so always check labels if someone has an allergy.</p>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="closesheet" id="dietCount">Show ${n} recipe${n === 1 ? '' : 's'}</button>${filterCount() ? '<button class="btn" data-act="filtersclear">Clear all</button>' : ''}</div>`);
 }
 const refreshFilters = () => { if (S.sheet && S.sheetKind === 'filters') filtersSheet(); render(); };
@@ -942,8 +942,7 @@ function dietPasses(r){
   const d = dietOf(r);
   if (f.diet === 'vegan' && !d.vegan) return false;
   if (f.diet === 'vegetarian' && !d.vegetarian) return false;
-  // "may contain" counts too: if it depends on the brand, it's left out to be safe
-  return !d.contains.some(c => f.avoid.includes(c.name)) && !(d.may || []).some(c => f.avoid.includes(c.name));
+  return !d.contains.some(c => f.avoid.includes(c.name));
 }
 function dietSummary(){ const f = S.dietFilter; return [f.diet === 'vegan' ? 'Vegan' : f.diet === 'vegetarian' ? 'Vegetarian' : '', ...f.avoid.map(a => 'no ' + a.toLowerCase())].filter(Boolean).join(', '); }
 function dietSheet(){
@@ -960,9 +959,7 @@ function dietSheet(){
 function dietBadges(r){
   const d = dietOf(r); if (!(r.ingredients || []).length) return '';
   const diet = d.vegan ? '<span class="tg veg">🌱 Vegan</span>' : d.vegetarian ? '<span class="tg veg">Vegetarian</span>' : '';
-  const may = d.may || [];
-  const words = [...new Set(may.flatMap(m => m.words))].slice(0, 2).join(', ');
-  return `<button class="dietline" data-act="dietinfo">${diet}<span class="contains">${d.contains.length ? `Contains ${d.contains.map(c => c.name.toLowerCase()).join(', ')}` : may.length ? '' : 'No common allergens spotted'}${d.contains.length && may.length ? ' · ' : ''}${may.length ? `May contain ${may.map(c => c.name.toLowerCase()).join(', ')} (from the ${esc(words)}), check the label` : ''}</span><span class="info">ⓘ</span></button>`;
+  return `<button class="dietline" data-act="dietinfo">${diet}<span class="contains">${d.contains.length ? `Contains ${d.contains.map(c => c.name.toLowerCase()).join(', ')}` : 'No common allergens spotted'} <span class="info">ⓘ</span></span></button>`;
 }
 function welcomeHtml(){
   return `<h1 class="hello">Welcome to<br><em>your cookbook.</em></h1>
@@ -1792,9 +1789,7 @@ const A = {
     openSheet('Allergens', `<h2>Allergy &amp; diet guide</h2>
       ${d.vegan ? '<p>🌱 Looks <b>vegan</b>: no meat, fish, dairy, eggs or honey spotted.</p>' : d.vegetarian ? '<p>Looks <b>vegetarian</b>: no meat or fish spotted.</p>' : ''}
       ${d.contains.length ? `<h3 class="sub">Contains</h3><ul class="allergens">${d.contains.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>` : ''}
-      ${(d.may || []).length ? `<h3 class="sub">May contain: depends on the brand</h3><ul class="allergens">${d.may.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>
-        <p class="hint">Stock cubes, gravy, sausages and ready-made sauces often contain gluten, celery or mustard, but not every brand does. If you use a free-from version, you’re fine. Filters leave these recipes out to be safe.</p>` : ''}
-      ${!d.contains.length && !(d.may || []).length ? '<p>None of the 14 common allergens spotted in the ingredients.</p>' : ''}
+      ${!d.contains.length ? '<p>None of the 14 common allergens spotted in the ingredients.</p>' : ''}
       <p class="hint">Worked out by Spoonbook from the ingredient list. It can’t see inside shop-bought products like stock cubes, sauces or bread, which often contain gluten, milk, soya or mustard. If someone has an allergy, always check the labels.</p>
       <button class="btn" data-act="closesheet">Got it</button>`);
   },

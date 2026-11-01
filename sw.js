@@ -1,7 +1,7 @@
 // Keeps the app itself on the phone so it opens instantly and works with no signal.
 // The app's files are fetched fresh when possible and saved for offline. Recipe data is saved by the app
 // itself (see backend.js); this file also keeps a copy of every photo the app has shown.
-const CACHE = 'spoonbook-v28';
+const CACHE = 'spoonbook-v29';
 const PHOTOS = 'spoonbook-photos'; // kept across updates
 const SHELL = ['./', './index.html', './backend.js', './local.js', './simple.js', './mail.js', './diet.js', './nutrition.js', './config.js', './manifest.webmanifest', './privacy.html', './terms.html', './r.html', './icons/icon-192.png', './icons/icon-512.png'];
 
