@@ -18,7 +18,7 @@ const esc = (s: string) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&am
 const send = (subject: string, html: string) => fetch('https://api.resend.com/emails', {
   method: 'POST',
   headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
-  body: JSON.stringify({ from: Deno.env.get('MAIL_FROM') || 'Spoonbook <onboarding@resend.dev>', to: [Deno.env.get('NOTIFY_EMAIL')], subject, html })
+  body: JSON.stringify({ from: Deno.env.get('MAIL_FROM') || 'Spoonbook <hello@spoonbook.co.uk>', to: [Deno.env.get('NOTIFY_EMAIL')], subject, html })
 });
 // feedback sent from the app (⋯ → Send feedback)
 async function feedback(f: any){
@@ -51,7 +51,7 @@ Deno.serve(async req => {
     method: 'POST',
     headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      from: Deno.env.get('MAIL_FROM') || 'Spoonbook <onboarding@resend.dev>',
+      from: Deno.env.get('MAIL_FROM') || 'Spoonbook <hello@spoonbook.co.uk>',
       to: [Deno.env.get('NOTIFY_EMAIL')],
       subject: `🥄 ${name} ${others.length ? 'joined a cookbook' : 'started a cookbook'} on Spoonbook`,
       html: `<div style="font-family:system-ui,sans-serif;font-size:16px;line-height:1.5">

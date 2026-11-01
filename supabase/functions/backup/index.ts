@@ -53,7 +53,7 @@ Deno.serve(async () => {
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ from: Deno.env.get('MAIL_FROM') || 'Spoonbook <onboarding@resend.dev>', to: [Deno.env.get('NOTIFY_EMAIL')],
+        body: JSON.stringify({ from: Deno.env.get('MAIL_FROM') || 'Spoonbook <hello@spoonbook.co.uk>', to: [Deno.env.get('NOTIFY_EMAIL')],
           subject: `🗄️ Spoonbook backup ${day}`,
           html: `<p style="font-family:system-ui,sans-serif">This week’s backup is attached: ${summary}. A copy is also saved in Supabase (Storage → backups). Keep this email; if anything ever goes wrong, this file can put everything back.</p>`,
           attachments: [{ filename: name, content: b64(file) }] })
