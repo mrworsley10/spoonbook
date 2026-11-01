@@ -14,6 +14,7 @@ const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toStrin
 const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k, v){ try { localStorage.setItem(k, v); } catch {} } };
 
 let session = null, household = null, members = [], plan = null, cookbooks = [];
+let resetting = false; // typing a reset code: that screen handles the new password itself
 const rerender = () => window.__spoonbookRender?.();
 
 /* ---------- working with no signal ----------
@@ -292,8 +293,15 @@ function signInScreen(mode){
     </div>
     <p class="hint" style="font-size:12px">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a>. See how your data is looked after in the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
   </form>`);
-  const oauthErr = new URLSearchParams(location.search + '&' + location.hash.slice(1)).get('error_description');
-  if (oauthErr){ msg(/cancel|denied/i.test(oauthErr) ? 'Google sign-in was cancelled.' : 'Google sign-in didn’t work: ' + oauthErr, true); history.replaceState(null, '', location.pathname); }
+  const back = new URLSearchParams(location.search + '&' + location.hash.slice(1));
+  const oauthErr = back.get('error_description'), errCode = back.get('error_code') || '';
+  if (oauthErr){
+    // a link from an email (reset, confirm) that's been used already: email scanners often open links before you do
+    const emailLink = /otp|email link|expired|invalid/i.test(errCode + ' ' + oauthErr);
+    msg(emailLink ? 'That email link has expired or was already used. Tap “Forgot password” to get a code instead, which always works.'
+      : /cancel|denied/i.test(oauthErr) ? 'Google sign-in was cancelled.' : 'Google sign-in didn’t work: ' + oauthErr, true);
+    history.replaceState(null, '', location.pathname);
+  }
   const g = document.getElementById('googleBtn');
   if (g) g.onclick = async () => {
     g.disabled = true; msg('Opening Google…');
@@ -308,7 +316,8 @@ function signInScreen(mode){
     msg('One moment…');
     if (mode === 'reset'){
       const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
-      return msg(error ? error.message : 'Check your email for a link to set a new password.', !!error);
+      if (error) return msg(/rate|seconds/i.test(error.message) ? 'Please wait a minute before asking for another email.' : error.message, true);
+      return resetCodeScreen(email);
     }
     if (!pass || pass.length < 6) return msg('Passwords need at least 6 characters.', true);
     const { data, error } = mode === 'in'
@@ -316,6 +325,40 @@ function signInScreen(mode){
       : await sb.auth.signUp({ email, password: pass, options: { emailRedirectTo: location.origin + location.pathname } });
     if (error) return msg(error.message === 'Invalid login credentials' ? 'That email and password don’t match.' : error.message, true);
     if (mode === 'up' && !data.session) return msg('Nearly there: check your email and tap the link to confirm, then sign in here.');
+  };
+}
+
+// the reset email carries a code as well as a link. Typing the code works even if the link has been
+// used up by a spam filter, or the email was opened on a different device.
+function resetCodeScreen(email){
+  screen(`<h1 class="hello">Check your<br><em>email.</em></h1>
+  <p class="hint" style="margin:0 0 16px">We’ve sent a code to <b>${esc(email)}</b>. It can take a minute, and it might be in your spam or junk folder.</p>
+  <form class="form" id="codeForm" novalidate>
+    <div class="field"><label for="a-code">Code from the email</label><input id="a-code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="123456" required style="letter-spacing:4px;font-size:22px"></div>
+    <div class="field"><label for="a-new">New password</label><input id="a-new" type="password" autocomplete="new-password" minlength="6" required></div>
+    <button class="btn primary" type="submit">Save password</button>
+    <p id="authMsg" class="hint" role="status">Or tap the link in the email instead.</p>
+    <div class="actions" style="margin:0"><button class="btn small" type="button" id="resend">Send a new code</button><button class="btn small" type="button" data-auth="in">Back to sign in</button></div>
+  </form>`);
+  app().querySelectorAll('[data-auth]').forEach(b => b.onclick = () => signInScreen(b.dataset.auth));
+  document.getElementById('resend').onclick = async () => {
+    msg('One moment…');
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+    msg(error ? (/rate|seconds/i.test(error.message) ? 'Please wait a minute before asking for another code.' : error.message) : 'New code sent. Use the newest email.', !!error);
+  };
+  document.getElementById('codeForm').onsubmit = async e => {
+    e.preventDefault();
+    const token = document.getElementById('a-code').value.replace(/\D/g, ''), p = document.getElementById('a-new').value;
+    if (token.length < 6) return msg('Enter the code from the email.', true);
+    if (p.length < 6) return msg('Passwords need at least 6 characters.', true);
+    msg('One moment…');
+    resetting = true;
+    const { error } = await sb.auth.verifyOtp({ email, token, type: 'recovery' });
+    if (error){ resetting = false; return msg(/expired|invalid/i.test(error.message) ? 'That code didn’t work. Check it, or tap “Send a new code”.' : error.message, true); }
+    const { error: e2 } = await sb.auth.updateUser({ password: p });
+    resetting = false;
+    if (e2) return msg(e2.message, true);
+    history.replaceState(null, '', location.pathname); start();
   };
 }
 
@@ -446,7 +489,7 @@ async function loadPlan(){
 // Supabase locks up if its own functions are called from inside this event, so anything that needs
 // Supabase is queued with setTimeout to run just after the event has finished.
 sb.auth.onAuthStateChange((event, s) => {
-  if (event === 'PASSWORD_RECOVERY'){ session = s; setTimeout(newPasswordScreen, 0); return; }
+  if (event === 'PASSWORD_RECOVERY'){ session = s; if (!resetting) setTimeout(newPasswordScreen, 0); return; }
   if (event === 'SIGNED_IN' && !booted && s?.user?.id !== session?.user?.id){ session = s; setTimeout(start, 0); }
   if (event === 'SIGNED_OUT'){ session = null; try { Object.keys(localStorage).filter(k => /^sb-(offline|outbox)-/.test(k)).forEach(k => localStorage.removeItem(k)); } catch {} if (booted) location.reload(); else setTimeout(signInScreen, 0); }
 });
