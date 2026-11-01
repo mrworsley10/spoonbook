@@ -462,6 +462,7 @@ const I = {
   cart:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
   check:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
   sliders:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>',
+  speak:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
   mic:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>'
 };
 const app = document.getElementById('app'), overlay = document.getElementById('overlay'), nav = document.getElementById('nav');
@@ -876,7 +877,7 @@ function filtersSheet(){
     <div class="chips" style="margin-top:6px">${[['', 'Anything'], ['vegetarian', 'Vegetarian'], ['vegan', 'Vegan']].map(([k, nm]) => `<button class="chip" data-act="dietpick" data-diet="${k}" aria-pressed="${f.diet === k}">${nm}</button>`).join('')}</div>
     <h3 class="sub">Leave out recipes with</h3>
     <div class="chips" style="margin-top:6px">${Diet.NAMES.map(nm => `<button class="chip" data-act="dietavoid" data-a="${nm}" aria-pressed="${f.avoid.includes(nm)}">${nm}</button>`).join('')}</div>
-    <p class="hint" style="margin-top:4px">Allergens are worked out from each recipe’s ingredients, so always check labels if someone has an allergy.</p>
+    <p class="hint" style="margin-top:4px">Allergens are worked out from each recipe’s ingredients. Recipes that only <i>might</i> contain one (from stock cubes or sauces, say) are left out too, to be safe. Always check labels if someone has an allergy.</p>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="closesheet" id="dietCount">Show ${n} recipe${n === 1 ? '' : 's'}</button>${filterCount() ? '<button class="btn" data-act="filtersclear">Clear all</button>' : ''}</div>`);
 }
 const refreshFilters = () => { if (S.sheet && S.sheetKind === 'filters') filtersSheet(); render(); };
@@ -941,7 +942,8 @@ function dietPasses(r){
   const d = dietOf(r);
   if (f.diet === 'vegan' && !d.vegan) return false;
   if (f.diet === 'vegetarian' && !d.vegetarian) return false;
-  return !d.contains.some(c => f.avoid.includes(c.name));
+  // "may contain" counts too: if it depends on the brand, it's left out to be safe
+  return !d.contains.some(c => f.avoid.includes(c.name)) && !(d.may || []).some(c => f.avoid.includes(c.name));
 }
 function dietSummary(){ const f = S.dietFilter; return [f.diet === 'vegan' ? 'Vegan' : f.diet === 'vegetarian' ? 'Vegetarian' : '', ...f.avoid.map(a => 'no ' + a.toLowerCase())].filter(Boolean).join(', '); }
 function dietSheet(){
@@ -958,7 +960,9 @@ function dietSheet(){
 function dietBadges(r){
   const d = dietOf(r); if (!(r.ingredients || []).length) return '';
   const diet = d.vegan ? '<span class="tg veg">🌱 Vegan</span>' : d.vegetarian ? '<span class="tg veg">Vegetarian</span>' : '';
-  return `<button class="dietline" data-act="dietinfo">${diet}${d.contains.length ? `<span class="contains">Contains ${d.contains.map(c => c.name.toLowerCase()).join(', ')}</span>` : '<span class="contains">No common allergens spotted</span>'}<span class="info">ⓘ</span></button>`;
+  const may = d.may || [];
+  const words = [...new Set(may.flatMap(m => m.words))].slice(0, 2).join(', ');
+  return `<button class="dietline" data-act="dietinfo">${diet}<span class="contains">${d.contains.length ? `Contains ${d.contains.map(c => c.name.toLowerCase()).join(', ')}` : may.length ? '' : 'No common allergens spotted'}${d.contains.length && may.length ? ' · ' : ''}${may.length ? `May contain ${may.map(c => c.name.toLowerCase()).join(', ')} (from the ${esc(words)}), check the label` : ''}</span><span class="info">ⓘ</span></button>`;
 }
 function welcomeHtml(){
   return `<h1 class="hello">Welcome to<br><em>your cookbook.</em></h1>
@@ -1073,12 +1077,12 @@ function cookView(){
   const r2 = S.cook2 ? byId(S.cook2) : null, dual = !!r2;
   const steps = csteps(r), n = steps.length, i = Math.min(S.cookStep, Math.max(0, n - 1));
   const hint = S.handsFree
-    ? `<p class="hf" role="status">${SR ? `<b>Listening.</b> Say “next”, “back”, “read it again”, “ingredients”, “start timer” or “stop”${dual ? '. Add “second” for the other dish' : ''}.` : '<b>Reading aloud.</b> This phone can’t listen for commands, so tap Next and each step is read out.'}</p>`
+    ? `<p class="hf" role="status">${SR && S.voiceCmd ? `<b>Listening.</b> Say “next”, “back”, “read it again”, “ingredients”, “start timer” or “stop”${dual ? '. Add “second” for the other dish' : ''}.` : '<b>Reading each step aloud.</b> Tap Next or swipe to move on. Want to say “next” instead? Turn on voice commands in ⋯.'}</p>`
     : (!S.cookShowIng && !dual && n > 1 && i === 0 ? `<p class="hint" style="text-align:center;margin:8px 0 0">Swipe left or right to move between steps</p>` : '');
   return `<div class="cook" role="dialog" aria-label="Cooking ${esc(r.title)}">
     <div class="head"><a class="icon-btn" href="#recipe-${esc(r.id)}" aria-label="Stop cooking">${I.close}</a>
       <span class="eyebrow" style="text-align:center;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${dual ? 'Two dishes' : esc(r.title)}</span>
-      <div class="row"><button class="icon-btn ${S.handsFree ? 'live' : ''}" data-act="handsfree" aria-pressed="${S.handsFree}" aria-label="${S.handsFree ? 'Turn off hands-free' : 'Hands-free: read steps aloud and listen for commands'}">${I.mic}</button>
+      <div class="row"><button class="icon-btn ${S.handsFree ? 'live' : ''}" data-act="handsfree" aria-pressed="${S.handsFree}" aria-label="${S.handsFree ? 'Stop reading aloud' : 'Read the steps aloud'}">${S.voiceCmd ? I.mic : I.speak}</button>
       <button class="btn small" data-act="cooking" aria-pressed="${S.cookShowIng}">${S.cookShowIng ? 'Steps' : 'Ingredients'}</button>
       <button class="icon-btn" data-act="cookmenu" aria-label="Cooking options">${I.more}</button></div></div>
     ${dual ? '' : `<div class="prog" aria-hidden="true"><i style="width:${n ? ((i + 1) / n * 100) : 0}%"></i></div>`}
@@ -1655,6 +1659,7 @@ const A = {
   cooking(){ S.cookShowIng = !S.cookShowIng; render(true); },
   step(b){ moveStep(b.dataset.w === '2' ? 2 : 1, +b.dataset.d); },
   handsfree(){ if (S.sheet) closeSheet(); handsFree(!S.handsFree); },
+  voicecmd(){ if (S.sheet) closeSheet(); voiceCmd(!S.voiceCmd); },
   simple(b){
     // keep your place in cooking mode when switching
     const r = S.view === 'cook' ? byId(S.id) : null; let at = 0;
@@ -1671,7 +1676,8 @@ const A = {
       <div class="menu">
         ${S.cook2 ? `<button class="mrow" data-act="cook2off"><b>Stop cooking the second dish</b></button>` : `<button class="mrow" data-act="cook2pick"><b>Cook a second dish alongside</b><span>Two recipes side by side, each with its own steps and timers</span></button>`}
         <button class="mrow" data-act="simple" role="switch" aria-checked="${S.simple}"><span style="flex:1"><b>Simple mode</b><span>One action at a time, cooking words explained</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
-        <button class="mrow" data-act="handsfree" role="switch" aria-checked="${S.handsFree}"><span style="flex:1"><b>Hands-free</b><span>Reads steps aloud and listens for “next”, “back”, “timer”</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+        <button class="mrow" data-act="handsfree" role="switch" aria-checked="${S.handsFree}"><span style="flex:1"><b>Read steps aloud</b><span>Each step is read out as you move on</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
+        <button class="mrow" data-act="voicecmd" role="switch" aria-checked="${S.voiceCmd}"><span style="flex:1"><b>Voice commands</b><span>Say “next”, “back”, “timer” or “stop”. Uses the microphone, and Android beeps each time it starts listening</span></span><span class="switch" aria-hidden="true"><i></i></span></button>
       </div>
       <button class="btn" data-act="closesheet">Done</button>`);
   },
@@ -1785,7 +1791,10 @@ const A = {
     const r = byId(S.id); const d = dietOf(r);
     openSheet('Allergens', `<h2>Allergy &amp; diet guide</h2>
       ${d.vegan ? '<p>🌱 Looks <b>vegan</b>: no meat, fish, dairy, eggs or honey spotted.</p>' : d.vegetarian ? '<p>Looks <b>vegetarian</b>: no meat or fish spotted.</p>' : ''}
-      ${d.contains.length ? `<ul class="allergens">${d.contains.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>` : '<p>None of the 14 common allergens spotted in the ingredients.</p>'}
+      ${d.contains.length ? `<h3 class="sub">Contains</h3><ul class="allergens">${d.contains.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>` : ''}
+      ${(d.may || []).length ? `<h3 class="sub">May contain: depends on the brand</h3><ul class="allergens">${d.may.map(c => `<li><b>${esc(c.name)}</b><span class="hint">${c.from.map(esc).join('; ')}</span></li>`).join('')}</ul>
+        <p class="hint">Stock cubes, gravy, sausages and ready-made sauces often contain gluten, celery or mustard, but not every brand does. If you use a free-from version, you’re fine. Filters leave these recipes out to be safe.</p>` : ''}
+      ${!d.contains.length && !(d.may || []).length ? '<p>None of the 14 common allergens spotted in the ingredients.</p>' : ''}
       <p class="hint">Worked out by Spoonbook from the ingredient list. It can’t see inside shop-bought products like stock cubes, sauces or bread, which often contain gluten, milk, soya or mustard. If someone has an allergy, always check the labels.</p>
       <button class="btn" data-act="closesheet">Got it</button>`);
   },
@@ -2159,7 +2168,7 @@ function readIngredients(w){
   say((r.ingredients || []).length ? 'You need: ' + r.ingredients.map(l => showLine(scaleLine(l, f))).join('. ') : 'No ingredients are written for this one.');
 }
 function listen(){
-  if (!S.handsFree || !SR || speaking || recog || S.view !== 'cook' || document.visibilityState !== 'visible') return;
+  if (!S.handsFree || !S.voiceCmd || !SR || speaking || recog || S.view !== 'cook' || document.visibilityState !== 'visible') return;
   const me = recog = new SR();
   me.lang = 'en-GB'; me.continuous = true; me.interimResults = false;
   me.onresult = e => { const res = e.results[e.results.length - 1]; if (res?.isFinal) command(res[0].transcript); };
@@ -2172,8 +2181,16 @@ function listen(){
 function stopListening(){ const r = recog; recog = null; try { r?.abort(); } catch {} }
 function handsFree(on){
   S.handsFree = on;
-  if (on){ S.noMic = false; readStep(1); if (!SR) toast('This phone can’t listen for commands, but each step will be read out'); }
+  if (on){ S.noMic = false; readStep(1); }
   else { stopListening(); try { speechSynthesis.cancel(); } catch {} speaking = false; }
+  if (S.view === 'cook') render(true);
+}
+// voice commands use the microphone, which on Android beeps every time it starts listening, so they're optional
+S.voiceCmd = ls.get('sb-voicecmd') === 'on';
+function voiceCmd(on){
+  if (on && !SR){ toast('This phone can’t listen for voice commands'); return; }
+  S.voiceCmd = on; ls.set('sb-voicecmd', on ? 'on' : 'off');
+  if (on){ if (!S.handsFree) handsFree(true); else listen(); } else stopListening();
   if (S.view === 'cook') render(true);
 }
 function stopRinging(){
