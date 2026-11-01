@@ -271,15 +271,67 @@ function msg(t, bad){ const m = document.getElementById('authMsg'); if (m){ m.te
 
 // Google's own "G" mark, as Google asks sign-in buttons to show it
 const GOOGLE_G = '<svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
-function signInScreen(mode){
+async function googleGo(g){
+  g.disabled = true; msg('Opening Google…');
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } });
+  if (error){ g.disabled = false; msg(/not enabled|unsupported/i.test(error.message) ? 'Google sign-in isn’t set up yet. Use your email for now.' : error.message, true); }
+}
+
+/* the first thing someone new sees: what Spoonbook is, shown rather than described, then one big button */
+const SLIDES = [
+  { h: 'Cook together', p: 'Share your cookbook with family. Everyone can add recipes, and you all see the same plan and shopping list.', art: `
+    <div class="mk-people"><i style="--c:#C8553D">M</i><i style="--c:#3D7EA6">D</i><i style="--c:#6A8D4E">N</i><i style="--c:#B07AA1">S</i></div>
+    <div class="mk-card"><span class="mk-ph" style="--h:20">🍖</span><span><b>Nan’s Sunday roast</b><small>Added by Nan · Serves 6</small></span></div>
+    <div class="mk-card"><span class="mk-ph" style="--h:340">🍰</span><span><b>Mum’s lemon drizzle</b><small>Added by Mum · ★ 5</small></span></div>
+    <p class="mk-note">Dad joined the family cookbook</p>` },
+  { h: 'Save from anywhere', p: 'Paste a link from any recipe website, snap a page of a cookbook, or bring over old emails. No more screenshots.', art: `
+    <div class="mk-url">bbcgoodfood.com/recipes/…</div><div class="mk-arrow">↓</div>
+    <div class="mk-card big"><span class="mk-ph" style="--h:10">🍝</span><span><b>Creamy tomato pasta</b><small>25 min · Serves 4 · 9 ingredients</small></span></div>` },
+  { h: 'Plan and shop together', p: 'Plan the week, then one tap fills the shopping list, sorted by aisle. Tick things off and everyone sees it live.', art: `
+    <div class="mk-plan"><span><b>Mon</b>Chicken traybake</span><span><b>Tue</b>Creamy tomato pasta</span></div>
+    <div class="mk-list"><small>Fruit &amp; veg</small><span class="on">Peppers</span><span>Cherry tomatoes</span><small>Dairy</small><span class="on">Milk <em>ticked by Mum</em></span></div>` },
+  { h: 'Cook hands-free', p: 'Big, clear steps with timers you can hear. It can read each step aloud, so you don’t touch the screen with messy hands.', art: `
+    <div class="mk-cook"><small>Step 3 of 6</small><b>Simmer the sauce until thick and glossy.</b><span class="mk-timer">⏱ 08:42</span></div>` }
+];
+function landingScreen(gone){
+  const invited = pendingJoin();
+  screen((gone ? `<p class="offline" role="status">Your account has been deleted. Thanks for using Spoonbook.</p>` : '') + `
+  <div class="land">
+    <h1 class="hello">${invited ? 'You’ve been<br><em>invited.</em>' : 'Every family recipe.<br><em>One shared cookbook.</em>'}</h1>
+    <p class="land-trust">${invited ? 'Someone wants to share their cookbook with you. Make a free account to join them.' : 'Free · No adverts · Made in the UK'}</p>
+    <div class="slides" id="slides" tabindex="0" aria-roledescription="carousel" aria-label="What Spoonbook does">
+      ${SLIDES.map((x, i) => `<section class="slide" aria-label="${i + 1} of ${SLIDES.length}: ${x.h}"><div class="mk">${x.art}</div><h2>${x.h}</h2><p>${x.p}</p></section>`).join('')}
+    </div>
+    <div class="dots" role="group" aria-label="Choose a slide">${SLIDES.map((x, i) => `<button type="button" data-slide="${i}" aria-label="${x.h}" aria-current="${i === 0}"></button>`).join('')}</div>
+    <button class="btn primary" type="button" id="startBtn">Get started, it’s free</button>
+    ${CFG.googleSignIn ? `<button class="btn gbtn" type="button" id="googleBtn">${GOOGLE_G}<span>Continue with Google</span></button>` : ''}
+    <p id="authMsg" class="hint" role="status"></p>
+    <button class="linkbtn land-in" type="button" data-auth="in">I already have an account</button>
+    <p class="hint" style="font-size:12px;text-align:center">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a> and <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
+  </div>`);
+  document.getElementById('startBtn').onclick = () => signInScreen('up', true);
+  const g = document.getElementById('googleBtn'); if (g) g.onclick = () => googleGo(g);
+  app().querySelectorAll('[data-auth]').forEach(b => b.onclick = () => signInScreen(b.dataset.auth, true));
+  // the slides move on by themselves until someone touches them
+  const box = document.getElementById('slides'), dots = [...app().querySelectorAll('[data-slide]')];
+  let at = 0, auto = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const show = i => { at = (i + SLIDES.length) % SLIDES.length; box.scrollTo({ left: at * box.clientWidth, behavior: 'smooth' }); };
+  box.addEventListener('scroll', () => { const i = Math.round(box.scrollLeft / Math.max(1, box.clientWidth)); dots.forEach((d, j) => d.setAttribute('aria-current', j === i)); at = i; }, { passive: true });
+  ['pointerdown', 'touchstart', 'keydown', 'wheel'].forEach(ev => box.addEventListener(ev, () => { auto = false; }, { passive: true }));
+  dots.forEach(d => d.onclick = () => { auto = false; show(+d.dataset.slide); });
+  box.onkeydown = e => { if (e.key === 'ArrowRight') show(at + 1); if (e.key === 'ArrowLeft') show(at - 1); };
+  const timer = setInterval(() => { if (!document.body.contains(box)) return clearInterval(timer); if (auto && !document.hidden) show(at + 1); }, 4500);
+}
+
+function signInScreen(mode, fromLanding){
   let gone = false; try { gone = sessionStorage.getItem('sb-account-deleted') === '1'; sessionStorage.removeItem('sb-account-deleted'); } catch {}
-  // someone who's never signed in on this phone gets a short welcome and starts on "make your cookbook"
+  // someone who's never signed in on this phone starts on the welcome screen
   const returning = !!store.get('sb-been-here');
+  const back = new URLSearchParams(location.search + '&' + location.hash.slice(1));
+  if (!mode && !returning && !back.get('error_description')) return landingScreen(gone);
   mode = mode || (returning ? 'in' : 'up');
-  const intro = !returning && mode !== 'reset' ? `<div class="intro"><img src="icons/icon-192.png" alt="" width="64" height="64">
-      <p>Your family’s recipes, meal plan and shopping list in one shared cookbook.</p>
-      <ul><li>Save recipes from any website, photo or old email</li><li>Plan the week and shop together, live</li><li>Cook hands-free, with timers you can hear</li></ul></div>` : '';
-  screen((gone ? `<p class="offline" role="status">Your account has been deleted. Thanks for using Spoonbook.</p>` : '') + `<h1 class="hello">${mode === 'in' ? 'Welcome<br><em>back.</em>' : mode === 'up' ? (returning ? 'Make your<br><em>cookbook.</em>' : 'Your family’s<br><em>cookbook.</em>') : 'Forgotten your<br><em>password?</em>'}</h1>
+  const intro = fromLanding && mode !== 'reset' ? `<button class="linkbtn" type="button" id="landBack" style="margin:-8px 0 14px">← Back</button>` : '';
+  screen((gone ? `<p class="offline" role="status">Your account has been deleted. Thanks for using Spoonbook.</p>` : '') + `<h1 class="hello">${mode === 'in' ? 'Welcome<br><em>back.</em>' : mode === 'up' ? 'Make your<br><em>cookbook.</em>' : 'Forgotten your<br><em>password?</em>'}</h1>
   ${intro}
   ${CFG.googleSignIn && mode !== 'reset' ? `<button class="btn gbtn" type="button" id="googleBtn">${GOOGLE_G}<span>Continue with Google</span></button>
     <p class="or"><span>or use your email</span></p>` : ''}
@@ -293,7 +345,6 @@ function signInScreen(mode){
     </div>
     <p class="hint" style="font-size:12px">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a>. See how your data is looked after in the <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
   </form>`);
-  const back = new URLSearchParams(location.search + '&' + location.hash.slice(1));
   const oauthErr = back.get('error_description'), errCode = back.get('error_code') || '';
   if (oauthErr){
     // a link from an email (reset, confirm) that's been used already: email scanners often open links before you do
@@ -303,12 +354,9 @@ function signInScreen(mode){
     history.replaceState(null, '', location.pathname);
   }
   const g = document.getElementById('googleBtn');
-  if (g) g.onclick = async () => {
-    g.disabled = true; msg('Opening Google…');
-    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { prompt: 'select_account' } } });
-    if (error){ g.disabled = false; msg(/not enabled|unsupported/i.test(error.message) ? 'Google sign-in isn’t set up yet. Use your email for now.' : error.message, true); }
-  };
-  app().querySelectorAll('[data-auth]').forEach(b => b.onclick = () => signInScreen(b.dataset.auth));
+  if (g) g.onclick = () => googleGo(g);
+  const lb = document.getElementById('landBack'); if (lb) lb.onclick = () => landingScreen();
+  app().querySelectorAll('[data-auth]').forEach(b => b.onclick = () => signInScreen(b.dataset.auth, fromLanding));
   document.getElementById('authForm').onsubmit = async e => {
     e.preventDefault();
     const email = document.getElementById('a-email').value.trim(), pass = document.getElementById('a-pass')?.value;
