@@ -16,7 +16,7 @@ Our shared cookbook: recipes, photos, meal plans and the shopping list. It insta
 
 ### 2. Supabase sign-in settings
 1. Go to **Authentication → URL Configuration**.
-2. Set **Site URL** to your app address: `https://YOUR-GITHUB-USERNAME.github.io/spoonbook/`
+2. Set **Site URL** to your app address: `https://spoonbook.co.uk/` (or your own domain)
 3. Add the same address under **Redirect URLs** and save.
 
 New accounts get a "confirm your email" message by default. To skip that step for a household app, turn off **Confirm email** under **Authentication → Providers → Email**.
@@ -25,7 +25,7 @@ New accounts get a "confirm your email" message by default. To skip that step fo
 In **Edge Functions → Deploy a new function → Via Editor**, name it `clip`, replace the example code with [`supabase/functions/clip/index.ts`](supabase/functions/clip/index.ts), and press **Deploy**.
 
 ### 4. GitHub Pages
-In this repository on GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/ (root)` → Save**. After a minute the app is live at `https://YOUR-GITHUB-USERNAME.github.io/spoonbook/`.
+In this repository on GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → Branch: `main`, folder `/ (root)` → Save**. After a minute the app is live at `https://spoonbook.co.uk/` (or your own domain).
 
 ### 5. Install it on Android
 1. Open the app address in **Chrome**.
