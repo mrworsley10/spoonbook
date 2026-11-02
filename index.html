@@ -313,6 +313,7 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .dots button[aria-current="true"]{width:22px;background:var(--accent)}
 .land .btn.primary{height:56px;font-size:18px}.land .gbtn{margin-top:0}
 .land-in{align-self:center;margin:4px 0;font-size:16px}
+.land-legal{font-size:12px;text-align:center}
 @media (prefers-reduced-motion: reduce){.dots button{transition:none}}
 .intro{display:flex;flex-direction:column;gap:10px;margin:-6px 0 22px}
 .intro img{border-radius:16px}
@@ -473,6 +474,67 @@ ol.sub li p{margin:0 0 6px}
 .joincode{display:block;font-family:var(--display);font-size:30px;letter-spacing:6px;color:var(--accent);margin-top:6px}
 .toast{position:fixed;z-index:60;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));box-shadow:0 6px 24px rgba(0,0,0,.25);text-align:center;background:var(--fg);color:var(--bg);padding:10px 18px;border-radius:22px;font-size:15px;font-weight:500;max-width:calc(100% - 32px)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+/* ---------- laptops and big tablets (phones are unchanged) ---------- */
+@media (min-width: 1000px){
+  body:has(#nav:not([hidden])){padding-left:104px}
+  #app{max-width:1180px;padding:28px 48px 80px}
+  #app:has(#authForm,#hhForm,#codeForm,#pwForm){max-width:520px;padding-top:56px}
+  /* the tab bar becomes a rail down the left */
+  nav.tabbar{top:0;right:auto;width:104px;border-top:0;border-right:1px solid var(--line);padding:0}
+  nav.tabbar .in{display:flex;flex-direction:column;gap:6px;padding-top:96px;max-width:none}
+  nav.tabbar a{min-height:72px;font-size:13px;border-radius:16px;margin:0 10px}
+  nav.tabbar a:hover{background:var(--raise,var(--line))}
+  nav.tabbar a[aria-current="page"]{background:color-mix(in srgb,var(--accent) 14%,transparent)}
+  nav.tabbar .badge{top:8px}
+  .hello{font-size:52px;margin:26px 0 22px}
+  .search{max-width:640px}
+  /* the book: list in two columns, photo grid fills the width */
+  #list .list{display:grid;grid-template-columns:1fr 1fr;column-gap:40px}
+  #list .grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:22px 20px}
+  #list .grid .img{border-radius:12px}
+  .picks{margin:20px 0 0;padding:0 0 6px}
+  .guide,.installbar{max-width:720px}
+  /* recipe: a rounded photo, then ingredients and method side by side */
+  .hero{margin:0;border-radius:24px;height:min(52vh,460px)}
+  .hero::after{border-radius:24px}
+  .meta,.tagline,.quick,.story,.units,.review{max-width:900px}
+  .rcols{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);gap:56px;align-items:start;margin-top:26px}
+  .rcol-ing{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:18px 20px}
+  .colh{font-family:var(--display);font-weight:500;font-size:28px;margin:0 0 4px;display:flex;align-items:baseline;gap:10px}
+  .colh span{font-family:var(--body);font-size:14px;color:var(--muted);font-weight:600}
+  .rcol .steps{gap:24px}.rcol .steps p{font-size:18px;line-height:1.6}
+  .dock{left:104px}
+  .dock .in{max-width:520px}
+  /* plan: the week as a grid of days */
+  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .day,.day.empty{border:1px solid var(--line);border-radius:18px;padding:14px 16px;background:var(--surface)}
+  .day.today{border-color:var(--accent)}
+  /* shopping: aisles in columns */
+  .shopgroups{columns:2 300px;column-gap:40px}
+  .shopgroups .group{break-inside:avoid}
+  .shop-add{max-width:640px}
+  /* pop-ups open as a box in the middle */
+  .scrim{align-items:center;padding:24px}
+  .sheet{border-radius:22px;max-height:86vh;max-width:620px;padding-bottom:22px}
+  /* cooking mode: bigger words */
+  .cook .head,.cook .body,.cook .foot{max-width:860px}
+  .cook .big{font-size:40px}
+  /* welcome screen: words and buttons on the left, the slides on the right */
+  #app:has(.land){max-width:1120px;padding-top:40px}
+  .land{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:72px;align-items:start}
+  .land>*{grid-column:1}
+  .land .hello{margin-top:40px}
+  .land .hello{font-size:54px}
+  .land-show{grid-column:2;grid-row:1 / span 8;margin-top:28px}
+  .land .slides{margin:0}
+  .land .slide{padding:0}
+  .land .mk{height:300px}
+  .land .dots{margin-top:16px}
+  .land-legal{text-align:left}
+  .land .btn.primary,.land .gbtn{max-width:440px}
+  .land-in{justify-self:start}
+}
 </style>
 
 <div id="app" aria-live="polite">
@@ -825,6 +887,10 @@ function parse(){
   if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; if (Backend.userId?.()) guideMark('cook'); }
 }
 const go = h => { location.hash = h; };
+// laptops and big tablets get a roomier layout; phones are unchanged
+const WIDE = matchMedia('(min-width: 1000px)');
+const wide = () => WIDE.matches;
+WIDE.addEventListener?.('change', () => { if (!S.sheet) render(); });
 window.addEventListener('hashchange', () => { parse(); render(true); window.scrollTo(0,0); app.classList.remove('enter'); void app.offsetWidth; app.classList.add('enter'); });
 
 /* ---------- views ---------- */
@@ -1128,19 +1194,23 @@ function recipeView(){
   ${r.story || r.bestCook ? `<div class="story">${r.bestCook ? `<span class="eyebrow">Made best by</span><p class="best">${esc(r.bestCook)}</p>` : ''}${r.story ? `<span class="eyebrow">The story</span><p>${esc(r.story)}</p>` : ''}</div>` : ''}
   ${hasUS(r) ? `<div class="units"><span>${S.metric ? 'Converted to metric from cups, pounds and ounces' : 'Showing the original US measures'}</span>
     <button class="chip" data-act="units" aria-pressed="${!S.metric}">${S.metric ? 'Show original' : 'Show metric'}</button></div>` : ''}
-  <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="${S.tab === 'ing'}" data-act="tab" data-tab="ing">Ingredients · ${ings.length}</button>
-    <button role="tab" aria-selected="${S.tab === 'method'}" data-act="tab" data-tab="method">Method · ${steps.length}</button>
-  </div>
-  ${S.tab === 'ing' ? `
+  ${(() => {
+    const ingHtml = `
     <div class="ctrl"><span class="eyebrow">${f !== 1 ? 'Scaled ×' + fmt(f) : 'As written'}</span>
       <div class="stepper"><button data-act="scale" data-d="-1" aria-label="Less">−</button><span>${scaleLabel}</span><button data-act="scale" data-d="1" aria-label="More">+</button></div></div>
-    ${ings.length ? `<ul class="ings">${ings.map((l, i) => `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`
-  : (steps.length ? `<div class="simplerow"><span class="hint">${S.simple ? 'Simple mode: one action at a time, with cooking words explained. Tap an underlined word.' : 'New to cooking?'}</span><button class="chip" data-act="simple" aria-pressed="${S.simple}">${S.simple ? '✓ Simple mode' : 'Simple mode'}</button></div>
+    ${ings.length ? `<ul class="ings">${ings.map((l, i) => `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`;
+    const methodHtml = (steps.length ? `<div class="simplerow"><span class="hint">${S.simple ? 'Simple mode: one action at a time, with cooking words explained. Tap an underlined word.' : 'New to cooking?'}</span><button class="chip" data-act="simple" aria-pressed="${S.simple}">${S.simple ? '✓ Simple mode' : 'Simple mode'}</button></div>
     ${S.simple ? prepBox(r) : ''}
     <ol class="steps">${(() => { const flat = csteps(r); let k = 0; return steps.map((s, i) => { const parts = S.simple ? Simple.splitStep(s) : [s];
       const body = parts.length > 1 ? `<ol class="sub">${parts.map(x => { const t = tipsHtml(newTips(flat, k++)); return `<li><p>${stepHtml(x)}</p>${t}</li>`; }).join('')}</ol>` : `<p>${stepHtml(s)}</p>${S.simple ? tipsHtml(newTips(flat, k++)) : ''}`;
-      return `<li><span class="n">${i+1}</span><div>${body}${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`; }).join(''); })()}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`)}
+      return `<li><span class="n">${i+1}</span><div>${body}${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`; }).join(''); })()}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`);
+    // on a laptop, ingredients and method sit side by side instead of in tabs
+    if (wide()) return `<div class="rcols"><section class="rcol rcol-ing" aria-label="Ingredients"><h2 class="colh">Ingredients <span>${ings.length}</span></h2>${ingHtml}</section><section class="rcol" aria-label="Method"><h2 class="colh">Method <span>${steps.length}</span></h2>${methodHtml}</section></div>`;
+    return `  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="${S.tab === 'ing'}" data-act="tab" data-tab="ing">Ingredients · ${ings.length}</button>
+    <button role="tab" aria-selected="${S.tab === 'method'}" data-act="tab" data-tab="method">Method · ${steps.length}</button>
+  </div>` + (S.tab === 'ing' ? ingHtml : methodHtml);
+  })()}
   ${r.nutrition ? (() => { const n = r.nutrition; return `<div class="kcal" id="kcalBox"><div class="kc"><b>${n.kcal}</b><span>kcal</span></div><div class="kc"><b>${n.protein}g</b><span>protein</span></div><div class="kc"><b>${n.carbs}g</b><span>carbs</span></div><div class="kc"><b>${n.fat}g</b><span>fat</span></div>
       <p class="hint">Per portion, ${n.portionsAssumed ? 'assuming it makes ' + n.portions + ' (add “Serves” to the recipe to be exact)' : 'if it makes ' + n.portions}. A rough guide worked out from UK government food data${n.total ? `, counting ${n.counted} of ${n.total} ingredients` : ''}${n.missed?.length ? ` (not counted: ${esc(n.missed.slice(0, 4).join('; '))}${n.missed.length > 4 ? '…' : ''})` : ''}. <button class="linkbtn" data-act="kcal">Work it out again</button></p></div>`; })()
     : (r.ingredients || []).length && S.canEdit ? `<div id="kcalBox" style="margin-top:22px"><button class="btn small" data-act="kcal">Work out calories per portion</button></div>` : ''}
@@ -1261,7 +1331,7 @@ function shopView(){
     ${open.length ? `<button class="btn small" data-act="sendlist">Send</button>` : ''}
     <button class="icon-btn small" data-act="shopmenu" aria-label="More shopping options">${I.more}</button></div>
   <div id="aisleMsg"></div>
-  <div class="${S.shopMode ? 'shopmode' : ''}">${items.length ? listHtml : `<div class="empty"><h2>Nothing on the list</h2>Open a recipe and tap “Add to shopping”, or add things above.</div>`}</div>`;
+  <div class="shopgroups ${S.shopMode ? 'shopmode' : ''}">${items.length ? listHtml : `<div class="empty"><h2>Nothing on the list</h2>Open a recipe and tap “Add to shopping”, or add things above.</div>`}</div>`;
 }
 function shopMenu(){
   const items = S.shop.items || [], done = items.filter(i => i.done).length;

@@ -299,15 +299,17 @@ function landingScreen(gone){
   <div class="land">
     <h1 class="hello">${invited ? 'You’ve been<br><em>invited.</em>' : 'Every family recipe.<br><em>One shared cookbook.</em>'}</h1>
     <p class="land-trust">${invited ? 'Someone wants to share their cookbook with you. Make a free account to join them.' : 'Free · No adverts · Made in the UK'}</p>
+    <div class="land-show">
     <div class="slides" id="slides" tabindex="0" aria-roledescription="carousel" aria-label="What Spoonbook does">
       ${SLIDES.map((x, i) => `<section class="slide" aria-label="${i + 1} of ${SLIDES.length}: ${x.h}"><div class="mk">${x.art}</div><h2>${x.h}</h2><p>${x.p}</p></section>`).join('')}
     </div>
     <div class="dots" role="group" aria-label="Choose a slide">${SLIDES.map((x, i) => `<button type="button" data-slide="${i}" aria-label="${x.h}" aria-current="${i === 0}"></button>`).join('')}</div>
+    </div>
     <button class="btn primary" type="button" id="startBtn">Get started, it’s free</button>
     ${CFG.googleSignIn ? `<button class="btn gbtn" type="button" id="googleBtn">${GOOGLE_G}<span>Continue with Google</span></button>` : ''}
     <p id="authMsg" class="hint" role="status"></p>
     <button class="linkbtn land-in" type="button" data-auth="in">I already have an account</button>
-    <p class="hint" style="font-size:12px;text-align:center">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a> and <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
+    <p class="hint land-legal">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a> and <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
   </div>`);
   document.getElementById('startBtn').onclick = () => signInScreen('up', true);
   const g = document.getElementById('googleBtn'); if (g) g.onclick = () => googleGo(g);
