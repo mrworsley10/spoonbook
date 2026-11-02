@@ -35,7 +35,7 @@ function parseRecipe(text){
     const meta = l.match(META);
     if (meta && l.length < 60){
       const k = meta[1].toLowerCase(), v = meta[meta.length - 1];
-      if (/serv|make|yield/.test(k)){ if (!out.serves && v) out.serves = v.replace(/^:?\s*/, '').replace(/\s*(people|portions)$/i, ''); continue; }
+      if (/serv|make|yield/.test(k)){ if (!out.serves && v){ const num = v.match(/\d+(?:\s*[-–]\s*\d+)?/); out.serves = num && /serv/.test(k) ? num[0].replace(/\s+/g, '') : v.replace(/^:?\s*/, '').replace(/\s*(people|portions)$/i, ''); } continue; }
       if (/total|ready/.test(k)){ out.totalMins = mins(v) || out.totalMins; continue; }
       if (/prep/.test(k)){ out.prepMins = mins(v); continue; }
       if (/cook/.test(k) && mins(v)){ out.cookMins = mins(v); continue; }
@@ -64,6 +64,27 @@ function parseRecipe(text){
     }
   }
   // No headings at all: sort lines by what they look like.
+  // A page with no headings but clear paragraphs (a cookbook): short lines with amounts are the ingredients,
+  // prose paragraphs are the method, and prose before the first instruction is the introduction.
+  if (!out.ingredients.length && !out.steps.length && preAt.filter(Boolean).length >= 2){
+    const paras = []; pre.forEach((l, k) => { if (!paras.length || preAt[k]) paras.push([]); paras[paras.length - 1].push(l); });
+    const joinP = ls => ls.reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) && !/^(and|or|to|the|a|of|in|with)\b/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '');
+    const ing = [], prose = []; let titleP = null;
+    paras.forEach((p, k) => {
+      const amt = p.filter(l => QTY.test(l)).length, avg = p.reduce((a, l) => a + l.length, 0) / p.length;
+      if (k === 0 && p.length <= 2 && !amt && avg < 80) titleP = p;
+      else if (amt && (amt / p.length >= 0.4 || avg < 45)) ing.push(...p);
+      else prose.push(joinP(p).replace(/^[^A-Za-z0-9]+/, ''));
+    });
+    const first = prose.findIndex(t => VERB.test(t) && t.length > 25);
+    if (ing.length && first >= 0){
+      out.ingredients = ing.filter(l => !META.test(l));
+      const intro = prose.slice(0, first).filter(t => t.length > 60).join(' ');
+      if (intro) out.intro = intro;
+      out.steps = prose.slice(first).filter(t => t.length > 15 && !META.test(t));
+      pre.length = 0; if (titleP) pre.push(...titleP);
+    }
+  }
   if (!out.ingredients.length && !out.steps.length){
     const lines = [...pre]; pre.length = 0;
     const first = lines.findIndex(l => QTY.test(l) || isStep(l));
@@ -79,7 +100,7 @@ function parseRecipe(text){
   // read left column first): the paragraphs before are the method, after an intro that isn't instructions.
   if (out.ingredients.length && !out.steps.length && pre.length > 2){
     const paras = []; pre.forEach((l, k) => { if (!paras.length || preAt[k]) paras.push([]); paras[paras.length - 1].push(l); });
-    const joinP = ls => ls.reduce((a, l) => !a ? l : /[-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '');
+    const joinP = ls => ls.reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) && !/^(and|or|to|the|a|of|in|with)\b/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '');
     const texts = paras.map(joinP), first = texts.findIndex((t, k) => k > 0 && VERB.test(t.replace(/^[^A-Za-z]+/, '')) && t.length > 30);
     if (first > 0){
       const intro = texts.slice(1, first).filter(t => t.length > 60).join(' ');
