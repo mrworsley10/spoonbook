@@ -396,6 +396,8 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .cropbox i[data-c="nw"]{left:-4px;top:-4px;border-right:0;border-bottom:0;cursor:nwse-resize}.cropbox i[data-c="ne"]{right:-4px;top:-4px;border-left:0;border-bottom:0;cursor:nesw-resize}
 .cropbox i[data-c="sw"]{left:-4px;bottom:-4px;border-right:0;border-top:0;cursor:nesw-resize}.cropbox i[data-c="se"]{right:-4px;bottom:-4px;border-left:0;border-top:0;cursor:nwse-resize}
 .cropbox i::after{content:"";position:absolute;inset:-14px}
+.ings li.inghead{padding:16px 0 4px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
+.ings li.inghead:first-child{padding-top:6px}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -890,7 +892,11 @@ const STOP = new Set('chopped finely roughly sliced peeled large small medium fr
 function keyWords(line){ return line.split(',')[0].toLowerCase().replace(/\(.*?\)/g, ' ').replace(/[^a-z\s-]/g, ' ').split(/[\s-]+/).filter(w => w.length > 3 && !STOP.has(w)); }
 function stepIngs(r, step, f){
   const s = step.toLowerCase();
-  return (r.ingredients || []).filter(l => keyWords(l).some(k => new RegExp('\\b' + k.replace(/(es|s)$/, '')).test(s))).map(l => showLine(scaleLine(l, f)));
+  // "mix together all the marinade ingredients" means everything under "For the marinade:"
+  const all = r.ingredients || []; let grp = null;
+  all.forEach((l, k) => { if (isHead(l)){ const w = headText(l).toLowerCase().replace(/^for (the|a|your)\s+/, '').split(/\s+/).pop(); if (w && w.length > 3 && new RegExp('\\b' + w + '\\s+ingredients').test(s)){ grp = []; for (let j = k + 1; j < all.length && !isHead(all[j]); j++) grp.push(all[j]); } } });
+  if (grp && grp.length) return grp.map(l => showLine(scaleLine(l, f)));
+  return realIngs(r).filter(l => keyWords(l).some(k => new RegExp('\\b' + k.replace(/(es|s)$/, '')).test(s))).map(l => showLine(scaleLine(l, f)));
 }
 
 /* ---------- plan ---------- */
@@ -925,6 +931,9 @@ function parse(){
   if (S.view === 'cook'){ S.cookStep = 0; S.cookShowIng = false; S.cookStep2 = 0; if (Backend.userId?.()) guideMark('cook'); }
 }
 const go = h => { location.hash = h; };
+const isHead = l => Local.isHead(l);
+const headText = l => String(l).replace(/\s*:\s*$/, '');
+const realIngs = r => (r.ingredients || []).filter(l => !isHead(l));
 // laptops and big tablets get a roomier layout; phones are unchanged
 const WIDE = matchMedia('(min-width: 1000px)');
 const wide = () => WIDE.matches;
@@ -1236,16 +1245,16 @@ function recipeView(){
     const ingHtml = `
     <div class="ctrl"><span class="eyebrow">${f !== 1 ? 'Scaled ×' + fmt(f) : 'As written'}</span>
       <div class="stepper"><button data-act="scale" data-d="-1" aria-label="Less">−</button><span>${scaleLabel}</span><button data-act="scale" data-d="1" aria-label="More">+</button></div></div>
-    ${ings.length ? `<ul class="ings">${ings.map((l, i) => `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`;
+    ${ings.length ? `<ul class="ings">${ings.map((l, i) => isHead(l) ? `<li class="inghead">${esc(headText(l))}</li>` : `<li><label><input type="checkbox" data-chg="tick" data-i="${i}" ${chk[i] ? 'checked' : ''}><span>${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>` : `<p class="hint" style="margin-top:14px">No ingredients yet. <a href="#edit-${esc(r.id)}">Add them</a>.</p>`}`;
     const methodHtml = (steps.length ? `<div class="simplerow"><span class="hint">${S.simple ? 'Simple mode: one action at a time, with cooking words explained. Tap an underlined word.' : 'New to cooking?'}</span><button class="chip" data-act="simple" aria-pressed="${S.simple}">${S.simple ? '✓ Simple mode' : 'Simple mode'}</button></div>
     ${S.simple ? prepBox(r) : ''}
     <ol class="steps">${(() => { const flat = csteps(r); let k = 0; return steps.map((s, i) => { const parts = S.simple ? Simple.splitStep(s) : [s];
       const body = parts.length > 1 ? `<ol class="sub">${parts.map(x => { const t = tipsHtml(newTips(flat, k++)); return `<li><p>${stepHtml(x)}</p>${t}</li>`; }).join('')}</ol>` : `<p>${stepHtml(s)}</p>${S.simple ? tipsHtml(newTips(flat, k++)) : ''}`;
       return `<li><span class="n">${i+1}</span><div>${body}${durations(s).length ? `<div class="tbtns">${timerBtns(r, s, i+1)}</div>` : ''}</div></li>`; }).join(''); })()}</ol>` : `<p class="hint" style="margin-top:14px">No method yet. <a href="#edit-${esc(r.id)}">Add the steps</a>.</p>`);
     // on a laptop, ingredients and method sit side by side instead of in tabs
-    if (wide()) return `<div class="rcols"><section class="rcol rcol-ing" aria-label="Ingredients"><h2 class="colh">Ingredients <span>${ings.length}</span></h2>${ingHtml}</section><section class="rcol" aria-label="Method"><h2 class="colh">Method <span>${steps.length}</span></h2>${methodHtml}</section></div>`;
+    if (wide()) return `<div class="rcols"><section class="rcol rcol-ing" aria-label="Ingredients"><h2 class="colh">Ingredients <span>${ings.filter(l => !isHead(l)).length}</span></h2>${ingHtml}</section><section class="rcol" aria-label="Method"><h2 class="colh">Method <span>${steps.length}</span></h2>${methodHtml}</section></div>`;
     return `  <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="${S.tab === 'ing'}" data-act="tab" data-tab="ing">Ingredients · ${ings.length}</button>
+    <button role="tab" aria-selected="${S.tab === 'ing'}" data-act="tab" data-tab="ing">Ingredients · ${ings.filter(l => !isHead(l)).length}</button>
     <button role="tab" aria-selected="${S.tab === 'method'}" data-act="tab" data-tab="method">Method · ${steps.length}</button>
   </div>` + (S.tab === 'ing' ? ingHtml : methodHtml);
   })()}
@@ -1293,7 +1302,7 @@ function cookPanel(r, step, w, dual){
 }
 function cookIngs(r, label){
   const f = factor(r), chk = S.checked[r.id] || {};
-  return `${label ? `<h3 class="ingtitle">${esc(r.title)}</h3>` : ''}<ul class="ings">${(r.ingredients || []).map((l, j) => `<li><label><input type="checkbox" data-chg="tick" data-rid="${esc(r.id)}" data-i="${j}" ${chk[j] ? 'checked' : ''}><span style="font-size:19px">${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>`;
+  return `${label ? `<h3 class="ingtitle">${esc(r.title)}</h3>` : ''}<ul class="ings">${(r.ingredients || []).map((l, j) => isHead(l) ? `<li class="inghead">${esc(headText(l))}</li>` : `<li><label><input type="checkbox" data-chg="tick" data-rid="${esc(r.id)}" data-i="${j}" ${chk[j] ? 'checked' : ''}><span style="font-size:19px">${esc(showLine(scaleLine(l, f)))}</span></label></li>`).join('')}</ul>`;
 }
 function cookView(){
   const r = byId(S.id); if (!r) return '';
@@ -1335,7 +1344,7 @@ function editView(){
     </div>
     <fieldset class="tagset"><legend>Tags</legend><div class="chips">${TAGS.map(t => `<label class="chip"><input type="checkbox" class="sr" name="f-tag" value="${esc(t)}" ${(d.tags || []).includes(t) ? 'checked' : ''}>${esc(t)}</label>`).join('')}</div></fieldset>
     <div class="field"><label for="f-spice">How spicy?</label><select id="f-spice"><option value="">Not set</option>${SPICE.map((x, i) => `<option value="${i}" ${d.spice === i ? 'selected' : ''}>${i ? chillies(i) + ' ' : ''}${x}</option>`).join('')}</select></div>
-    <div class="field"><label for="f-ing">Ingredients — one per line</label><textarea id="f-ing" rows="10">${esc((d.ingredients || []).join('\n'))}</textarea></div>
+    <div class="field"><label for="f-ing">Ingredients — one per line</label><p class="hint" style="margin:-2px 0 6px;font-size:13px">To split them into groups, add a heading line ending in a colon, like <b>For the marinade:</b></p><textarea id="f-ing" rows="10">${esc((d.ingredients || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-steps">Method — one step per line</label><textarea id="f-steps" rows="10">${esc((d.steps || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-src">Original link (optional)</label><input id="f-src" type="url" value="${esc(d.source || '')}" placeholder="https://"></div>
     <div class="field"><label for="f-best">Who makes it best? (optional)</label><input id="f-best" value="${esc(d.bestCook || '')}" placeholder="e.g. Heather, every time"></div>
@@ -1498,7 +1507,7 @@ function planShopLines(pairs){
   const add = [];
   pairs.forEach(([k, id]) => { const r = byId(id); if (!r) return;
     const n = S.plan.people?.[k], b = baseServes(r), f = n && b ? n / b : 1;
-    (r.ingredients || []).filter(l => !isStaple(l)).forEach(l => add.push({ id: rid(), text: showLine(f === 1 ? l : scaleLine(l, f)), from: r.title + (f !== 1 ? ' · for ' + n : ''), done: false })); });
+    realIngs(r).filter(l => !isStaple(l)).forEach(l => add.push({ id: rid(), text: showLine(f === 1 ? l : scaleLine(l, f)), from: r.title + (f !== 1 ? ' · for ' + n : ''), done: false })); });
   return add;
 }
 function eatingSheet(k){
@@ -1516,7 +1525,7 @@ function fridgeResults(){
   const scored = S.recipes.map(r => { const hay = (r.ingredients || []).join(' ').toLowerCase(); const hit = terms.filter(t => hay.includes(t.replace(/(es|s)$/, ''))); return { r, hit }; })
     .filter(x => x.hit.length).sort((a, b) => b.hit.length - a.hit.length || (a.r.ingredients || []).length - (b.r.ingredients || []).length);
   if (!scored.length) return `<div class="empty">No recipes use any of those. Try simpler words, like “chicken” or “cream”.</div>`;
-  return `<ul class="list">${scored.slice(0, 40).map(({ r, hit }) => rowHtml(r, `Uses ${hit.length} of ${terms.length}: ${esc(hit.join(', '))} · ${(r.ingredients || []).length} ingredient${(r.ingredients || []).length === 1 ? '' : 's'}`)).join('')}</ul>`;
+  return `<ul class="list">${scored.slice(0, 40).map(({ r, hit }) => rowHtml(r, `Uses ${hit.length} of ${terms.length}: ${esc(hit.join(', '))} · ${realIngs(r).length} ingredient${realIngs(r).length === 1 ? '' : 's'}`)).join('')}</ul>`;
 }
 function fridgeView(){
   return `<div class="top"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a><span class="eyebrow">What can I make?</span><span style="width:44px"></span></div>
@@ -1669,7 +1678,7 @@ function moreSheet(){
 }
 function recipeText(r){
   const f = factor(r);
-  return [r.title, r.serves ? 'Serves ' + r.serves : '', '', 'INGREDIENTS', ...(r.ingredients || []).map(l => '• ' + showLine(scaleLine(l, f))), '', 'METHOD',
+  return [r.title, r.serves ? 'Serves ' + r.serves : '', '', 'INGREDIENTS', ...(r.ingredients || []).map(l => isHead(l) ? '\n' + headText(l).toUpperCase() : '• ' + showLine(scaleLine(l, f))), '', 'METHOD',
     ...(r.steps || []).map((s, i) => (i+1) + '. ' + showLine(s)), r.note ? '\nOur note: ' + r.note : '', r.source ? '\nOriginal: ' + r.source : '', '\nFrom our Spoonbook'].filter((x, i, a) => x !== '' || a[i-1] !== '').join('\n');
 }
 async function sortAisles(statusEl){
@@ -1966,7 +1975,7 @@ const A = {
     guideMark('shop');
     if (S.sheet) closeSheet();
     const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
-    const lines = r.ingredients || [], skip = lines.filter(isStaple);
+    const lines = realIngs(r), skip = lines.filter(isStaple);
     const add = lines.filter(l => !isStaple(l)).map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }));
     await setShop([...have, ...add]);
     toast(add.length + ' items added to shopping' + (skip.length ? ` · ${skip.length} left off as cupboard staples` : ''));
@@ -2360,7 +2369,7 @@ const A = {
     const f = factor(r); let el = document.getElementById('printArea');
     if (!el){ el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
     el.innerHTML = `${r.photo ? `<img src="${img(r.photo)}" alt="">` : ''}<p class="pe">${esc(r.category || 'Mains')}${r.serves ? ' · Serves ' + esc(S.scale[r.id] ?? r.serves) : ''}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</p>
-      <h1>${esc(r.title)}</h1><div class="pcols"><div><h2>Ingredients</h2><ul>${(r.ingredients || []).map(l => `<li>${esc(showLine(scaleLine(l, f)))}</li>`).join('')}</ul></div>
+      <h1>${esc(r.title)}</h1><div class="pcols"><div><h2>Ingredients</h2><ul>${(r.ingredients || []).map(l => isHead(l) ? `<li class="ph"><b>${esc(headText(l))}</b></li>` : `<li>${esc(showLine(scaleLine(l, f)))}</li>`).join('')}</ul></div>
       <div><h2>Method</h2><ol>${(r.steps || []).map(st => `<li>${esc(showLine(st))}</li>`).join('')}</ol>${r.note ? `<p class="pn"><b>Our note:</b> ${esc(r.note)}</p>` : ''}</div></div>
       <p class="pf">From our Spoonbook${r.source ? ' · ' + esc(host(r.source) || r.source) : ''}</p>`;
     // wait for the photo so it makes it onto the page
@@ -2594,7 +2603,7 @@ function readStep(w){
 }
 function readIngredients(w){
   const r = byId(w === 2 ? S.cook2 : S.id); if (!r) return; const f = factor(r);
-  say((r.ingredients || []).length ? 'You need: ' + r.ingredients.map(l => showLine(scaleLine(l, f))).join('. ') : 'No ingredients are written for this one.');
+  say(realIngs(r).length ? 'You need: ' + r.ingredients.map(l => isHead(l) ? headText(l) : showLine(scaleLine(l, f))).join('. ') : 'No ingredients are written for this one.');
 }
 function listen(){
   if (!S.handsFree || !S.voiceCmd || !SR || speaking || recog || S.view !== 'cook' || document.visibilityState !== 'visible') return;

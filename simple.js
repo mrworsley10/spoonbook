@@ -114,6 +114,7 @@ const SIZE = /^(rashers?|handful|sprigs?|stalks?|small|large|medium|big|thumb-si
 function prepList(ingredients){
   const out = [];
   for (const line of ingredients || []){
+    if (/:\s*$/.test(line) && !/^\s*[\d½¼¾⅓⅔⅛]/.test(line)) continue;
     const low = String(line).toLowerCase().replace(/\(.*?\)/g, ' ').replace(/\s+/g, ' ');
     const [head, ...rest] = low.split(',');
     const after = rest.join(',');

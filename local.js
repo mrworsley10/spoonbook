@@ -12,6 +12,9 @@ const JUNK = /^(print( recipe)?|jump to recipe|save( recipe)?|pin( it)?|share|ra
 const META = /^(serves|servings?|makes|yield|(?:prep(?:aration)?|cook(?:ing)?|total)(?:\s+time)?(?=\s*:|\s+time|\s+\d)|ready in|difficulty|level)\s*:?\s*(.*)$/i;
 
 const clean = l => l.replace(/ /g, ' ').replace(/^[\s•●▪◦‣∙·*\-–—▢☐□✓✔]+/, '').replace(/^step\s*\d+\s*[:.)-]?\s*/i, '').replace(/\s+/g, ' ').trim();
+// a group heading inside an ingredient list: "For the marinade:" (no amount, ends with a colon)
+const isHead = l => /:\s*$/.test(l) && !/^\s*[\d½¼¾⅓⅔⅛]/.test(l) && String(l).length <= 60;
+const asHead = l => { const t = String(l).replace(/\s*:?\s*$/, '').trim(); return t.charAt(0).toUpperCase() + t.slice(1) + ':'; };
 const isStep = l => !QTY.test(l) && (l.length > 110 || (/[.!]$/.test(l) && (l.length > 45 || VERB.test(l))) || (VERB.test(l) && l.length > 25));
 function mins(t){ const h = t.match(/(\d+)\s*(h|hr|hrs|hour|hours)\b/i), m = t.match(/(\d+)\s*(m|min|mins|minute|minutes)\b/i); const v = (h ? +h[1] * 60 : 0) + (m ? +m[1] : 0); return v || null; }
 
@@ -41,7 +44,7 @@ function parseRecipe(text){
       if (/cook/.test(k) && mins(v)){ out.cookMins = mins(v); continue; }
       if (/difficulty|level/.test(k)) continue;
     }
-    if (HEAD_ING.test(l)){ mode = 'ing'; continue; }
+    if (HEAD_ING.test(l)){ mode = 'ing'; if (/^for the /i.test(l)) out.ingredients.push(asHead(l)); continue; }
     if (HEAD_STEP.test(l)){ mode = 'step'; continue; }
     // a "Cook's tip" or "Variation" box sits beside the recipe in many cookbooks: leave it out
     if (/^(cook['’]?s tips?|tips?|variations?|notes?|serving suggestions?)\s*:?$/i.test(l)){ mode = 'skip'; continue; }
@@ -55,6 +58,7 @@ function parseRecipe(text){
       // long prose inside the ingredient list means the method has started without a heading
       if (isStep(l) && l.length > 60 && out.ingredients.length){ mode = 'step'; out.steps.push(l); continue; }
       // a wrapped line from a photo continues the previous ingredient
+      if (isHead(l) || /^(to serve|for the [a-z ,&]+|for serving|to garnish)$/i.test(l)){ out.ingredients.push(asHead(l)); continue; }
       if (joins(out.ingredients[out.ingredients.length - 1], l, i)) out.ingredients[out.ingredients.length - 1] += ' ' + l;
       else out.ingredients.push(l);
     } else {
@@ -73,7 +77,7 @@ function parseRecipe(text){
     paras.forEach((p, k) => {
       const amt = p.filter(l => QTY.test(l)).length, avg = p.reduce((a, l) => a + l.length, 0) / p.length;
       if (k === 0 && p.length <= 2 && !amt && avg < 80) titleP = p;
-      else if (amt && (amt / p.length >= 0.4 || avg < 45)) ing.push(...p);
+      else if (amt && (amt / p.length >= 0.4 || avg < 45)) ing.push(...p.map(l => /^for the [a-z ,&]+:?$/i.test(l) ? asHead(l) : l));
       else prose.push(joinP(p).replace(/^[^A-Za-z0-9]+/, ''));
     });
     const first = prose.findIndex(t => VERB.test(t) && t.length > 25);
@@ -101,6 +105,12 @@ function parseRecipe(text){
   if (out.ingredients.length && !out.steps.length && pre.length > 2){
     const paras = []; pre.forEach((l, k) => { if (!paras.length || preAt[k]) paras.push([]); paras[paras.length - 1].push(l); });
     const joinP = ls => ls.reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) && !/^(and|or|to|the|a|of|in|with)\b/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '');
+    // a paragraph that's mostly amounts ("for the marinade" whose heading didn't read) is more ingredients
+    const extra = [];
+    const keepP = paras.filter((p, k) => { if (k === 0) return true; const amt = p.filter(l => QTY.test(l)).length;
+      if (amt && amt / p.length >= 0.5){ extra.push(...p.map(l => /^for the /i.test(l) && !QTY.test(l) ? asHead(l) : l)); return false; } return true; });
+    paras.length = 0; paras.push(...keepP);
+    if (extra.length) out.ingredients.unshift(...extra);
     const texts = paras.map(joinP), first = texts.findIndex((t, k) => k > 0 && VERB.test(t.replace(/^[^A-Za-z]+/, '')) && t.length > 30);
     if (first > 0){
       const intro = texts.slice(1, first).filter(t => t.length > 60).join(' ');
@@ -113,9 +123,12 @@ function parseRecipe(text){
   out.title = (pre.find(l => l.length >= 3 && l.length <= 80 && !/[.!?]$/.test(l) && !QTY.test(l) && !/^(by |recipe from|from |posted|updated|home|recipes?$)/i.test(l)) || '').replace(/\s*(recipe)$/i, '');
   if (!out.totalMins && (out.prepMins || out.cookMins)) out.totalMins = (out.prepMins || 0) + (out.cookMins || 0);
   // "Serves 4" buried in an intro sentence; "1 Heat the oil…" numbered steps
-  if (!out.serves){ const m = raw.join(' ').match(/\b(?:serves|feeds)\s+(\d+(?:\s*[-–]\s*\d+)?)\b|\bfor\s+(\d+(?:\s*[-–]\s*\d+)?)\s+(?:people|persons|servings|adults)\b/i); if (m) out.serves = (m[1] || m[2]).replace(/\s+/g, ''); }
+  if (!out.serves){ const m = raw.join(' ').match(/(?:^|[^a-z])(?:serves|feeds)\s*(\d+(?:\s*[-–]\s*\d+)?)\b|\bfor\s+(\d+(?:\s*[-–]\s*\d+)?)\s+(?:people|persons|servings|adults)\b/i); if (m) out.serves = (m[1] || m[2]).replace(/\s+/g, ''); }
   out.steps = out.steps.map(l => l.replace(/^\d{1,2}\s*[.)]?\s+(?=[A-Z])/, ''));
+  // scraps from a photo (smudges, page numbers, bits of pictures) that ended up as a step
+  out.steps = out.steps.filter(l => { const w = l.split(/\s+/).length; if (VERB.test(l)) return true; const toks = l.split(/\s+/), good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]+[.,;:!?)\]"'”’]*$|^\d/.test(t)).length; return w < 4 ? /[a-z]{3,}/.test(l) : good / toks.length >= 0.6; });
   out.ingredients = out.ingredients.filter(l => l.length > 1 && l.length < 200);
+  out.ingredients = out.ingredients.filter((l, k, a) => !isHead(l) || (a[k + 1] && !isHead(a[k + 1])));
   if (!out.ingredients.length) out.warnings.push('No ingredients found');
   if (!out.steps.length) out.warnings.push('No method found');
   return out;
@@ -373,7 +386,7 @@ function matchFood(line){
   return null;
 }
 function nutrition(recipe){
-  const lines = (recipe.ingredients || []).filter(l => !/\b(to serve|for serving|to garnish|optional)\b/i.test(l));
+  const lines = (recipe.ingredients || []).filter(l => !isHead(l) && !/\b(to serve|for serving|to garnish|optional)\b/i.test(l));
   let kcal = 0, p = 0, f = 0, c = 0, counted = 0; const missed = [];
   for (const l of lines){
     const food = matchFood(l);
@@ -388,5 +401,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { isHead, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();

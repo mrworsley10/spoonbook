@@ -45,7 +45,7 @@ const FREE = { Gluten: /gluten[- ]free|\bgf\b|coeliac/, Dairy: /dairy[- ]free|\b
 function clean(line, not){ return String(line).toLowerCase().replace(/\(.*?\)/g, ' ').replace(new RegExp(not.source, 'g'), ' '); }
 
 function check(ingredients, title){
-  const lines = (ingredients || []).map(String);
+  const lines = (ingredients || []).map(String).filter(l => !(/:\s*$/.test(l) && !/^\s*[\d½¼¾⅓⅔⅛]/.test(l) && l.length <= 60));
   const contains = [];
   for (const [name, yes, not] of A){
     const free = FREE[name];

@@ -35,6 +35,7 @@ h2{font-family:var(--display);font-weight:500;font-size:24px;margin:30px 0 8px}
 .note{margin-top:20px;border-left:3px solid var(--accent);padding:4px 0 4px 14px;font-style:italic}
 ul.ings{list-style:none;padding:0;margin:0}
 ul.ings li{padding:10px 0;border-bottom:1px solid var(--line)}
+ul.ings li.head{padding-top:18px;font-size:12px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent)}
 ol.steps{list-style:none;padding:0;margin:0;counter-reset:s;display:flex;flex-direction:column;gap:16px}
 ol.steps li{display:flex;gap:14px;counter-increment:s}
 ol.steps li::before{content:counter(s);flex:none;width:26px;font-family:var(--display);font-style:italic;font-size:26px;line-height:1;color:var(--accent)}
@@ -78,7 +79,7 @@ a{color:var(--accent)}
     ${d.sharedBy ? `<p class="by">Shared by ${esc(d.sharedBy)} from their Spoonbook</p>` : ''}
     ${tags.length ? `<div class="tags">${tags.map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}
     ${d.note ? `<p class="note">“${esc(d.note)}”</p>` : ''}
-    <h2>Ingredients</h2><ul class="ings">${(d.ingredients || []).map(l => `<li>${esc(l)}</li>`).join('')}</ul>
+    <h2>Ingredients</h2><ul class="ings">${(d.ingredients || []).map(l => /:\s*$/.test(l) && !/^\s*[\d½¼¾⅓⅔⅛]/.test(l) && l.length <= 60 ? `<li class="head">${esc(l.replace(/\s*:\s*$/, ''))}</li>` : `<li>${esc(l)}</li>`).join('')}</ul>
     <h2>Method</h2><ol class="steps">${(d.steps || []).map(s => `<li><span>${esc(s)}</span></li>`).join('')}</ol>
     ${d.source ? `<p class="src">Original recipe: <a href="${esc(d.source)}" rel="noopener nofollow" target="_blank">${esc(host(d.source) || 'link')}</a></p>` : ''}
     <div class="dock"><div class="in">
