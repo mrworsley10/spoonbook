@@ -73,7 +73,7 @@ a{color:var(--accent)}
   document.title = d.title + ' · Spoonbook';
   const tags = [...(d.spice != null ? [(d.spice ? '🌶'.repeat(d.spice) + ' ' : '') + SPICE[d.spice]] : []), ...(d.tags || [])];
   page.innerHTML = `<a class="brand" href="./">Spoonbook</a>
-    ${d.photo ? `<div class="hero"><img src="${esc(CFG.supabaseUrl + '/storage/v1/object/public/shared/' + d.photo)}" alt="Photo of ${esc(d.title)}"></div>` : ''}
+    ${d.photo ? `<div class="hero"><img src="${esc(CFG.supabaseUrl + '/storage/v1/object/public/shared/' + d.photo)}" alt="Photo of ${esc(d.title)}"></div>${d.photoCredit ? `<p class="src" style="margin:6px 0 0;font-size:12px">Photo: <a href="${esc(d.photoCredit.url || 'https://www.pexels.com')}" target="_blank" rel="noopener">${esc(d.photoCredit.by || 'Pexels')} on Pexels</a></p>` : ''}` : ''}
     <div class="eyebrow">${esc(d.category || 'Recipe')}${d.serves ? ' · Serves ' + esc(d.serves) : ''}${d.totalMins ? ' · ' + mins(d.totalMins) : ''}</div>
     <h1>${esc(d.title)}</h1>
     ${d.sharedBy ? `<p class="by">Shared by ${esc(d.sharedBy)} from their Spoonbook</p>` : ''}

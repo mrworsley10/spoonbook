@@ -210,6 +210,15 @@ async function clip(url){
   return data.recipe;
 }
 
+/* ---------- free stock photos (Pexels), searched and copied by the "photos" function ---------- */
+async function photoCall(body){
+  const { data, error } = await sb.functions.invoke('photos', { body });
+  if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} throw { code: b?.error || (isNetErr(error) ? 'offline' : 'failed') }; }
+  return data;
+}
+const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => d.photos || []);
+const useStockPhoto = id => photoCall({ action: 'use', id, household: household.id });
+
 /* ---------- sharing a recipe as a link ---------- */
 const shareId = () => { const a = new Uint8Array(12); crypto.getRandomValues(a); return [...a].map(x => 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789'[x % 57]).join(''); };
 const appBase = () => location.origin + location.pathname.replace(/index\.html$/, '');
@@ -222,7 +231,7 @@ async function shareRecipe(r){
   }
   const me = members.find(m => m.user_id === session.user.id);
   const data = { title: r.title, category: r.category || 'Mains', serves: r.serves || '', totalMins: r.totalMins || null, ingredients: r.ingredients || [], steps: r.steps || [],
-    note: r.note || '', tags: r.tags || [], spice: r.spice ?? null, source: r.source || '', photo, sharedBy: me?.display_name || '', sharedAt: Date.now() };
+    note: r.note || '', tags: r.tags || [], spice: r.spice ?? null, source: r.source || '', photo, photoCredit: photo && r.credits?.[r.photo] ? r.credits[r.photo] : null, sharedBy: me?.display_name || '', sharedAt: Date.now() };
   const { error } = await sb.from('shared_recipes').insert({ id, household_id: household.id, created_by: session.user.id, data });
   if (error) throw { code: isNetErr(error) ? 'offline' : 'failed', message: error.message };
   return { id, url: appBase() + 'r.html?id=' + id };
@@ -553,7 +562,7 @@ sb.auth.onAuthStateChange((event, s) => {
 
 window.Backend = {
   start(cb){ onReady = cb; start(); },
-  photoUrl, clip, importBackup, shareRecipe, getShared,
+  photoUrl, clip, importBackup, shareRecipe, getShared, findPhotos, useStockPhoto,
   get household(){ return household; }, get members(){ return members; },
   get cookbooks(){ return cookbooks; }, get role(){ return household?.role || 'editor'; },
   // whoever started the cookbook manages its people; if they've gone, any editor can

@@ -410,6 +410,12 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .shotthumb .icon-btn svg{width:14px;height:14px}
 .shotpart label.btn{cursor:pointer;gap:6px}.shotpart label.btn svg{width:16px;height:16px}
 .checkamts{border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-radius:12px;padding:10px 12px;margin:2px 0 8px;font-size:14px}.checkamts ul{margin:6px 0 0;padding-left:18px}.checkamts li{margin:2px 0}
+.stockgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stockpick{position:relative;padding:0;border:0;border-radius:10px;overflow:hidden;aspect-ratio:4/3;background:var(--line);cursor:pointer}
+.stockpick img{width:100%;height:100%;object-fit:cover;display:block}.stockpick span{position:absolute;left:0;right:0;bottom:0;font-size:10px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.6));padding:8px 5px 3px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stockpick:disabled{opacity:.5}
+.hero .credit{position:absolute;z-index:3;right:12px;top:68px;font-size:11px;color:#fff;background:rgba(0,0,0,.45);padding:3px 8px;border-radius:10px;text-decoration:none}
+@media (min-width: 1000px){ .stockgrid{grid-template-columns:repeat(4,1fr)} }
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -1231,7 +1237,7 @@ function recipeView(){
   const chk = S.checked[r.id] || {};
   const scaleLabel = b ? `Serves ${S.scale[r.id] ?? b}` : `×${fmt(S.scale[r.id] ?? 1)}`;
   return `
-  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : phFill(r)}
+  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : phFill(r)}${shown && r.credits?.[shown] ? `<a class="credit" href="${esc(r.credits[shown].url || 'https://www.pexels.com')}" target="_blank" rel="noopener">Photo: ${esc(r.credits[shown].by || 'Pexels')} on Pexels</a>` : ''}
     <div class="bar"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a>
       <span style="display:flex;gap:8px"><button class="icon-btn" data-act="copy" aria-label="Share this recipe">${I.share}</button>
       <button class="icon-btn" data-act="fav" ${S.canEdit ? '' : 'hidden'} aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button>
@@ -1811,6 +1817,28 @@ async function bulkImport(files){
   if (full) upgradeSheet('limit');
 }
 
+/* ---------- finding a free photo of the dish (Pexels) ---------- */
+function stockSheet(){
+  const st = S.stock, ph = st.photos;
+  openSheet('Find a photo', `<h2>Find a photo</h2>
+    <form class="shop-add" onsubmit="return false" style="margin:0"><label class="sr" for="stockQ">Search for</label><input id="stockQ" value="${esc(st.q)}" placeholder="e.g. onion bhaji" autocomplete="off" enterkeyhint="search"><button class="btn primary" type="button" data-act="stocksearch">Search</button></form>
+    <div id="stockMsg"></div>
+    <div class="stockgrid" id="stockGrid">${ph === null ? '<p class="hint" style="grid-column:1/-1;display:flex;gap:8px;align-items:center"><span class="spin"></span>Finding photos…</p>'
+      : ph.length ? ph.map(p => `<button class="stockpick" data-act="stockuse" data-id="${p.id}" aria-label="Use this photo${p.alt ? ': ' + esc(p.alt) : ''}"><img src="${esc(p.thumb)}" alt="" loading="lazy"><span>${esc(p.by)}</span></button>`).join('')
+      : '<p class="hint" style="grid-column:1/-1">No photos found. Try simpler words, like “curry” or “pancakes”.</p>'}</div>
+    ${ph && ph.length >= 12 * st.page ? '<button class="btn small" data-act="stockmore" style="align-self:center">More photos</button>' : ''}
+    <p class="hint" style="font-size:12px;margin:0">These are free photos of the kind of dish, not your actual one. <a href="https://www.pexels.com" target="_blank" rel="noopener">Photos provided by Pexels</a>.</p>
+    <button class="btn" data-act="closesheet">Cancel</button>`);
+  const i = overlay.querySelector('#stockQ'); if (i) i.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); A.stocksearch(); } };
+}
+async function stockSearch(more){
+  const st = S.stock;
+  try { const got = await Backend.findPhotos(st.q, st.page); if (S.stock !== st) return; st.photos = more ? [...(st.photos || []), ...got] : got; }
+  catch (e) { if (S.stock !== st) return; st.photos = st.photos || [];
+    stockSheet(); const m = overlay.querySelector('#stockMsg'); if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_set_up' ? 'Finding photos isn’t switched on yet.' : e?.code === 'offline' ? 'No internet connection.' : e?.code === 'busy' ? 'Lots of people are searching. Try again in a few minutes.' : 'Couldn’t search just now. Try again.'}</p>`; return; }
+  if (overlay.querySelector('#stockGrid')) stockSheet();
+}
+const DRAFT_FIELDS = ['f-title','f-cat','f-serves','f-ing','f-steps','f-src','f-best','f-story','f-spice'];
 /* ---------- framing a photo before it's read: turn it the right way up and box just the recipe ---------- */
 // framing a photo: turn it the right way up, then box the ingredients and box the method, so nothing is guessed
 const FULLBOX = () => ({ x: .03, y: .03, w: .94, h: .94 });
@@ -1961,7 +1989,13 @@ function render(force){
   const html = v === 'recipe' ? recipeView() : v === 'cook' ? cookView() : (v === 'edit' || v === 'add') ? editView() : v === 'shopping' ? shopView() : v === 'favourites' ? favView() : v === 'plan' ? planView() : v === 'fridge' ? fridgeView() : v === 'bin' ? binView() : bookView();
   if (S.status === 'loading' && !S.recipes.length && v !== 'add') return;
   const y = window.scrollY;
+  // a redraw while editing (someone else saved something, a photo was added) keeps what's been typed
+  const typed = (v === 'edit' || v === 'add') && S.formFor === (S.draft?.id || 'new') && document.getElementById('f-title') ? {} : null;
+  if (typed){ DRAFT_FIELDS.forEach(f => { const el = document.getElementById(f); if (el) typed[f] = el.value; }); typed.tags = [...document.querySelectorAll('input[name="f-tag"]')].map(x => [x.value, x.checked]); }
   app.innerHTML = html;
+  if (v === 'edit' || v === 'add') S.formFor = S.draft?.id || 'new'; else S.formFor = null;
+  if (typed){ DRAFT_FIELDS.forEach(f => { const el = document.getElementById(f); if (el && typed[f] != null) el.value = typed[f]; });
+    const tg = new Map(typed.tags); document.querySelectorAll('input[name="f-tag"]').forEach(x => { if (tg.has(x.value)) x.checked = tg.get(x.value); }); }
   if (!force) window.scrollTo(0, y);
   if (keep){ const n = document.getElementById(keep.id); if (n){ n.value = keep.value; n.focus({ preventScroll: true }); try { n.setSelectionRange(keep.s, keep.e); } catch {} } }
   const left = (S.shop.items || []).filter(i => !i.done).length;
@@ -2100,7 +2134,7 @@ const A = {
     const lines = s => s.split('\n').map(x => x.trim()).filter(Boolean);
     const d = S.draft;
     const body = { title, category: g('f-cat'), serves: g('f-serves').trim(), source: g('f-src').trim(),
-      ingredients: lines(g('f-ing')), steps: lines(g('f-steps')), photo: d.photo || null,
+      ingredients: lines(g('f-ing')), steps: lines(g('f-steps')), photo: d.photo || null, ...(d.credits ? { credits: d.credits } : {}),
       bestCook: g('f-best').trim(), story: g('f-story').trim(), updatedAt: Date.now(),
       tags: [...document.querySelectorAll('input[name="f-tag"]:checked')].map(x => x.value), spice: g('f-spice') === '' ? null : +g('f-spice') };
     // the calorie estimate no longer matches once the ingredients change
@@ -2221,7 +2255,27 @@ const A = {
     openSheet('Add a photo', `<h2>Add a photo</h2>
       <label class="opt" for="${k}Cam"><span class="ic">${I.cam}</span><span><b>Take a photo</b><span>Opens your camera</span></span></label>
       <label class="opt" for="${k}In"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>One you’ve already taken</span></span></label>
+      <button class="opt" data-act="stockfind" data-k="${k}"><span class="ic">${I.search}</span><span><b>Find a photo</b><span>Free photos of the dish from Pexels</span></span></button>
       <button class="btn" data-act="closesheet">Cancel</button>`); },
+  stockfind(b){ const k = b.dataset.k;
+    const t = k === 'cover' ? (document.getElementById('f-title')?.value || S.draft?.title || '') : (byId(S.id)?.title || '');
+    S.stock = { k, q: t.replace(/\(.*?\)/g, '').trim(), page: 1, photos: null }; stockSheet(); stockSearch(); },
+  stocksearch(){ const i = overlay.querySelector('#stockQ'); if (i) S.stock.q = i.value.trim(); S.stock.page = 1; S.stock.photos = null; stockSheet(); stockSearch(); },
+  stockmore(){ S.stock.page++; stockSearch(true); },
+  async stockuse(b){
+    const st = S.stock, id = +b.dataset.id; overlay.querySelectorAll('[data-act="stockuse"]').forEach(x => x.disabled = true);
+    const m = overlay.querySelector('#stockMsg'); if (m) m.innerHTML = `<div class="thinking"><span class="spin"></span>Adding the photo…</div>`;
+    try {
+      const { path, credit } = await Backend.useStockPhoto(id);
+      if (st.k === 'cover'){ closeSheet(); S.draft.photo = path; S.draft.credits = { ...(S.draft.credits || {}), [path]: credit }; render(true); toast('Photo ready. Save to keep it'); return; }
+      const r = byId(S.id); const credits = { ...(r.credits || {}), [path]: credit };
+      await patch(r.id, r.photo ? { photos: [...(r.photos || []), path], credits } : { photo: path, credits });
+      S.cover[r.id] = path; closeSheet(); render(); toast('Photo added');
+    } catch (e) {
+      overlay.querySelectorAll('[data-act="stockuse"]').forEach(x => x.disabled = false);
+      if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_set_up' ? 'Finding photos isn’t switched on yet.' : e?.code === 'offline' ? 'No internet connection. Try again when you’re back online.' : 'Couldn’t add that photo. Try another.'}</p>`;
+    }
+  },
   shotdel(b){ const sh = S.shots; const f = sh[b.dataset.k].splice(+b.dataset.j, 1)[0]; try { URL.revokeObjectURL(f.url); } catch {} clipSheet('photo'); },
   shotsread(){ const sh = S.shots; if (!sh || !(sh.ing.length || sh.method.length)) return;
     // each close-up is read whole, as what it is: ingredients or method
