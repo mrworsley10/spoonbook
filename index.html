@@ -1835,7 +1835,7 @@ async function stockSearch(more){
   const st = S.stock;
   try { const got = await Backend.findPhotos(st.q, st.page); if (S.stock !== st) return; st.site = got.site || st.site; st.photos = more ? [...(st.photos || []), ...got] : [...got]; }
   catch (e) { if (S.stock !== st) return; st.photos = st.photos || [];
-    stockSheet(); const m = overlay.querySelector('#stockMsg'); if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_set_up' ? 'Finding photos isn’t switched on yet.' : e?.code === 'offline' ? 'No internet connection.' : e?.code === 'busy' ? 'Lots of people are searching. Try again in a few minutes.' : 'Couldn’t search just now. Try again.'}</p>`; return; }
+    stockSheet(); const m = overlay.querySelector('#stockMsg'); if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_set_up' ? 'Finding photos isn’t switched on yet.' : e?.code === 'offline' ? 'No internet connection.' : e?.code === 'busy' ? 'Lots of people are searching. Try again in a few minutes.' : `Couldn’t search just now. Try again. <small style="opacity:.7">(${esc(e?.code || 'error')})</small>`}</p>`; return; }
   if (overlay.querySelector('#stockGrid')) stockSheet();
 }
 const DRAFT_FIELDS = ['f-title','f-cat','f-serves','f-ing','f-steps','f-src','f-best','f-story','f-spice'];

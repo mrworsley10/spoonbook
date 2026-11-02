@@ -213,7 +213,7 @@ async function clip(url){
 /* ---------- free stock photos (Pexels), searched and copied by the "photos" function ---------- */
 async function photoCall(body){
   const { data, error } = await sb.functions.invoke('photos', { body });
-  if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} throw { code: b?.error || (isNetErr(error) ? 'offline' : 'failed') }; }
+  if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} const st = error.context?.status; throw { code: b?.error || (isNetErr(error) ? 'offline' : st === 404 ? 'no_function' : st ? 'status_' + st : 'failed') }; }
   return data;
 }
 const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => Object.assign(d.photos || [], { site: d.site || 'Pexels' }));
