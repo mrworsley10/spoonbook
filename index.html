@@ -1760,6 +1760,7 @@ function clipSheet(mode){
   overlay.innerHTML = `<div class="scrim${still}" data-act="scrim"><div class="sheet${still}" role="dialog" aria-modal="true" aria-label="Add a recipe">${body}</div></div>`;
   overlay.querySelector('textarea,button,label')?.focus?.();
 }
+let downOn = null; document.addEventListener('pointerdown', e => { downOn = e.target; }, true);
 function closeSheet(){ S.sheet = null; S.sheetKind = null; S.aiCtl?.abort(); overlay.innerHTML = ''; }
 
 function guessCategory(title, ings){
@@ -2013,7 +2014,8 @@ const A = {
   clip(){ clipSheet('menu'); },
   sheet(b){ clipSheet(b.dataset.mode); },
   closesheet: closeSheet,
-  scrim(b, e){ if (e.target === b) closeSheet(); },
+  // only close when the press started on the dark background too, so dragging to select text out of a box doesn't close it
+  scrim(b, e){ if (e.target === b && downOn === b) closeSheet(); },
   stopai(){ S.aiCtl?.abort(); },
   typein(){ S.draft = blankDraft(); closeSheet(); go('add'); },
   readpaste(){
