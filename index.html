@@ -1828,7 +1828,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
   try {
     if (files){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
-      const r = await Local.readPhotos(files, pct => { const el = document.getElementById('ocrPct'); if (el) el.textContent = pct < 0 ? 'That looks sideways. Turning it the right way up…' : `Reading the words… ${pct}%`; });
+      const r = await Local.readPhotos(files, pct => { const el = document.getElementById('ocrPct'); if (el) el.textContent = pct === -1 ? 'That looks sideways. Turning it the right way up…' : pct === -2 ? 'Busy page. Having another look at the layout…' : `Reading the words… ${pct}%`; });
       if (r.score < 0.45) throw { code: 'unreadable' };
       text = r.text;
     }
@@ -1840,6 +1840,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
     d.totalMins = out.totalMins || null;
     d.ingredients = out.ingredients;
     d.steps = out.steps;
+    if (out.intro && !d.story) d.story = out.intro.slice(0, 600);
     d.category = guessCategory(d.title, d.ingredients);
     d.source = srcUrl || '';
     if (keepPhoto && files && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo…</div>`; d.photo = await uploadPhoto(files[0].file || files[0]); }

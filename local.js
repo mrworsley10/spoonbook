@@ -20,15 +20,16 @@ function parseRecipe(text){
   const src = String(text || '').replace(/\r/g, '').split('\n');
   const bulleted = new Set();
   let raw = [];
-  for (const line of src){ const c = clean(line); if (!c) continue; if (/^\s*[•●▪◦‣∙·*\-–—▢☐□✓✔]/.test(line)) bulleted.add(raw.length); raw.push(c); }
+  const paraAt = new Set(); let gapBefore = false;
+  for (const line of src){ const c = clean(line); if (!c){ gapBefore = true; continue; } if (gapBefore) paraAt.add(raw.length); gapBefore = false; if (/^\s*[•●▪◦‣∙·*\-–—▢☐□✓✔]/.test(line)) bulleted.add(raw.length); raw.push(c); }
   const keep = raw.map((l, i) => !/^\d{1,2}[.)]?$/.test(l)); raw = raw.filter((_, i) => keep[i]);
-  const bul = new Set(); { let j = 0; keep.forEach((k, i) => { if (k){ if (bulleted.has(i)) bul.add(j); j++; } }); }
+  const bul = new Set(), para = new Set(); { let j = 0; keep.forEach((k, i) => { if (k){ if (bulleted.has(i)) bul.add(j); if (paraAt.has(i)) para.add(j); j++; } }); }
   const CONT_END = /(,|\band|\bor|\bfinely|\broughly|\binto|\bof|\bthe|\ba|\bthinly|\bcut|\bpeeled|\bfresh)$/i;
   const CONT_START = /^(chopped|sliced|diced|crushed|peeled|grated|minced|halved|quartered|drained|trimmed|rinsed|deseeded|torn|to serve|or |and |plus )/i;
   const joins = (prev, l, i) => !bul.has(i) && prev && !QTY.test(l) && (CONT_END.test(prev) || CONT_START.test(l));
   // a numbered method often comes as "1." on its own line: drop the lone numbers
   const out = { title: '', serves: '', totalMins: null, prepMins: null, cookMins: null, ingredients: [], steps: [], warnings: [] };
-  let mode = null; const pre = [];
+  let mode = null; const pre = [], preAt = [];
   for (let i = 0; i < raw.length; i++){
     let l = raw[i];
     const meta = l.match(META);
@@ -49,7 +50,7 @@ function parseRecipe(text){
     if (mark && mode !== null){ l = l.slice(mark[0].length); mode = 'step'; out.steps.push(l); continue; }
     if (mode === 'skip') continue;
     if (JUNK.test(l)) continue;
-    if (mode === null){ pre.push(l); continue; }
+    if (mode === null){ pre.push(l); preAt.push(para.has(i)); continue; }
     if (mode === 'ing'){
       // long prose inside the ingredient list means the method has started without a heading
       if (isStep(l) && l.length > 60 && out.ingredients.length){ mode = 'step'; out.steps.push(l); continue; }
@@ -74,11 +75,24 @@ function parseRecipe(text){
       else if (!out.steps.length) out.ingredients.push(l);
     }
   }
+  // Ingredients found but the method sat before them (a cookbook page with the ingredients in a side column,
+  // read left column first): the paragraphs before are the method, after an intro that isn't instructions.
+  if (out.ingredients.length && !out.steps.length && pre.length > 2){
+    const paras = []; pre.forEach((l, k) => { if (!paras.length || preAt[k]) paras.push([]); paras[paras.length - 1].push(l); });
+    const joinP = ls => ls.reduce((a, l) => !a ? l : /[-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '');
+    const texts = paras.map(joinP), first = texts.findIndex((t, k) => k > 0 && VERB.test(t.replace(/^[^A-Za-z]+/, '')) && t.length > 30);
+    if (first > 0){
+      const intro = texts.slice(1, first).filter(t => t.length > 60).join(' ');
+      if (intro) out.intro = intro;
+      out.steps = texts.slice(first).map(t => t.replace(/^[^A-Za-z0-9]+/, '')).filter(t => t.length > 15);
+      pre.length = paras[0].length;
+    }
+  }
   // Title: the first short line before the recipe proper that isn't chatter.
   out.title = (pre.find(l => l.length >= 3 && l.length <= 80 && !/[.!?]$/.test(l) && !QTY.test(l) && !/^(by |recipe from|from |posted|updated|home|recipes?$)/i.test(l)) || '').replace(/\s*(recipe)$/i, '');
   if (!out.totalMins && (out.prepMins || out.cookMins)) out.totalMins = (out.prepMins || 0) + (out.cookMins || 0);
   // "Serves 4" buried in an intro sentence; "1 Heat the oil…" numbered steps
-  if (!out.serves){ const m = raw.join(' ').match(/\b(?:serves|feeds|for)\s+(\d+(?:\s*[-–]\s*\d+)?)\b(?!\s*(?:mins?|minutes|hours?|g\b|ml\b))/i); if (m) out.serves = m[1].replace(/\s+/g, ''); }
+  if (!out.serves){ const m = raw.join(' ').match(/\b(?:serves|feeds)\s+(\d+(?:\s*[-–]\s*\d+)?)\b|\bfor\s+(\d+(?:\s*[-–]\s*\d+)?)\s+(?:people|persons|servings|adults)\b/i); if (m) out.serves = (m[1] || m[2]).replace(/\s+/g, ''); }
   out.steps = out.steps.map(l => l.replace(/^\d{1,2}\s*[.)]?\s+(?=[A-Z])/, ''));
   out.ingredients = out.ingredients.filter(l => l.length > 1 && l.length < 200);
   if (!out.ingredients.length) out.warnings.push('No ingredients found');
@@ -119,25 +133,92 @@ function wordiness(text){
   const good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]{1,}[.,;:!?)\]"'”’]*$|^\d+([.,/½¼¾-]\d+)?(g|kg|ml|l|oz|lb|tbsp|tsp)?[.,]?$|^[½¼¾⅓⅔]$/.test(t) && !/[A-Z]{2,}[a-z]+[A-Z]/.test(t)).length;
   return good / toks.length;
 }
+// Cookbooks often print the ingredients in a column beside the method. Reading straight across mixes the two,
+// so find the gap between the columns (it can lean a little if the photo was taken at an angle) and read
+// each column on its own: the left one first, then the right.
+function splitColumns(lines, width){
+  const ls = lines.filter(l => (l.words || []).length);
+  if (ls.length < 6 || !width) return null;
+  const spaces = [];
+  ls.forEach(l => { for (let i = 1; i < l.words.length; i++) spaces.push(l.words[i].bbox.x0 - l.words[i - 1].bbox.x1); });
+  spaces.sort((a, b) => a - b);
+  const med = spaces[Math.floor(spaces.length / 2)] || 10, minGap = Math.max(med * 3, width * 0.025);
+  const pts = [];
+  ls.forEach(l => { let best = null;
+    for (let i = 1; i < l.words.length; i++){ const g = l.words[i].bbox.x0 - l.words[i - 1].bbox.x1; if (!best || g > best.g) best = { g, x: (l.words[i].bbox.x0 + l.words[i - 1].bbox.x1) / 2 }; }
+    if (best && best.g >= minGap && best.x > width * 0.2 && best.x < width * 0.85) pts.push({ x: best.x, y: (l.words[0].bbox.y0 + l.words[0].bbox.y1) / 2 }); });
+  if (pts.length < 4 || pts.length < ls.length * 0.2) return null;
+  const fit = ps => { const n = ps.length, my = ps.reduce((a, p) => a + p.y, 0) / n, mx = ps.reduce((a, p) => a + p.x, 0) / n;
+    const sxy = ps.reduce((a, p) => a + (p.y - my) * (p.x - mx), 0), syy = ps.reduce((a, p) => a + (p.y - my) ** 2, 0); const b = syy ? sxy / syy : 0; return { a: mx - b * my, b }; };
+  let f = fit(pts);
+  const kept = pts.filter(p => Math.abs(p.x - (f.a + f.b * p.y)) < width * 0.06);
+  if (kept.length < 4) return null;
+  f = fit(kept);
+  const cols = [[], []];
+  ls.forEach(l => { const y = (l.words[0].bbox.y0 + l.words[0].bbox.y1) / 2, gx = f.a + f.b * y, ws0 = l.words;
+    // only split a line where it actually has a gap at the gutter; a heading running across stays whole
+    let cut = -1;
+    for (let i = 1; i < ws0.length; i++) if (ws0[i].bbox.x0 - ws0[i - 1].bbox.x1 >= minGap * 0.6 && ws0[i - 1].bbox.x1 <= gx + width * 0.03 && ws0[i].bbox.x0 >= gx - width * 0.03){ cut = i; break; }
+    const parts = cut > 0 ? [ws0.slice(0, cut), ws0.slice(cut)] : ws0[0].bbox.x0 < gx - width * 0.02 ? [ws0, []] : [[], ws0];
+    parts.forEach((ws, c) => {
+      // a word or two the reader wasn't sure of, on their own, are usually smudges or bits of pictures
+      ws = ws.filter(w => !/^[_|\\/~^*•·:;'‘’"“”&{}\[\]-]+$/.test(w.text));
+      if (!ws.length) return;
+      const conf = ws.reduce((a, w) => a + (w.confidence ?? 100), 0) / ws.length;
+      if (ws.length <= 2 && conf < 60 && !/\d/.test(ws.map(w => w.text).join(''))) return;
+      cols[c].push({ text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) }); }); });
+  const asText = col => {
+    if (!col.length) return '';
+    // the usual distance from one line to the next
+    const pitches = col.slice(1).map((l, i) => l.y0 - col[i].y0).filter(g => g > 0).sort((a, b) => a - b), pitch = pitches[Math.floor(pitches.length / 2)] || 40;
+    let out = col[0].text;
+    for (let i = 1; i < col.length; i++){ const l = col[i], p = col[i - 1], step = l.y0 - p.y0;
+      // a line set in further than the one above, not starting with an amount, carries on the line above
+      if (l.x - p.x > width * 0.012 && !/^[\d½¼¾⅓⅔]/.test(l.text) && step < pitch * 1.4) out += ' ' + l.text;
+      // a bigger space than usual starts a new paragraph
+      else out += (step > pitch * 1.5 ? '\n\n' : '\n') + l.text; }
+    return out;
+  };
+  return asText(cols[0]) + '\n\n' + asText(cols[1]);
+}
+// of two ways of reading the same page, keep the one that makes the more sensible recipe
+function recipeScore(t){
+  const r = parseRecipe(t), amt = r.ingredients.filter(l => QTY.test(l) && l.length < 90).length;
+  return amt * 2 - (r.ingredients.length - amt) * 1.5 + Math.min(r.steps.length, 8) * 2 + (r.steps.some(x => x.length > 40) ? 3 : 0);
+}
+function looksMuddled(t){
+  const r = parseRecipe(t), odd = r.ingredients.filter(l => !QTY.test(l) || l.length > 90).length;
+  return r.steps.length < 2 || !r.ingredients.length || odd / r.ingredients.length > 0.3;
+}
+function bestReading(texts){
+  const ok = texts.filter(Boolean); if (ok.length < 2) return ok[0] || '';
+  return ok.map(t => ({ t, s: recipeScore(t) })).sort((a, b) => b.s - a.s)[0].t;
+}
 // common slips when reading printed recipes
-const fixOcr = t => t.replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
+const fixOcr = t => t.replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
+  .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
 async function readOne(worker, page, onProgress){
   const file = page.file || page, base = { rot: page.rot || 0, box: page.box || null };
-  const go = async rot => { const { data } = await worker.recognize(await prepImage(file, { ...base, rot }));
+  const go = async (rot, psm = '6') => { const cv = await prepImage(file, { ...base, rot }); await worker.setParameters({ tessedit_pageseg_mode: psm }); const { data } = await worker.recognize(cv);
     // keep the lines it was reasonably sure of; scraps of pictures come out as low-confidence noise
-    const lines = (data.lines || []).filter(l => l.text.trim());
-    const text = lines.length ? lines.filter(l => l.confidence >= 45 || wordiness(l.text) >= 0.7).map(l => l.text.trimEnd()).join('\n') : data.text;
+    const lines = (data.lines || []).filter(l => l.text.trim() && (l.confidence >= 45 || wordiness(l.text) >= 0.7 || (l.words || []).length > 4));
+    // ingredients printed in a column beside the method are read as their own column
+    const plain = lines.length ? lines.map(l => l.text.trimEnd()).join('\n') : data.text;
+    const text = bestReading([splitColumns(lines, cv.width), plain]);
     return { text: fixOcr(text), conf: data.confidence || 0, score: (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5, rot }; };
   let best = await go(base.rot);
   // looks like it's sideways or upside down: try the other ways round and keep the best
   if (best.score < 0.6) for (const r of [90, 270, 180]){ onProgress?.(-1); const t = await go((base.rot + r) % 360); if (t.score > best.score) best = t; if (best.score >= 0.7) break; }
+  // a busy page (photos between the steps, several columns) can read better letting the reader find the blocks itself
+  if (looksMuddled(best.text)){ onProgress?.(-2); const t = await go(best.rot, '3'); if (recipeScore(t.text) > recipeScore(best.text)) best = { ...t, score: Math.max(t.score, best.score) }; }
   return best;
 }
 async function readPhotos(pages, onProgress){
   await loadTesseract();
   const worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') onProgress?.(Math.round(m.progress * 100)); } });
   try {
+    // read the page as one block of lines; columns are worked out afterwards from where the words sit
     const out = [];
     for (const p of pages) out.push(await readOne(worker, p, onProgress));
     const score = out.reduce((a, o) => a + o.score, 0) / out.length;
@@ -286,5 +367,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { parseRecipe, readPhotos, prepImage, wordiness, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();
