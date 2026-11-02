@@ -351,8 +351,12 @@ const UNIT_AFTER = '(?=\\s*(?:[-–—]\\s*\\S+\\s+)?(?:tsp|tbsp|teaspoons?|tabl
 const FRAC_HALF = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?2|[‘’'`]%|\\/2|[VYUvyu][2zZo]|[VY]s|%|1\\/2|l\\/2)" + UNIT_AFTER, 'gm');
 const FRAC_QTR = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?4|\\/4|[VYUvyu][a4A]|1\\/4|l\\/4)" + UNIT_AFTER, 'gm');
 const FRAC_3Q = new RegExp("(^|\\s|\\d|[—–-])(?:3\\/4|%4)" + UNIT_AFTER, 'gm');
-const fixFractions = t => t.replace(/(\d)\s*0[2z](?=\s*\/)/g, '$1 oz').replace(FRAC_3Q, '$1¾').replace(FRAC_QTR, '$1¼').replace(FRAC_HALF, '$1½')
-  .replace(/(^|\s)1\/3(?=\s)/g, '$1⅓').replace(/(^|\s)2\/3(?=\s)/g, '$1⅔').replace(/(\d) ([½¼¾⅓⅔])/g, '$1$2').replace(/([½¼¾⅓⅔\d])\s*[—-]\s*(?=[½¼¾⅓⅔\d])/g, '$1–');
+// at the start of an ingredient line, a scrap before "tsp" or "cup" ("‘fs", "Us", "U4", "'”2") is almost always a misread
+// fraction, as is an unlikely "15 tsp" or "14 tsp" (½ and ¼ with the bar missed)
+const LEAD_FRAC = /^(?:(?![aA]\s)[^\s\d½¼¾⅓⅔]{1,3}\d?(?=\s+(?:tsp|tbsp|teaspoons?|tablespoons?|cups?)\b)|1[2-5](?=\s+(?:tsp|teaspoons?)\b)|[VYUvyu]\S{0,2}(?=\s+(?:tsp|tbsp|teaspoons?|tablespoons?|cups?)\b))/gm;
+const guessFrac = s => /^1[4]$|[4aA]/.test(s) ? '¼' : /3.?4|%4/.test(s) ? '¾' : '½';
+const fixFractions = t => t.replace(/^I(?=\s+(?:tsp|tbsp|cups?)\b)/gm, '1').replace(/(\d)\s*0[2z](?=\s*\/)/g, '$1 oz').replace(FRAC_3Q, '$1¾').replace(FRAC_QTR, '$1¼').replace(FRAC_HALF, '$1½')
+  .replace(LEAD_FRAC, m => /^[a-z]{2,3}$/i.test(m) && !/^(us|va|vz|ya|yo|ua|uz)$/i.test(m) ? m : guessFrac(m)).replace(/(^|\s)1\/3(?=\s)/g, '$1⅓').replace(/(^|\s)2\/3(?=\s)/g, '$1⅔').replace(/(\d) ([½¼¾⅓⅔])/g, '$1$2').replace(/([½¼¾⅓⅔\d])\s*[—-]\s*(?=[½¼¾⅓⅔\d])/g, '$1–');
 const fixOcr = t => fixFractions(t).replace(/(^|\s)[VY][ao]\s*[=—–-]+\s*[VYa]?[a2o](?=\s+(tsp|tbsp|cups?)\b)/g, '$1¼–½').replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
   .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
