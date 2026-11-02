@@ -395,6 +395,8 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .cropbox i{position:absolute;width:28px;height:28px;border:4px solid var(--accent);background:transparent}
 .cropbox i[data-c="nw"]{left:-4px;top:-4px;border-right:0;border-bottom:0;cursor:nwse-resize}.cropbox i[data-c="ne"]{right:-4px;top:-4px;border-left:0;border-bottom:0;cursor:nesw-resize}
 .cropbox i[data-c="sw"]{left:-4px;bottom:-4px;border-right:0;border-top:0;cursor:nesw-resize}.cropbox i[data-c="se"]{right:-4px;bottom:-4px;border-left:0;border-top:0;cursor:nwse-resize}
+.cropbox .boxlabel{position:absolute;left:6px;top:6px;background:var(--accent);color:var(--on-accent);font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:6px;pointer-events:none}
+.cropbox.method{border-color:#4FA3C7}.cropbox.method i{border-color:#4FA3C7}.cropbox.method .boxlabel{background:#4FA3C7;color:#fff}
 .cropbox i::after{content:"";position:absolute;inset:-14px}
 .ings li.inghead{padding:16px 0 4px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
 .ings li.inghead:first-child{padding-top:6px}
@@ -1794,18 +1796,32 @@ async function bulkImport(files){
 }
 
 /* ---------- framing a photo before it's read: turn it the right way up and box just the recipe ---------- */
+// framing a photo: turn it the right way up, then box the ingredients and box the method, so nothing is guessed
+const FULLBOX = () => ({ x: .03, y: .03, w: .94, h: .94 });
 function cropSheet(){
-  const sn = S.snap, n = sn.pages.length, last = sn.i === n - 1;
-  openSheet('Frame the recipe', `<h2>Frame the recipe</h2>
-    <p class="hint">Turn the photo the right way up, then drag the corners so the box covers just the recipe’s words. Leave out big pictures.</p>
-    <div class="cropwrap" id="cropWrap"><canvas id="cropCv"></canvas><div class="cropbox" id="cropBox"><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i></div></div>
+  const sn = S.snap, n = sn.pages.length, last = sn.i === n - 1, pg = sn.pages[sn.i], st = sn.stage === 'method' ? 'method' : 'ing';
+  if (pg[st] == null || pg[st] === false) pg[st] = FULLBOX();
+  if (!pg.guessed && !pg.guessing){
+    pg.guessing = true;
+    Local.guessLayout(pg.file, pg.rot).then(g => {
+      pg.guessed = true; pg.guessing = false;
+      if (g){ if (g.rot !== pg.rot){ pg.rot = g.rot; pg.bmpRot = null; }
+        if (g.ing) pg.ing = g.ing; if (g.method) pg.method = g.method; if (sn.i === 0 || !sn.info) sn.info = g; }
+      if (S.snap === sn && overlay.querySelector('#cropWrap')) cropSheet();
+    }).catch(() => { pg.guessed = true; pg.guessing = false; if (S.snap === sn && overlay.querySelector('#cropWrap')) cropSheet(); });
+  }
+  openSheet(st === 'ing' ? 'Box the ingredients' : 'Box the method', `<h2>${st === 'ing' ? 'Box the ingredients' : 'Box the method'}</h2>
+    <p class="hint">${st === 'ing' ? 'Turn the photo the right way up if it needs it, then drag the corners so the box covers <b>just the ingredient list</b>.' : 'Now drag the box around <b>the method</b>, the steps. It can cover more than one column. Leave out the introduction.'}</p>
+    ${pg.guessing ? `<p class="hint" style="margin:0;display:flex;gap:8px;align-items:center"><span class="spin"></span>Finding the recipe on the page…</p>` : ''}
+    <div class="cropwrap" id="cropWrap"><canvas id="cropCv"></canvas><div class="cropbox ${st}" id="cropBox"><span class="boxlabel">${st === 'ing' ? 'Ingredients' : 'Method'}</span><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i></div></div>
     <div class="actions" style="margin:0;align-items:center"><button class="btn small" data-act="snaprot" data-d="-90" aria-label="Turn left">↺ Turn</button><button class="btn small" data-act="snaprot" data-d="90" aria-label="Turn right">Turn ↻</button>
-      ${n > 1 ? `<span class="hint" style="margin:0 0 0 auto">Page ${sn.i + 1} of ${n}</span>` : ''}</div>
-    ${n < 4 && last ? `<p class="hint" style="margin:0">Recipe carries on over the page? <label class="linkbtn" for="snapMoreCam" style="cursor:pointer">Take another photo</label> or <label class="linkbtn" for="snapMore" style="cursor:pointer">choose one</label></p><input id="snapMoreCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snapmore"><input id="snapMore" type="file" accept="image/*" class="sr" data-chg="snapmore">` : ''}
+      ${n > 1 ? `<span class="hint" style="margin:0 0 0 auto">Photo ${sn.i + 1} of ${n}</span>` : ''}</div>
+    ${n < 4 && last && st === 'method' ? `<p class="hint" style="margin:0">Recipe carries on over the page? <label class="linkbtn" for="snapMoreCam" style="cursor:pointer">Take another photo</label> or <label class="linkbtn" for="snapMore" style="cursor:pointer">choose one</label></p><input id="snapMoreCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snapmore"><input id="snapMore" type="file" accept="image/*" class="sr" data-chg="snapmore">` : ''}
     <div id="aiMsg"></div>
-    <button class="btn primary" data-act="snapnext">${last ? 'Read the recipe' : 'Next page'}</button>
-    <button class="btn" data-act="${sn.i ? 'snapprev' : 'sheet'}" data-mode="photo">Back</button>`);
-  drawCrop();
+    <button class="btn primary" data-act="snapnext">${st === 'ing' ? 'Next: the method' : last ? 'Read the recipe' : 'Next photo'}</button>
+    <button class="btn" data-act="snapnone">${st === 'ing' ? 'No ingredients in this photo' : 'No method in this photo'}</button>
+    <div class="actions" style="margin:0;justify-content:space-between"><button class="linkbtn" data-act="snapprev">Back</button><button class="linkbtn" data-act="snapwhole">Just read the whole page instead</button></div>`);
+  drawCrop(st);
 }
 async function drawCrop(key = 'box'){
   const pg = S.snap.pages[S.snap.i], cv = overlay.querySelector('#cropCv'), wrap = overlay.querySelector('#cropWrap'), box = overlay.querySelector('#cropBox');
@@ -1836,9 +1852,9 @@ async function drawCrop(key = 'box'){
     box.onpointerup = box.onpointercancel = () => { box.onpointermove = null; };
   };
 }
-async function readLocally({ text, files, srcUrl, keepPhoto }){
+async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
   const msg = overlay.querySelector('#aiMsg');
-  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = true);
+  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"]').forEach(b => b.disabled = true);
   try {
     if (files){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
@@ -1846,7 +1862,15 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
       if (r.score < 0.45) throw { code: 'unreadable' };
       text = r.text;
     }
-    const out = Local.parseRecipe(text);
+    let out;
+    if (boxes){
+      // the ingredients and method were boxed: each box is read on its own and goes straight in
+      msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Reading the words…</span></div>`;
+      const r = await Local.readBoxes(boxes, pct => { const el = document.getElementById('ocrPct'); if (el && pct >= 0) el.textContent = `Reading the words… ${pct}%`; });
+      if (r.score < 0.4 || (!r.ingredients.length && !r.steps.length)) throw { code: 'unreadable' };
+      out = { title: info?.title || '', serves: info?.serves || '', totalMins: null, ingredients: r.ingredients, steps: r.steps, intro: info?.intro || '', warnings: [] };
+      if (!out.title) out.warnings.push('Add a name for the recipe');
+    } else out = Local.parseRecipe(text);
     if (!out.ingredients.length && !out.steps.length) throw { code: 'norecipe' };
     const d = blankDraft();
     d.title = out.title.slice(0, 140);
@@ -1861,10 +1885,10 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
     S.draft = d; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
     toast(out.warnings.length ? out.warnings[0] + '. Fill in what’s missing, then save' : 'Check it over, then save');
   } catch (e) {
-    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = false);
+    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"]').forEach(b => b.disabled = false);
     if (!overlay.querySelector('#aiMsg')) return;
     msg.innerHTML = `<p class="hint" style="color:var(--danger)">${
-      e?.code === 'unreadable' ? 'Sorry, that photo didn’t read clearly, so nothing’s been filled in. Try: the box around just the recipe words (not the big photo), the page the right way up, and the phone held straight above it in good light. One page at a time works best.' :
+      e?.code === 'unreadable' ? 'Sorry, that photo didn’t read clearly, so nothing’s been filled in. Try: the boxes around just the words (not the pictures), the page the right way up, and the phone held straight above it in good light. One page at a time works best.' :
       e?.code === 'norecipe' ? 'Couldn’t find a recipe in that. Make sure the ingredients and method are included.' :
       e?.message === 'load' ? 'The photo reader needs an internet connection the first time. Try again when you’re online.' :
       'Couldn’t read that. Try a clearer, straighter photo in good light, or type it in.'}</p>`;
@@ -2175,14 +2199,23 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
-  snaprot(b){ const pg = S.snap.pages[S.snap.i]; const d = +b.dataset.d;
+  snaprot(b){ const sn = S.snap, pg = sn.pages[sn.i]; const d = +b.dataset.d;
     // turn the boxes with the picture
     const turn = o => o && (d > 0 ? { x: 1 - o.y - o.h, y: o.x, w: o.h, h: o.w } : { x: o.y, y: 1 - o.x - o.w, w: o.h, h: o.w });
-    pg.box = turn(pg.box);
-    pg.rot = (pg.rot + d + 360) % 360; drawCrop(); },
-  snapnext(){ const sn = S.snap; if (sn.i < sn.pages.length - 1){ sn.i++; cropSheet(); return; }
-    readLocally({ files: sn.pages.map(p => ({ file: p.file, rot: p.rot, box: p.box })) }); },
-  snapprev(){ S.snap.i--; cropSheet(); },
+    pg.ing = turn(pg.ing); pg.method = turn(pg.method);
+    pg.rot = (pg.rot + d + 360) % 360; drawCrop(sn.stage === 'method' ? 'method' : 'ing'); },
+  snapnext(){ const sn = S.snap;
+    if (sn.stage !== 'method'){ sn.stage = 'method'; return cropSheet(); }
+    if (sn.i < sn.pages.length - 1){ sn.i++; sn.stage = 'ing'; return cropSheet(); }
+    const boxes = sn.pages.map(p => ({ file: p.file, rot: p.rot, ing: p.ing || null, method: p.method || null }));
+    if (!boxes.some(b => b.ing || b.method)) return toast('Box the ingredients or the method first');
+    readLocally({ boxes, info: sn.info }); },
+  snapnone(){ const sn = S.snap; sn.pages[sn.i][sn.stage === 'method' ? 'method' : 'ing'] = false; A.snapnext(); },
+  snapprev(){ const sn = S.snap;
+    if (sn.stage === 'method'){ sn.stage = 'ing'; return cropSheet(); }
+    if (sn.i > 0){ sn.i--; sn.stage = 'method'; return cropSheet(); }
+    clipSheet('photo'); },
+  snapwhole(){ const sn = S.snap; readLocally({ files: sn.pages.map(p => ({ file: p.file, rot: p.rot, box: null })) }); },
   home(){ if (S.sheet) closeSheet(); if (S.view !== 'book') go('#book'); else { S.q = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); render(); } },
   async install(){
     if (!installEvt) return installSheet();
@@ -2532,12 +2565,12 @@ document.addEventListener('change', async e => {
   }
   if (k === 'bulk' && t.files.length){ bulkImport([...t.files]); return; }
   if (k === 'snap' && t.files.length){
-    S.snap = { pages: [...t.files].slice(0, 4).map(f => ({ file: f, rot: 0, box: { x: .02, y: .02, w: .96, h: .96 } })), i: 0, stage: 'text' };
+    S.snap = { pages: [...t.files].slice(0, 4).map(f => ({ file: f, rot: 0, ing: null, method: null })), i: 0, stage: 'ing', info: null };
     cropSheet();
   }
   if (k === 'snapmore' && t.files.length && S.snap){
-    S.snap.pages.push(...[...t.files].slice(0, 4 - S.snap.pages.length).map(f => ({ file: f, rot: 0, box: { x: .02, y: .02, w: .96, h: .96 } })));
-    S.snap.i = S.snap.pages.length - 1; cropSheet();
+    S.snap.pages.push(...[...t.files].slice(0, 4 - S.snap.pages.length).map(f => ({ file: f, rot: 0, ing: null, method: null })));
+    S.snap.i = S.snap.pages.length - 1; S.snap.stage = 'ing'; cropSheet();
   }
 });
 

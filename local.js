@@ -27,8 +27,8 @@ function parseRecipe(text){
   for (const line of src){ const c = clean(line); if (!c){ gapBefore = true; continue; } if (gapBefore) paraAt.add(raw.length); gapBefore = false; if (/^\s*[•●▪◦‣∙·*\-–—▢☐□✓✔]/.test(line)) bulleted.add(raw.length); raw.push(c); }
   const keep = raw.map((l, i) => !/^\d{1,2}[.)]?$/.test(l)); raw = raw.filter((_, i) => keep[i]);
   const bul = new Set(), para = new Set(); { let j = 0; keep.forEach((k, i) => { if (k){ if (bulleted.has(i)) bul.add(j); if (paraAt.has(i)) para.add(j); j++; } }); }
-  const CONT_END = /(,|\band|\bor|\bfinely|\broughly|\binto|\bof|\bthe|\ba|\bthinly|\bcut|\bpeeled|\bfresh)$/i;
-  const CONT_START = /^(chopped|sliced|diced|crushed|peeled|grated|minced|halved|quartered|drained|trimmed|rinsed|deseeded|torn|to serve|or |and |plus )/i;
+  const CONT_END = /(,|\band|\bor|\bfinely|\broughly|\binto|\bof|\bthe|\ba|\bthinly|\bcut|\bpeeled|\bfresh|\bbut|\bon|\bwith|\bto|\bin|\bfor|\bat|\bdried|\bground|\bwhole|\blarge|\bsmall|\bmedium)$/i;
+  const CONT_START = /^(chopped|sliced|diced|crushed|peeled|grated|minced|halved|quartered|drained|trimmed|rinsed|deseeded|torn|pierced|softened|melted|beaten|to serve|to taste|or |and |plus |\(|leaves\b|the tartness)/i;
   const joins = (prev, l, i) => !bul.has(i) && prev && !QTY.test(l) && (CONT_END.test(prev) || CONT_START.test(l));
   // a numbered method often comes as "1." on its own line: drop the lone numbers
   const out = { title: '', serves: '', totalMins: null, prepMins: null, cookMins: null, ingredients: [], steps: [], warnings: [] };
@@ -176,7 +176,7 @@ function wordiness(text){
 // Cookbooks often print the ingredients in a column beside the method. Reading straight across mixes the two,
 // so find the gap between the columns (it can lean a little if the photo was taken at an angle) and read
 // each column on its own: the left one first, then the right.
-function splitColumns(lines, width){
+function splitColumns(lines, width, detail, one){
   // leave out stray marks and scraps of pictures before looking for columns, so they can't fake a gap
   const JUNKW = /^[_|\\/~^*•·:;.,'‘’"“”=&{}\[\]™©®-]+$/;
   let ls = lines.map(l => ({ ...l, words: (l.words || []).filter(w => w.text && !JUNKW.test(w.text)) }))
@@ -226,7 +226,7 @@ function splitColumns(lines, width){
     return [...cols(L, x0, f.a + f.b * (L[0][0].bbox.y0), depth + 1), ...cols(R, f.a + f.b * (R[0][0].bbox.y0), x1, depth + 1)];
   };
   const found = cols(ls.map(l => l.words), 0, width, 0);
-  if (found.length < 2) return null;
+  if (found.length < 2 && !detail && !one) return null;
   const clean = ws => {
     // a word or two the reader wasn't sure of, on their own, are usually smudges or bits of pictures
     ws = ws.filter(w => !/^[_|\\/~^*•·:;'‘’"“”&{}\[\]-]+$/.test(w.text));
@@ -235,7 +235,7 @@ function splitColumns(lines, width){
     if (ws.length <= 2 && conf < 60 && !/\d/.test(ws.map(w => w.text).join(''))) return null;
     // a mark in the margin between paragraphs (no real word in it) would hide the gap between them
     if (!ws.some(w => /[A-Za-z]{3,}|\d/.test(w.text))) return null;
-    return { text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, w: ws[ws.length - 1].bbox.x1 - ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) };
+    return { text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, x1: Math.max(...ws.map(w => w.bbox.x1)), w: ws[ws.length - 1].bbox.x1 - ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) };
   };
   const asText = col => {
     col = col.map(clean).filter(Boolean).sort((a, b) => a.y0 - b.y0);
@@ -251,6 +251,7 @@ function splitColumns(lines, width){
       else out += ((step > pitch * 1.5 && (/[.!?:]$/.test(p.text) || /^[A-Z0-9"“‘(]/.test(l.text))) || (/[.!]$/.test(p.text) && /^[A-Z]/.test(l.text) && p.w < full * 0.72) ? '\n\n' : '\n') + l.text; }
     return out;
   };
+  if (detail) return { heads: heads.map(l => clean(l.words)).filter(Boolean), cols: found.map(col => col.map(clean).filter(Boolean).sort((a, b) => a.y0 - b.y0)) };
   // the biggest print first: that's the title
   const hsz = l => l.words.reduce((a, w) => a + (w.bbox.y1 - w.bbox.y0), 0) / l.words.length;
   return [[...heads].sort((a, b) => hsz(b) - hsz(a)).map(l => clean(l.words)).filter(Boolean).map(h => h.text).join('\n'), ...found.map(asText)].filter(Boolean).join('\n\n');
@@ -345,7 +346,7 @@ function bestReading(texts){
   return ok.map(t => ({ t, s: recipeScore(t) })).sort((a, b) => b.s - a.s)[0].t;
 }
 // common slips when reading printed recipes
-const fixOcr = t => t.replace(/^[a-z|.:;']\s+(?=[\d½¼¾‘’'])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
+const fixOcr = t => t.replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
   .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
@@ -364,6 +365,96 @@ async function readOne(worker, page, onProgress){
   // a busy page (photos between the steps, several columns) can read better letting the reader find the blocks itself
   if (looksMuddled(best.text)){ onProgress?.(-2); const t = await go(best.rot, '3'); if (recipeScore(t.text) > recipeScore(best.text)) best = { ...t, score: Math.max(t.score, best.score) }; }
   return best;
+}
+
+/* ---------- telling the reader which part is which: box the ingredients, box the method ---------- */
+let sharedWorker = null, idle = null;
+async function getWorker(onProgress){
+  await loadTesseract(); clearTimeout(idle);
+  if (!sharedWorker) sharedWorker = Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') getWorker.cb?.(Math.round(m.progress * 100)); } });
+  getWorker.cb = onProgress;
+  return sharedWorker;
+}
+function releaseWorker(){ clearTimeout(idle); idle = setTimeout(async () => { const w = sharedWorker; sharedWorker = null; if (w) (await w).terminate(); }, 60000); }
+async function readLines(worker, file, opt){
+  const cv = await prepImage(file, opt); await worker.setParameters({ tessedit_pageseg_mode: '6' });
+  const { data } = await worker.recognize(cv);
+  const lines = (data.lines || []).filter(l => l.text.trim() && (l.confidence >= 45 || wordiness(l.text) >= 0.7 || (l.words || []).length > 4));
+  return { lines, cv, data };
+}
+const STEPSTART = /^(\d{1,2}\s*[.)▲△►▶A]?\s+)?[A-Z]/;
+// A quick low-detail read of the page to put the two boxes roughly in the right places, and to find the title.
+async function guessLayout(file, rot = 0){
+  const worker = await getWorker();
+  try {
+    let best = null;
+    for (const r of [0, 90, 270, 180]){
+      const rr = (rot + r) % 360, { lines, cv, data } = await readLines(worker, file, { rot: rr, max: 1200 });
+      const score = (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5;
+      if (!best || score > best.score) best = { score, lines, cv, rot: rr, text: data.text };
+      if (best.score >= 0.6) break;
+    }
+    const { lines, cv } = best, W = cv.width, H = cv.height;
+    let d = splitColumns(lines, W, true);
+    if (!d){ return { rot: best.rot }; }
+    const box = segs => { if (!segs.length) return null; const pad = W * 0.015;
+      const x0 = Math.max(0, Math.min(...segs.map(s => s.x)) - pad), x1 = Math.min(W, Math.max(...segs.map(s => s.x1)) + pad), y0 = Math.max(0, Math.min(...segs.map(s => s.y0)) - pad), y1 = Math.min(H, Math.max(...segs.map(s => s.y1)) + pad);
+      return { x: x0 / W, y: y0 / H, w: (x1 - x0) / W, h: (y1 - y0) / H }; };
+    const ing = [], meth = [];
+    d.cols.forEach(col => {
+      // an ingredient line: an amount, short, lower-case words, and not "1 Heat the oil…" (a numbered step)
+      const q = col.map(s => QTY.test(s.text) && s.text.length < 75 && /[a-z]{2,}/.test(s.text) && !VERB.test(s.text.replace(/^\d{1,2}\s*[.)▲△►▶A]?\s*/, '')));
+      const nq = q.filter(Boolean).length;
+      if (nq >= 3 && nq / col.length >= 0.3){
+        // the ingredients: from the first amount to the last, plus a heading just above
+        const first = q.indexOf(true), last = q.lastIndexOf(true);
+        let a = first; if (a > 0 && (HEAD_ING.test(col[a - 1].text) || /^for the /i.test(col[a - 1].text))) a--;
+        // carry on past the last amount for short lines like "salt, to taste" or "cold water, to mix"
+        let z = last; while (z + 1 < col.length && col[z + 1].text.length < 60 && !/[.!?]$/.test(col[z + 1].text) && col[z + 1].y0 - col[z].y1 < (col[z].y1 - col[z].y0) * 2.5) z++;
+        ing.push(...col.slice(a, z + 1));
+        // prose after the list in the same column is method
+        const rest = col.slice(last + 1).filter(s => s.text.length > 25);
+        if (rest.length >= 2) meth.push(...rest);
+      } else {
+        // the method: from the first line that reads like an instruction
+        const k = col.findIndex(s => { const t = s.text.replace(/^\d{1,2}\s*[.)▲△►▶A]?\s+/, ''); return s.text.length > 20 && /^[A-Z]/.test(t) && (VERB.test(t) || /^\d{1,2}\s*[.)▲△►▶]?\s+[A-Z]/.test(s.text)); });
+        if (k >= 0) meth.push(...col.slice(k).filter(s => s.text.length > 3));
+      }
+    });
+    const full = splitColumns(lines, W) || lines.map(l => l.text).join('\n');
+    const info = parseRecipe(fixOcr(full));
+    // the title should be real words: the biggest print that reads properly
+    await loadWords();
+    const real = t => { const ws = (String(t || '').toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length >= 3); return ws.length && WORDS ? ws.filter(w => known(w)).length / ws.length : 0; };
+    if (real(info.title) < 0.6){ const alt = [...d.heads.map(h => h.text), ...full.split('\n')].map(t => t.replace(/^[\d|.:;\-–\s]{1,5}(?=[A-Z])/, '').trim()).find(t => t.length >= 3 && t.length <= 70 && /[a-z]{3,}/i.test(t) && real(t) >= 0.75 && !QTY.test(t)); info.title = alt || ''; }
+    return { rot: best.rot, ing: box(ing), method: box(meth), title: info.title, serves: info.serves, intro: info.intro };
+  } catch { return null; } finally { releaseWorker(); }
+}
+async function readArea(worker, file, rot, box, kind){
+  const { lines, cv, data } = await readLines(worker, file, { rot, box });
+  const JUNKW = /^[_|\\/~^*•·:;.,'‘’"“”=&{}\[\]™©®§$-]+$/;
+  const plain = lines.map(l => (l.words || []).length ? l.words.map(w => w.text).filter(t => !JUNKW.test(t)).join(' ') : l.text.trim()).filter(t => /[A-Za-z]{2,}|\d/.test(t)).join('\n');
+  // the method keeps its paragraphs (one step each); an ingredient list is read line by line
+  const text = kind === 'method' ? (splitColumns(lines, cv.width, false, true) || plain) : plain;
+  return { text: fixOcr(text), score: (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5 };
+}
+async function readBoxes(pages, onProgress){
+  const worker = await getWorker(onProgress);
+  try {
+    let ingText = '', methodText = '', scores = [];
+    for (const p of pages){
+      if (p.ing){ const r = await readArea(worker, p.file, p.rot, p.ing, 'ing'); ingText += r.text + '\n'; scores.push(r.score); }
+      if (p.method){ const r = await readArea(worker, p.file, p.rot, p.method, 'method'); methodText += r.text + '\n\n'; scores.push(r.score); }
+    }
+    await loadWords();
+    ingText = fixWords(ingText); methodText = fixWords(methodText);
+    const ingredients = parseRecipe('Ingredients\n' + ingText).ingredients;
+    // the method: one step per paragraph when the page shows paragraphs, otherwise line by line
+    const paras = methodText.split(/\n\s*\n/).map(p => p.split('\n').map(s => s.trim()).filter(Boolean)
+      .reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '')).filter(Boolean);
+    const steps = parseRecipe('Ingredients\nx\nMethod\n' + (paras.length > 1 ? paras.join('\n') : methodText)).steps;
+    return { ingredients, steps, score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
+  } finally { releaseWorker(); }
 }
 async function readPhotos(pages, onProgress){
   await loadTesseract();
@@ -519,5 +610,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { isHead, fixWords, loadWords, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { guessLayout, readBoxes, isHead, fixWords, loadWords, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();
