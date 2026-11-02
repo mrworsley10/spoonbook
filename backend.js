@@ -211,8 +211,11 @@ async function clip(url){
 }
 
 /* ---------- free stock photos (Pexels), searched and copied by the "photos" function ---------- */
+let photoFn = 'photos';
 async function photoCall(body){
-  const { data, error } = await sb.functions.invoke('photos', { body });
+  let { data, error } = await sb.functions.invoke(photoFn, { body });
+  // the function may have been created as "Photos" (its web address keeps the first spelling)
+  if (error && error.context?.status === 404 && photoFn === 'photos'){ photoFn = 'Photos'; ({ data, error } = await sb.functions.invoke(photoFn, { body })); if (error?.context?.status === 404) photoFn = 'photos'; }
   if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} const st = error.context?.status; throw { code: b?.error || (isNetErr(error) ? 'offline' : st === 404 ? 'no_function' : st ? 'status_' + st : 'failed') }; }
   return data;
 }
