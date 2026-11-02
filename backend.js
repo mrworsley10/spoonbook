@@ -215,8 +215,10 @@ let photoFn = 'photos';
 async function photoCall(body){
   let { data, error } = await sb.functions.invoke(photoFn, { body });
   // the function may have been created as "Photos" (its web address keeps the first spelling)
-  if (error && error.context?.status === 404 && photoFn === 'photos'){ photoFn = 'Photos'; ({ data, error } = await sb.functions.invoke(photoFn, { body })); if (error?.context?.status === 404) photoFn = 'photos'; }
-  if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} const st = error.context?.status; throw { code: b?.error || (isNetErr(error) ? 'offline' : st === 404 ? 'no_function' : st ? 'status_' + st : 'failed') }; }
+  // (a missing function can also show up as a blocked request with no status, so try the other spelling then too)
+  const gone = e => e && (e.context?.status === 404 || e.name === 'FunctionsFetchError');
+  if (gone(error) && photoFn === 'photos'){ photoFn = 'Photos'; ({ data, error } = await sb.functions.invoke(photoFn, { body })); if (gone(error)) photoFn = 'photos'; }
+  if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} const st = error.context?.status; throw { code: b?.error || (isNetErr(error) ? 'offline' : st === 404 ? 'no_function' : st ? 'status_' + st : error.name === 'FunctionsFetchError' ? 'unreachable' : 'failed') }; }
   return data;
 }
 const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => Object.assign(d.photos || [], { site: d.site || 'Pexels' }));
