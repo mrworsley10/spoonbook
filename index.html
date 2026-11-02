@@ -395,6 +395,7 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .cropbox i{position:absolute;width:28px;height:28px;border:4px solid var(--accent);background:transparent}
 .cropbox i[data-c="nw"]{left:-4px;top:-4px;border-right:0;border-bottom:0;cursor:nwse-resize}.cropbox i[data-c="ne"]{right:-4px;top:-4px;border-left:0;border-bottom:0;cursor:nesw-resize}
 .cropbox i[data-c="sw"]{left:-4px;bottom:-4px;border-right:0;border-top:0;cursor:nesw-resize}.cropbox i[data-c="se"]{right:-4px;bottom:-4px;border-left:0;border-top:0;cursor:nwse-resize}
+.cropbox.dish{border-color:#4FB37A}.cropbox.dish i{border-color:#4FB37A}
 .cropbox i::after{content:"";position:absolute;inset:-14px}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
@@ -1707,7 +1708,6 @@ function clipSheet(mode){
     <input id="snapCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snap">
     <label class="opt" for="snapIn"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>A photo or screenshot you already have. Pick two if it runs over two pages</span></span></label>
     <input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
-    <label style="display:flex;gap:10px;align-items:center;font-size:15px"><input type="checkbox" id="snapKeep" style="width:20px;height:20px;accent-color:var(--accent)"> Use the picture as the recipe photo</label>
     <div id="aiMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
   else if (S.sheet === 'bulk') body = `<h2>Bring in lots at once</h2>
@@ -1782,6 +1782,7 @@ async function bulkImport(files){
 /* ---------- framing a photo before it's read: turn it the right way up and box just the recipe ---------- */
 function cropSheet(){
   const sn = S.snap, n = sn.pages.length, last = sn.i === n - 1;
+  if (sn.stage === 'dish') return dishSheet();
   openSheet('Frame the recipe', `<h2>Frame the recipe</h2>
     <p class="hint">Turn the photo the right way up, then drag the corners so the box covers just the recipe’s words. Leave out big pictures.</p>
     <div class="cropwrap" id="cropWrap"><canvas id="cropCv"></canvas><div class="cropbox" id="cropBox"><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i></div></div>
@@ -1789,11 +1790,26 @@ function cropSheet(){
       ${n > 1 ? `<span class="hint" style="margin:0 0 0 auto">Page ${sn.i + 1} of ${n}</span>` : ''}</div>
     ${n < 4 && last ? `<p class="hint" style="margin:0">Recipe carries on over the page? <label class="linkbtn" for="snapMoreCam" style="cursor:pointer">Take another photo</label> or <label class="linkbtn" for="snapMore" style="cursor:pointer">choose one</label></p><input id="snapMoreCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snapmore"><input id="snapMore" type="file" accept="image/*" class="sr" data-chg="snapmore">` : ''}
     <div id="aiMsg"></div>
-    <button class="btn primary" data-act="snapnext">${last ? 'Read the recipe' : 'Next page'}</button>
+    <button class="btn primary" data-act="snapnext">Next</button>
     <button class="btn" data-act="${sn.i ? 'snapprev' : 'sheet'}" data-mode="photo">Back</button>`);
   drawCrop();
 }
-async function drawCrop(){
+// second step: box the photo of the finished dish, if the page has one, to use as the recipe's picture
+function dishSheet(){
+  const sn = S.snap, n = sn.pages.length, pg = sn.pages[sn.i];
+  pg.dish = pg.dish || { x: .2, y: .2, w: .6, h: .5 };
+  openSheet('The dish photo', `<h2>Photo of the dish?</h2>
+    <p class="hint">If the page has a picture of the finished dish, drag the box around it and it becomes the recipe’s photo, in colour.</p>
+    ${n > 1 ? `<div class="chips" style="margin:0">${sn.pages.map((p, k) => `<button class="chip" data-act="dishpage" data-i="${k}" aria-pressed="${k === sn.i}">Photo ${k + 1}</button>`).join('')}</div>` : ''}
+    <div class="cropwrap" id="cropWrap"><canvas id="cropCv"></canvas><div class="cropbox dish" id="cropBox"><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i></div></div>
+    <div class="actions" style="margin:0"><button class="btn small" data-act="snaprot" data-d="-90" aria-label="Turn left">↺ Turn</button><button class="btn small" data-act="snaprot" data-d="90" aria-label="Turn right">Turn ↻</button></div>
+    <div id="aiMsg"></div>
+    <button class="btn primary" data-act="dishuse">Use this photo</button>
+    <button class="btn" data-act="dishskip">No photo of the dish</button>
+    <button class="btn" data-act="dishback">Back</button>`);
+  drawCrop('dish');
+}
+async function drawCrop(key = 'box'){
   const pg = S.snap.pages[S.snap.i], cv = overlay.querySelector('#cropCv'), wrap = overlay.querySelector('#cropWrap'), box = overlay.querySelector('#cropBox');
   if (!cv) return;
   try { pg.bmp = pg.bmp || await createImageBitmap(pg.file, { imageOrientation: 'from-image' }); } catch { overlay.querySelector('#aiMsg').innerHTML = '<p class="hint" style="color:var(--danger)">Couldn’t open that photo. Try another.</p>'; return; }
@@ -1802,11 +1818,11 @@ async function drawCrop(){
   cv.width = Math.round(iw * k); cv.height = Math.round(ih * k); cv.style.width = cv.width + 'px'; cv.style.height = cv.height + 'px';
   const g = cv.getContext('2d'); g.save(); g.translate(cv.width / 2, cv.height / 2); g.rotate(pg.rot * Math.PI / 180); g.drawImage(b, -b.width * k / 2, -b.height * k / 2, b.width * k, b.height * k); g.restore();
   wrap.style.width = cv.width + 'px'; wrap.style.height = cv.height + 'px';
-  const place = () => { const x = pg.box; Object.assign(box.style, { left: x.x * 100 + '%', top: x.y * 100 + '%', width: x.w * 100 + '%', height: x.h * 100 + '%' }); };
+  const place = () => { const x = pg[key]; Object.assign(box.style, { left: x.x * 100 + '%', top: x.y * 100 + '%', width: x.w * 100 + '%', height: x.h * 100 + '%' }); };
   place();
   // drag a corner to resize, or the middle to move
   box.onpointerdown = e => {
-    e.preventDefault(); const c = e.target.dataset.c || 'move', r = wrap.getBoundingClientRect(), start = { ...pg.box }, x0 = e.clientX, y0 = e.clientY;
+    e.preventDefault(); const c = e.target.dataset.c || 'move', r = wrap.getBoundingClientRect(), start = { ...pg[key] }, x0 = e.clientX, y0 = e.clientY;
     box.setPointerCapture(e.pointerId);
     box.onpointermove = ev => {
       const dx = (ev.clientX - x0) / r.width, dy = (ev.clientY - y0) / r.height, m = 0.08; let { x, y, w, h } = start;
@@ -1817,14 +1833,14 @@ async function drawCrop(){
         if (c.includes('n')){ const ny = Math.min(Math.max(0, y + dy), y + h - m); h += y - ny; y = ny; }
         if (c.includes('s')) h = Math.min(Math.max(m, h + dy), 1 - y);
       }
-      pg.box = { x, y, w, h }; place();
+      pg[key] = { x, y, w, h }; place();
     };
     box.onpointerup = box.onpointercancel = () => { box.onpointermove = null; };
   };
 }
-async function readLocally({ text, files, srcUrl, keepPhoto }){
+async function readLocally({ text, files, srcUrl, keepPhoto, dish }){
   const msg = overlay.querySelector('#aiMsg');
-  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = true);
+  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"],[data-act^="dish"]').forEach(b => b.disabled = true);
   try {
     if (files){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
@@ -1844,10 +1860,13 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
     d.category = guessCategory(d.title, d.ingredients);
     d.source = srcUrl || '';
     if (keepPhoto && files && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo…</div>`; d.photo = await uploadPhoto(files[0].file || files[0]); }
+    if (dish && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo of the dish…</div>`;
+      try { const cv = await Local.prepImage(dish.file, { rot: dish.rot, box: dish.box, colour: true, max: 1600 });
+        const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.88)); if (blob) d.photo = await uploadPhoto(new File([blob], 'dish.jpg', { type: 'image/jpeg' })); } catch {} }
     S.draft = d; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
     toast(out.warnings.length ? out.warnings[0] + '. Fill in what’s missing, then save' : 'Check it over, then save');
   } catch (e) {
-    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = false);
+    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"],[data-act^="dish"]').forEach(b => b.disabled = false);
     if (!overlay.querySelector('#aiMsg')) return;
     msg.innerHTML = `<p class="hint" style="color:var(--danger)">${
       e?.code === 'unreadable' ? 'Sorry, that photo didn’t read clearly, so nothing’s been filled in. Try: the box around just the recipe words (not the big photo), the page the right way up, and the phone held straight above it in good light. One page at a time works best.' :
@@ -2161,12 +2180,19 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
-  snaprot(b){ const pg = S.snap.pages[S.snap.i]; const d = +b.dataset.d, o = pg.box;
-    // turn the box with the picture
-    pg.box = d > 0 ? { x: 1 - o.y - o.h, y: o.x, w: o.h, h: o.w } : { x: o.y, y: 1 - o.x - o.w, w: o.h, h: o.w };
-    pg.rot = (pg.rot + d + 360) % 360; drawCrop(); },
+  snaprot(b){ const pg = S.snap.pages[S.snap.i]; const d = +b.dataset.d;
+    // turn the boxes with the picture
+    const turn = o => o && (d > 0 ? { x: 1 - o.y - o.h, y: o.x, w: o.h, h: o.w } : { x: o.y, y: 1 - o.x - o.w, w: o.h, h: o.w });
+    pg.box = turn(pg.box); pg.dish = turn(pg.dish);
+    pg.rot = (pg.rot + d + 360) % 360; drawCrop(S.snap.stage === 'dish' ? 'dish' : 'box'); },
   snapnext(){ const sn = S.snap; if (sn.i < sn.pages.length - 1){ sn.i++; cropSheet(); return; }
-    readLocally({ files: sn.pages.map(p => ({ file: p.file, rot: p.rot, box: p.box })), keepPhoto: sn.keep }); },
+    if (!S.canPhoto) return readLocally({ files: sn.pages.map(p => ({ file: p.file, rot: p.rot, box: p.box })) });
+    sn.stage = 'dish'; sn.textI = sn.i; sn.i = 0; dishSheet(); },
+  dishpage(b){ S.snap.i = +b.dataset.i; dishSheet(); },
+  dishback(){ const sn = S.snap; sn.stage = 'text'; sn.i = sn.textI ?? sn.pages.length - 1; cropSheet(); },
+  dishuse(){ const sn = S.snap, p = sn.pages[sn.i];
+    readLocally({ files: sn.pages.map(q => ({ file: q.file, rot: q.rot, box: q.box })), dish: { file: p.file, rot: p.rot, box: p.dish } }); },
+  dishskip(){ const sn = S.snap; readLocally({ files: sn.pages.map(q => ({ file: q.file, rot: q.rot, box: q.box })) }); },
   snapprev(){ S.snap.i--; cropSheet(); },
   home(){ if (S.sheet) closeSheet(); if (S.view !== 'book') go('#book'); else { S.q = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); render(); } },
   async install(){
@@ -2517,7 +2543,7 @@ document.addEventListener('change', async e => {
   }
   if (k === 'bulk' && t.files.length){ bulkImport([...t.files]); return; }
   if (k === 'snap' && t.files.length){
-    S.snap = { pages: [...t.files].slice(0, 4).map(f => ({ file: f, rot: 0, box: { x: .02, y: .02, w: .96, h: .96 } })), i: 0, keep: overlay.querySelector('#snapKeep')?.checked };
+    S.snap = { pages: [...t.files].slice(0, 4).map(f => ({ file: f, rot: 0, box: { x: .02, y: .02, w: .96, h: .96 } })), i: 0, stage: 'text' };
     cropSheet();
   }
   if (k === 'snapmore' && t.files.length && S.snap){

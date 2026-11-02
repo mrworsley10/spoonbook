@@ -119,9 +119,9 @@ async function prepImage(file, opt = {}){
   const rw = side ? bmp.height : bmp.width, rh = side ? bmp.width : bmp.height;
   const b = opt.box || { x: 0, y: 0, w: 1, h: 1 };
   const cw = Math.max(1, b.w * rw), ch = Math.max(1, b.h * rh);
-  const k = Math.min(2.5, (opt.max || 2400) / Math.max(cw, ch));
+  const k = Math.min(opt.colour ? 1 : 2.5, (opt.max || 2400) / Math.max(cw, ch));
   const c = document.createElement('canvas'); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
-  const g = c.getContext('2d'); g.filter = 'grayscale(1) contrast(1.35)';
+  const g = c.getContext('2d'); if (!opt.colour) g.filter = 'grayscale(1) contrast(1.35)';
   g.scale(k, k); g.translate(-b.x * rw, -b.y * rh);
   g.translate(rw / 2, rh / 2); g.rotate(rot * Math.PI / 180); g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
   return c;
