@@ -309,6 +309,7 @@ function landingScreen(gone){
     ${CFG.googleSignIn ? `<button class="btn gbtn" type="button" id="googleBtn">${GOOGLE_G}<span>Continue with Google</span></button>` : ''}
     <p id="authMsg" class="hint" role="status"></p>
     <button class="linkbtn land-in" type="button" data-auth="in">I already have an account</button>
+    <p class="land-links"><a href="about.html">How it works</a> · <a href="install.html">Installing</a> · <a href="about.html#questions">Questions</a></p>
     <p class="hint land-legal">By using Spoonbook you agree to the <a href="terms.html" target="_blank" rel="noopener">terms</a> and <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
   </div>`);
   document.getElementById('startBtn').onclick = () => signInScreen('up', true);

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install Spoonbook on your phone</title>
+<meta name="description" content="How to put Spoonbook on your home screen on iPhone, Android and computers, so it opens like an app and works with no signal.">
+<link rel="canonical" href="https://spoonbook.co.uk/install.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Spoonbook">
+<meta property="og:url" content="https://spoonbook.co.uk/install.html">
+<meta property="og:title" content="Install Spoonbook on your phone">
+<meta property="og:description" content="How to put Spoonbook on your home screen on iPhone, Android and computers, so it opens like an app and works with no signal.">
+<meta property="og:image" content="https://spoonbook.co.uk/icons/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#1F1A17">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;1,500&family=Work+Sans:wght@400;500;600&display=swap">
+<style>
+:root{--bg:#1F1A17;--surface:#2B2420;--line:#3A312C;--fg:#F4EBDD;--muted:#BFAF9B;--accent:#E8A93A;--on-accent:#1F1A17;--display:"Playfair Display",Georgia,serif;--body:"Work Sans",system-ui,sans-serif;color-scheme:dark}
+@media (prefers-color-scheme: light){:root{--bg:#F7F1E8;--surface:#FFFBF5;--line:#E3D6C4;--fg:#241C17;--muted:#6B5B4D;--accent:#94570A;--on-accent:#FFFBF5;color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-style:italic;color:var(--accent);font-size:24px;text-decoration:none}.brand img{width:36px;height:36px;border-radius:9px}
+nav a{color:var(--muted);text-decoration:none;font-size:15px;margin-left:16px}nav a[aria-current]{color:var(--fg);font-weight:600}
+h1{font-family:var(--display);font-weight:500;font-size:clamp(36px,8vw,56px);line-height:1.05;margin:40px 0 12px;letter-spacing:-.5px}h1 em{color:var(--accent)}
+h2{font-family:var(--display);font-weight:500;font-size:clamp(26px,5vw,32px);margin:48px 0 10px}
+h3{font-size:18px;margin:0 0 4px}
+p{margin:0 0 14px}.lead{font-size:20px;color:var(--muted)}
+a{color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;height:54px;padding:0 28px;border-radius:27px;background:var(--accent);color:var(--on-accent);font-weight:600;text-decoration:none;font-size:17px}
+.btn.ghost{background:none;color:var(--fg);border:1px solid var(--line)}
+.cta{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 6px}
+.trust{color:var(--accent);font-weight:600;font-size:15px}
+.shot{width:100%;border-radius:20px;border:1px solid var(--line);margin:28px 0 0;display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-top:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px}.card p{margin:0;color:var(--muted);font-size:16px}
+.card .ic{font-size:26px;margin-bottom:6px}
+details{border-bottom:1px solid var(--line);padding:14px 0}summary{cursor:pointer;font-weight:600;font-size:18px;list-style:none}summary::-webkit-details-marker{display:none}
+summary::after{content:"+";float:right;color:var(--accent);font-size:22px;line-height:1}details[open] summary::after{content:"–"}
+details p{margin:10px 0 0;color:var(--muted)}
+ol.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0 0;display:flex;flex-direction:column;gap:10px}
+ol.steps li{counter-increment:s;display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px}
+ol.steps li::before{content:counter(s);flex:none;width:30px;height:30px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
+.ico{display:inline-flex;vertical-align:-4px;color:var(--accent)}
+@media (max-width:560px){header{flex-wrap:wrap;row-gap:8px}nav{width:100%}nav a{margin:0 18px 0 0}}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:14px}footer a{color:var(--muted);margin-right:14px}
+</style>
+</head>
+<body><main>
+<header><a class="brand" href="./"><img src="icons/icon-192.png" alt="">Spoonbook</a>
+<nav><a href="about.html">About</a><a href="install.html" aria-current="page">Install</a><a href="./">Open the app</a></nav></header>
+
+<h1>Put Spoonbook on<br><em>your home screen.</em></h1>
+<p class="lead">Spoonbook isn’t in the app stores. Instead you add it from your browser, which takes about ten seconds. Then it opens from its own icon, full screen, and works with no signal.</p>
+
+<h2>iPhone and iPad</h2>
+<ol class="steps">
+<li><span>Open <a href="./">spoonbook.co.uk</a> in <b>Safari</b>. (In other browsers on iPhone, look for the same Share button.)</span></li>
+<li><span>Tap the <b>Share</b> button <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg></span> at the bottom of the screen, or the top on iPad.</span></li>
+<li><span>Scroll down and tap <b>Add to Home Screen</b>.</span></li>
+<li><span>Tap <b>Add</b>. Spoonbook is now on your home screen.</span></li>
+</ol>
+
+<h2>Android</h2>
+<ol class="steps">
+<li><span>Open <a href="./">spoonbook.co.uk</a> in <b>Chrome</b>.</span></li>
+<li><span>Tap <b>Install</b> if Spoonbook offers it, or tap the menu <span class="ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg></span> at the top right.</span></li>
+<li><span>Tap <b>Install app</b> or <b>Add to Home screen</b>, then <b>Install</b>.</span></li>
+</ol>
+<p style="margin-top:12px">Once installed, you can share recipes straight into Spoonbook from Chrome and other apps.</p>
+
+<h2>Laptop or computer</h2>
+<ol class="steps">
+<li><span><b>Chrome or Edge:</b> open <a href="./">spoonbook.co.uk</a> and click the install icon at the right of the address bar (a small screen with an arrow), then <b>Install</b>.</span></li>
+<li><span><b>Safari on a Mac:</b> open spoonbook.co.uk, then choose <b>File → Add to Dock</b>.</span></li>
+</ol>
+<p style="margin-top:12px">You can also just use Spoonbook in a browser tab. Everything works the same.</p>
+
+<h2>Not working?</h2>
+<p>Make sure you’re using the browser named above, and that you’ve opened spoonbook.co.uk rather than a link inside another app (such as Facebook or WhatsApp). If it opened inside another app, use its menu to <b>Open in browser</b> first. Still stuck? Email <a href="mailto:hello@spoonbook.co.uk">hello@spoonbook.co.uk</a>.</p>
+<div class="cta"><a class="btn" href="./">Open Spoonbook</a></div>
+<footer><a href="./">Open Spoonbook</a> <a href="about.html">About</a> <a href="install.html">Install</a> <a href="privacy.html">Privacy</a> <a href="terms.html">Terms</a> <a href="mailto:hello@spoonbook.co.uk">hello@spoonbook.co.uk</a><p style="margin-top:10px">Spoonbook is made in the UK by Ian Worsley.</p></footer>
+</main></body></html>

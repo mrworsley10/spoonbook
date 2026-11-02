@@ -314,6 +314,7 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 .land .btn.primary{height:56px;font-size:18px}.land .gbtn{margin-top:0}
 .land-in{align-self:center;margin:4px 0;font-size:16px}
 .land-legal{font-size:12px;text-align:center}
+.land-links{margin:2px 0 0;text-align:center;font-size:15px;color:var(--muted)}.land-links a{color:var(--accent)}
 @media (prefers-reduced-motion: reduce){.dots button{transition:none}}
 .intro{display:flex;flex-direction:column;gap:10px;margin:-6px 0 22px}
 .intro img{border-radius:16px}
@@ -363,6 +364,31 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .isteps li{counter-increment:i;display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px}
 .isteps li::before{content:counter(i);flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
 .isteps li>span:first-of-type{flex:1}.iart{display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--accent);text-align:center}.iart small{color:var(--muted);font-size:11px;max-width:110px}
+.eat{gap:4px}.eat.on{border-color:var(--accent);color:var(--accent)}
+.eatgrid{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 4px}.eatgrid .chip{min-width:52px;justify-content:center}
+.filllist{list-style:none;margin:4px 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.filllist li{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:8px;background:var(--bg)}
+.filllist .fd{flex:none;width:42px;text-align:center;font-weight:700;font-size:13px;color:var(--accent);line-height:1.1}.filllist .fd small{display:block;font-size:18px;color:var(--fg)}
+.filllist .thumb{width:46px;height:46px;flex:none;border-radius:10px;overflow:hidden}.filllist .thumb img{width:100%;height:100%;object-fit:cover}
+.filllist .ft{flex:1;min-width:0}.filllist .ft b{display:block;font-family:var(--display);font-weight:500;font-size:17px;line-height:1.2}.filllist .ft .hint{margin:0;font-size:13px}
+.filllist .icon-btn{width:36px;height:36px;flex:none}
+.fillshop{display:flex;gap:10px;align-items:center;margin:6px 0;font-size:15px}.fillshop input{width:20px;height:20px;accent-color:var(--accent)}
+.planside{position:sticky;top:20px;align-self:start;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:14px;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
+.search.small{height:42px;margin:0 0 8px}.search.small input{font-size:15px}
+.sidelist{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+.sidelist li[draggable]{display:flex;align-items:center;gap:10px;padding:6px;border-radius:12px;cursor:grab;user-select:none}
+.sidelist li[draggable]:hover{background:var(--bg)}.sidelist li[draggable]:active{cursor:grabbing}
+.sidelist .thumb{width:38px;height:38px;flex:none;border-radius:8px;overflow:hidden;font-size:18px}.sidelist .thumb img{width:100%;height:100%;object-fit:cover}
+.sidelist .t{font-size:14px;line-height:1.25}
+body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent) 45%,transparent);outline-offset:-2px}
+[data-drop-day].dropover{outline:3px solid var(--accent)!important;background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+@media (hover: hover){
+  .pick .img,.grid .img,#list .list .thumb{transition:transform .18s ease,box-shadow .18s ease}
+  .pick:hover .img,.grid a:hover .img{transform:translateY(-4px);box-shadow:0 10px 24px rgba(0,0,0,.22)}
+  #list .list a:hover .thumb{transform:scale(1.05)}
+  #list .list a:hover .t{color:var(--accent)}
+}
+@media (prefers-reduced-motion: reduce){.pick .img,.grid .img,#list .list .thumb{transition:none}}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -507,7 +533,9 @@ ol.sub li p{margin:0 0 6px}
   .dock{left:104px}
   .dock .in{max-width:520px}
   /* plan: the week as a grid of days */
-  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .planwrap{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:24px;align-items:start;margin-top:10px}
+  .days{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:16px}
+  .day .dh{flex-wrap:wrap;row-gap:8px}.day .dh>span:first-child{white-space:nowrap}
   .day,.day.empty{border:1px solid var(--line);border-radius:18px;padding:14px 16px;background:var(--surface)}
   .day.today{border-color:var(--accent)}
   /* shopping: aisles in columns */
@@ -531,7 +559,7 @@ ol.sub li p{margin:0 0 6px}
   .land .slide{padding:0}
   .land .mk{height:300px}
   .land .dots{margin-top:16px}
-  .land-legal{text-align:left}
+  .land-legal,.land-links{text-align:left}
   .land .btn.primary,.land .gbtn{max-width:440px}
   .land-in{justify-self:start}
 }
@@ -574,6 +602,7 @@ const I = {
   share:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/></svg>',
   gridv:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
   listv:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>',
+  people:'<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-6 6.5-6s5.9 2.4 6.5 6"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.6c1.7.9 2.8 2.8 3 5.4"/></svg>',
   cal:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
   cart:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8h12l-1 12H7z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>',
   check:'<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></svg>',
@@ -864,10 +893,12 @@ function weekDays(offset){
   return Array.from({ length: 7 }, (_, i) => { const x = new Date(mon); x.setDate(mon.getDate() + i); return x; });
 }
 const dayName = d => d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
-async function setPlan(days){
-  const cutoff = dayKey(new Date(Date.now() - 60*DAY)); const keep = {};
+async function setPlan(days, people){
+  const cutoff = dayKey(new Date(Date.now() - 60*DAY)); const keep = {}, eat = {};
   for (const [k, v] of Object.entries(days)) if (k >= cutoff && v.length) keep[k] = v;
-  try { await db.doc('lists/plan').set({ days: keep, updatedAt: Date.now() }); } catch (e) { toast(saveErr(e)); }
+  for (const [k, v] of Object.entries(people || S.plan.people || {})) if (k >= cutoff && v > 0) eat[k] = v;
+  S.plan = { ...S.plan, days: keep, people: eat };
+  try { await db.doc('lists/plan').set({ days: keep, people: eat, updatedAt: Date.now() }); } catch (e) { toast(saveErr(e)); }
 }
 
 /* ---------- routing ---------- */
@@ -1020,7 +1051,7 @@ function bookView(){
   return topBar() + `
   <h1 class="hello">${greeting()}</h1>
   ${installHtml()}${guideHtml() || newsHtml()}
-  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
+  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients${wide() ? '  ·  press /' : ''}" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
     <div class="picks" aria-label="${favs.length >= 3 ? 'Your favourites' : 'Ideas for tonight'}">
@@ -1395,10 +1426,82 @@ function planView(){
   <div class="weeknav"><button class="icon-btn" data-act="week" data-d="-1" aria-label="Previous week">${I.back}</button>
     <span class="eyebrow" style="color:var(--fg)">${label}</span>
     <button class="icon-btn" data-act="week" data-d="1" aria-label="Next week" style="transform:scaleX(-1)">${I.back}</button></div>
-  ${count ? `<div class="actions" style="margin-top:12px"><button class="btn small primary" data-act="shopweek">Shop for ${S.week === 0 ? 'this week' : 'this week’s plan'} · ${count} recipe${count > 1 ? 's' : ''}</button></div>` : ''}
-  <ol class="days">${days.map(d => { const k = dayKey(d); const ids = plan[k] || [];
-    return `<li class="day${k === today ? ' today' : ''}${ids.length ? '' : ' empty'}"><div class="dh"><span>${k === today ? 'Today · ' : ''}${dayName(d)}</span><button class="btn small" data-act="planadd" data-day="${k}">${I.plus} Add</button></div>
-      ${ids.length ? `<ul class="list">${ids.map(id => { const r = byId(id); if (!r) return ''; return `<li class="prow">${rowHtml(r).replace(/^<li>|<\/li>$/g, '')}<button class="icon-btn" data-act="unplan" data-day="${k}" data-id="${esc(id)}" aria-label="Remove ${esc(r.title)} from ${dayName(d)}">${I.close}</button></li>`; }).join('')}</ul>` : ''}</li>`; }).join('')}</ol>`;
+  ${(() => { const empty = days.filter(d => dayKey(d) >= today && !(plan[dayKey(d)] || []).length).length;
+    return count || empty ? `<div class="actions" style="margin-top:12px">${empty && S.week >= 0 ? `<button class="btn small${count ? '' : ' primary'}" data-act="fillweek">Fill my week</button>` : ''}${count ? `<button class="btn small primary" data-act="shopweek">Shop for ${S.week === 0 ? 'this week' : 'this week’s plan'} · ${count} recipe${count > 1 ? 's' : ''}</button>` : ''}</div>` : ''; })()}
+  <div class="${wide() ? 'planwrap' : ''}"><ol class="days">${days.map(d => { const k = dayKey(d); const ids = plan[k] || []; const n = S.plan.people?.[k];
+    return `<li class="day${k === today ? ' today' : ''}${ids.length ? '' : ' empty'}" data-drop-day="${k}"><div class="dh"><span>${k === today ? 'Today · ' : ''}${dayName(d)}</span><span class="row" style="display:flex;gap:6px">${ids.length ? `<button class="btn small eat${n ? ' on' : ''}" data-act="eating" data-day="${k}" aria-label="Who’s eating on ${dayName(d)}: ${n ? n + ' people' : 'as the recipe says'}">${I.people}${n ? ' ' + n : ''}</button>` : ''}<button class="btn small" data-act="planadd" data-day="${k}">${I.plus} Add</button></span></div>
+      ${ids.length ? `<ul class="list">${ids.map(id => { const r = byId(id); if (!r) return ''; return `<li class="prow">${rowHtml(r).replace(/^<li>|<\/li>$/g, '')}<button class="icon-btn" data-act="unplan" data-day="${k}" data-id="${esc(id)}" aria-label="Remove ${esc(r.title)} from ${dayName(d)}">${I.close}</button></li>`; }).join('')}</ul>` : ''}</li>`; }).join('')}</ol>${wide() ? planSideHtml() : ''}</div>`;
+}
+// on a laptop: your recipes down the side, to drag onto a day
+function planSideList(){
+  const q = (S.sideQ || '').toLowerCase();
+  const list = S.recipes.filter(r => !q || r.title.toLowerCase().includes(q) || (r.category || '').toLowerCase().includes(q)).sort((a, b) => a.title.localeCompare(b.title)).slice(0, 80);
+  return list.map(r => `<li draggable="true" data-drag-id="${esc(r.id)}" title="Drag onto a day"><span class="thumb ph">${phOrImg(r)}</span><span class="t">${esc(r.title)}</span></li>`).join('') || '<li class="hint">No matches.</li>';
+}
+function planSideHtml(){
+  return `<aside class="planside" aria-label="Your recipes"><p class="eyebrow" style="margin:0 0 8px">Drag a recipe onto a day</p>
+    <label class="search small">${I.search}<span class="sr">Find a recipe</span><input id="sideQ" placeholder="Find a recipe" value="${esc(S.sideQ || '')}" autocomplete="off"></label>
+    <ul class="sidelist" id="sideList">${planSideList()}</ul></aside>`;
+}
+
+/* ---------- Fill my week: dinners for the empty days, picked from your own recipes (no AI) ---------- */
+const NOT_DINNER = ['Sides & starters', 'Sauces & pastes', 'Bread & dough', 'Puddings & treats'];
+function fillScore(r, weekend){
+  const avg = avgRating(r), last = lastMade(r), mins = r.totalMins || 0;
+  let sc = 1 + (r.favourite ? 2.5 : 0) + (avg ? (avg - 3) * 0.8 : 0);
+  if (last){ const ago = (Date.now() - last) / DAY; sc += ago < 7 ? -3 : ago < 14 ? -1 : Math.min(2, ago / 30); } else sc += 0.6;
+  if (mins){ if (!weekend && mins > 60) sc -= 2; else if (!weekend && mins <= 40) sc += 1; else if (weekend && mins > 60) sc += 0.8; }
+  if (r.sample) sc -= 1;
+  return sc * (0.7 + Math.random() * 0.6);
+}
+function fillPick(k, taken, prevCat){
+  const wd = new Date(k + 'T12:00:00').getDay(), weekend = wd === 0 || wd === 5 || wd === 6;
+  const pool = S.recipes.filter(r => !NOT_DINNER.includes(r.category) && !taken.has(r.id));
+  if (!pool.length) return null;
+  const scored = pool.map(r => ({ r, sc: fillScore(r, weekend) - (prevCat && r.category === prevCat && r.category !== 'Mains' ? 2.5 : 0) })).sort((a, b) => b.sc - a.sc);
+  return scored[0].r.id;
+}
+function fillSuggest(){
+  const plan = S.plan.days || {}, today = dayKey(new Date());
+  const days = weekDays(S.week).map(dayKey);
+  const taken = new Set(days.flatMap(k => plan[k] || []));
+  const out = {}; let prev = null;
+  for (const k of days){
+    const have = plan[k] || [];
+    if (have.length){ prev = byId(have[0])?.category || null; continue; }
+    if (k < today) continue;
+    const id = fillPick(k, taken, prev); if (!id) break;
+    out[k] = id; taken.add(id); prev = byId(id)?.category || null;
+  }
+  return out;
+}
+function fillSheet(){
+  const f = S.fill || {}; const ks = Object.keys(f).sort();
+  openSheet('Fill my week', `<h2>Fill my week</h2>
+    <p class="hint">Picked from your own recipes: favourites and ones you haven’t made for a while, quicker ones on weeknights. Swap anything you don’t fancy.</p>
+    <ul class="filllist">${ks.map(k => { const r = byId(f[k]); if (!r) return ''; const d = new Date(k + 'T12:00:00');
+      return `<li><span class="fd">${k === dayKey(new Date()) ? 'Today' : d.toLocaleDateString('en-GB', { weekday: 'short' })}<small>${d.getDate()}</small></span><span class="thumb ph">${phOrImg(r)}</span><span class="ft"><b>${esc(r.title)}</b><span class="hint">${esc(r.category || 'Mains')}${r.totalMins ? ' · ' + mins(r.totalMins) : ''}</span></span>
+        <button class="btn small" data-act="fillswap" data-day="${k}">Swap</button><button class="icon-btn" data-act="fillskip" data-day="${k}" aria-label="Leave ${esc(d.toLocaleDateString('en-GB', { weekday: 'long' }))} empty">${I.close}</button></li>`; }).join('') || '<li class="hint">Nothing left to fill.</li>'}</ul>
+    <label class="fillshop"><input type="checkbox" id="fillShop" ${S.fillShop === false ? '' : 'checked'}> Add the ingredients to the shopping list</label>
+    <button class="btn primary" data-act="fillgo" ${ks.length ? '' : 'disabled'}>Add ${ks.length} dinner${ks.length === 1 ? '' : 's'} to the plan</button>
+    <button class="btn" data-act="closesheet">Cancel</button>`);
+}
+// shopping for planned recipes: scaled to who's eating that day, if it's been set
+function planShopLines(pairs){
+  const add = [];
+  pairs.forEach(([k, id]) => { const r = byId(id); if (!r) return;
+    const n = S.plan.people?.[k], b = baseServes(r), f = n && b ? n / b : 1;
+    (r.ingredients || []).filter(l => !isStaple(l)).forEach(l => add.push({ id: rid(), text: showLine(f === 1 ? l : scaleLine(l, f)), from: r.title + (f !== 1 ? ' · for ' + n : ''), done: false })); });
+  return add;
+}
+function eatingSheet(k){
+  const n = S.plan.people?.[k] || 0, d = new Date(k + 'T12:00:00');
+  const rs = (S.plan.days?.[k] || []).map(byId).filter(Boolean);
+  openSheet('Who’s eating', `<h2>Who’s eating on ${d.toLocaleDateString('en-GB', { weekday: 'long' })}?</h2>
+    <p class="hint">The shopping for this day is scaled to match. ${rs.map(r => `${esc(r.title)} ${baseServes(r) ? 'serves ' + baseServes(r) : 'doesn’t say how many it serves, so it won’t be scaled'}`).join('. ')}.</p>
+    <div class="eatgrid">${[1,2,3,4,5,6,7,8,10,12].map(x => `<button class="chip" data-act="eatset" data-day="${k}" data-n="${x}" aria-pressed="${n === x}">${x}</button>`).join('')}</div>
+    <button class="btn" data-act="eatset" data-day="${k}" data-n="0">${n ? 'Clear: use the recipe as written' : 'As the recipe says'}</button>
+    <button class="btn" data-act="closesheet">Done</button>`);
 }
 function fridgeResults(){
   const terms = S.fridge.toLowerCase().split(/[,\n]+/).map(s => s.trim()).filter(s => s.length > 1);
@@ -1550,6 +1653,7 @@ function moreSheet(){
       ${S.canEdit ? `<button class="mrow" data-act="guideshow"><b>Show me around</b><span>A quick checklist of the best bits</span></button>` : ''}
       <button class="mrow" data-act="shareapp"><b>Share Spoonbook</b><span>Send the app to friends and family</span></button>
       ${Backend.plan?.enabled ? `<button class="mrow" data-act="upgrade"><b>${Backend.plan.plus ? '✓ Spoonbook Plus' : 'Spoonbook Plus'}</b><span>${Backend.plan.plus ? 'On for everyone in this cookbook' : `Free cookbooks hold ${Backend.plan.limit} recipes`}</span></button>` : ''}
+      <a class="mrow" href="about.html" target="_blank" rel="noopener"><b>About Spoonbook</b><span>How it works and common questions</span></a>
       <button class="mrow" data-act="feedback"><b>Send feedback</b><span>Problems or ideas, straight to the maker</span></button>
     </div>
     <button class="btn" data-act="closesheet">Close</button>
@@ -2233,10 +2337,39 @@ const A = {
     days[k] = list; await setPlan(days);
   },
   week(b){ S.week += +b.dataset.d; render(); },
+  fillweek(){
+    const pool = S.recipes.filter(r => !NOT_DINNER.includes(r.category));
+    if (pool.length < 3) return toast('Add a few more main meals first, then Spoonbook can plan your week');
+    S.fill = fillSuggest(); fillSheet();
+  },
+  fillswap(b){
+    const k = b.dataset.day, plan = S.plan.days || {};
+    const taken = new Set([...Object.values(S.fill), ...weekDays(S.week).flatMap(d => plan[dayKey(d)] || []), ...(S.fillSeen?.[k] || [])]);
+    S.fillSeen = { ...(S.fillSeen || {}), [k]: [...(S.fillSeen?.[k] || []), S.fill[k]] };
+    let id = fillPick(k, taken, null);
+    if (!id){ S.fillSeen[k] = []; id = fillPick(k, new Set([...Object.values(S.fill)]), null); }
+    if (id) S.fill[k] = id; fillSheet();
+  },
+  fillskip(b){ delete S.fill[b.dataset.day]; fillSheet(); },
+  async fillgo(){
+    const days = { ...(S.plan.days || {}) }, pairs = Object.entries(S.fill || {});
+    pairs.forEach(([k, id]) => { days[k] = [...(days[k] || []), id]; });
+    S.fillShop = overlay.querySelector('#fillShop')?.checked !== false;
+    closeSheet(); S.fill = null; S.fillSeen = null;
+    await setPlan(days); guideMark('plan');
+    if (S.fillShop){ const add = planShopLines(pairs); if (add.length){ S.shop = { ...S.shop, items: [...(S.shop.items || []), ...add] }; await setShop(S.shop.items); guideMark('shop'); } }
+    render(); toast(`${pairs.length} dinner${pairs.length === 1 ? '' : 's'} planned${S.fillShop ? ' and on the shopping list' : ''}`);
+  },
+  eating(b){ eatingSheet(b.dataset.day); },
+  async eatset(b){
+    const k = b.dataset.day, n = +b.dataset.n; const people = { ...(S.plan.people || {}) };
+    if (n) people[k] = n; else delete people[k];
+    await setPlan({ ...(S.plan.days || {}) }, people); closeSheet(); render();
+    toast(n ? `Shopping for ${n} on ${new Date(k + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })}` : 'Back to the recipe as written');
+  },
   async shopweek(b){
-    const ids = weekDays(S.week).flatMap(d => S.plan.days?.[dayKey(d)] || []);
-    const add = [];
-    ids.forEach(id => { const r = byId(id); if (r) (r.ingredients || []).filter(l => !isStaple(l)).forEach(l => add.push({ id: rid(), text: showLine(l), from: r.title, done: false })); });
+    const pairs = weekDays(S.week).flatMap(d => (S.plan.days?.[dayKey(d)] || []).map(id => [dayKey(d), id]));
+    const add = planShopLines(pairs);
     if (!add.length) return;
     b.disabled = true;
     await setShop([...(S.shop.items || []), ...add]);
@@ -2256,15 +2389,33 @@ document.addEventListener('click', e => {
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && S.sheet) closeSheet();
+  // laptops: press / to search the book
+  if (e.key === '/' && !e.ctrlKey && !e.metaKey && !S.sheet && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && !e.target.isContentEditable && Backend.household){
+    e.preventDefault(); const f = () => { const q = document.getElementById('q'); if (q){ q.focus(); q.select(); q.scrollIntoView({ block: 'center' }); } };
+    if (S.view !== 'book' || !document.getElementById('q')){ go('#book'); setTimeout(f, 80); } else f();
+  }
   if (e.key === 'Enter' && e.target.id === 'shopIn'){ e.preventDefault(); A.additem(); }
   if (e.key === 'Enter' && (e.target.id === 'q' || e.target.id === 'fridgeIn')){ e.preventDefault(); e.target.blur(); const l = document.getElementById(e.target.id === 'q' ? 'bookCount' : 'fridgeList'); if (l) l.scrollIntoView({ behavior: 'smooth', block: 'start' }); if (S.pending) render(); }
   if (e.key === 'Enter' && e.target.id === 'stapleIn'){ e.preventDefault(); A.addstaple(); }
   if (e.key === 'Enter' && e.target.id === 'usualIn'){ e.preventDefault(); A.addusual(); }
   if (e.key === 'Enter' && e.target.id === 'joinIn'){ e.preventDefault(); A.joinbook(overlay.querySelector('[data-act="joinbook"]')); }
 });
+/* laptops: drag a recipe from the side panel onto a day in the plan */
+document.addEventListener('dragstart', e => { const li = e.target.closest?.('[data-drag-id]'); if (!li) return; e.dataTransfer.setData('text/plain', li.dataset.dragId); e.dataTransfer.effectAllowed = 'copy'; document.body.classList.add('dragging'); });
+document.addEventListener('dragend', () => { document.body.classList.remove('dragging'); document.querySelectorAll('.dropover').forEach(x => x.classList.remove('dropover')); });
+document.addEventListener('dragover', e => { const d = e.target.closest?.('[data-drop-day]'); if (!d || !document.body.classList.contains('dragging')) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy';
+  document.querySelectorAll('.dropover').forEach(x => x !== d && x.classList.remove('dropover')); d.classList.add('dropover'); });
+document.addEventListener('drop', async e => {
+  const d = e.target.closest?.('[data-drop-day]'); const id = e.dataTransfer.getData('text/plain'); if (!d || !id || !byId(id)) return;
+  e.preventDefault(); d.classList.remove('dropover'); const k = d.dataset.dropDay;
+  const days = { ...(S.plan.days || {}) }; if ((days[k] || []).includes(id)) return toast('Already planned that day');
+  days[k] = [...(days[k] || []), id]; await setPlan(days); guideMark('plan'); render();
+  toast(`${byId(id).title} on ${k === dayKey(new Date()) ? 'today' : new Date(k + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long' })}`);
+});
 document.addEventListener('input', e => {
   if (e.target.id === 'fridgeIn'){ S.fridge = e.target.value; document.getElementById('fridgeList').innerHTML = fridgeResults(); return; }
   if (e.target.id === 'pickQ'){ document.getElementById('pickList').innerHTML = recipePickList(e.target.value); return; }
+  if (e.target.id === 'sideQ'){ S.sideQ = e.target.value; document.getElementById('sideList').innerHTML = planSideList(); return; }
   if (e.target.id === 'q'){ S.q = e.target.value; const l = document.getElementById('list'); if (l) l.innerHTML = listHtml(); const p = document.getElementById('picksWrap'); if (p) p.hidden = !!S.q; const c = document.getElementById('bookCount'); if (c) c.textContent = bookCount(); }
 });
 document.addEventListener('change', async e => {
