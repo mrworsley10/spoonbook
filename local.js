@@ -346,7 +346,14 @@ function bestReading(texts){
   return ok.map(t => ({ t, s: recipeScore(t) })).sort((a, b) => b.s - a.s)[0].t;
 }
 // common slips when reading printed recipes
-const fixOcr = t => t.replace(/(^|\s)[VY][ao]\s*[=—–-]+\s*[VYa]?[a2o](?=\s+(tsp|tbsp|cups?)\b)/g, '$1¼–½').replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
+// how the reader tends to see printed fractions: ½ as "V2", "Y2", "‘2", "%"; ¼ as "Va", "Y4", "‘/4"
+const UNIT_AFTER = '(?=\\s*(?:[-–—]\\s*\\S+\\s+)?(?:tsp|tbsp|teaspoons?|tablespoons?|cups?|kg|g|lb|lbs|oz|pints?|each|level|heaped|rounded)\\b)';
+const FRAC_HALF = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?2|\\/2|[VY][2zZo]|[VY]s|Y2|%|1\\/2)" + UNIT_AFTER, 'gm');
+const FRAC_QTR = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?4|\\/4|[VY][a4]|1\\/4)" + UNIT_AFTER, 'gm');
+const FRAC_3Q = new RegExp("(^|\\s|\\d|[—–-])(?:3\\/4|%4)" + UNIT_AFTER, 'gm');
+const fixFractions = t => t.replace(/(\d)\s*0[2z](?=\s*\/)/g, '$1 oz').replace(FRAC_3Q, '$1¾').replace(FRAC_QTR, '$1¼').replace(FRAC_HALF, '$1½')
+  .replace(/(^|\s)1\/3(?=\s)/g, '$1⅓').replace(/(^|\s)2\/3(?=\s)/g, '$1⅔').replace(/(\d) ([½¼¾⅓⅔])/g, '$1$2').replace(/([½¼¾⅓⅔\d])\s*[—-]\s*(?=[½¼¾⅓⅔\d])/g, '$1–');
+const fixOcr = t => fixFractions(t).replace(/(^|\s)[VY][ao]\s*[=—–-]+\s*[VYa]?[a2o](?=\s+(tsp|tbsp|cups?)\b)/g, '$1¼–½').replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
   .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
@@ -632,5 +639,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { guessLayout, readBoxes, isHead, fixWords, loadWords, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { fixFractions, guessLayout, readBoxes, isHead, fixWords, loadWords, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();

@@ -743,9 +743,10 @@ function toMetric(line){
   if (!line) return line;
   // "75g/3oz", "500g / 1lb 2oz", "200C/400F": already metric, so drop the imperial half first
   let out = line
-    .replace(/(\d\s*(?:g|kg|ml|l))\s*\/\s*[\d.½¼¾⅓⅔⅛\/\s]+(?:lbs?\s*[\d.½¼¾]+\s*oz|fl\.?\s?oz|oz|lbs?|pints?)\b/gi, '$1')
+    .replace(/(\d\s*(?:g|kg|ml|l))((?:\s*\/\s*[\d.½¼¾⅓⅔⅛\/\s–-]+\s*(?:lbs?\s*[\d.½¼¾]+\s*oz|fl\.?\s?oz|oz|0[2z]|lbs?|pints?|cups?|tbsp|tsp)\b)+)/gi, '$1')
     .replace(/(\d+\s*°?\s*C)\s*\/\s*\d{3}\s*°?\s*F\b/gi, '$1');
-  out = out.replace(new RegExp(US_SRC, 'gi'), (m, a, b, unit, off, whole) => {
+  // a line that already gives grams or millilitres doesn't need its cups or ounces converted as well
+  if (!/\d\s*(?:g|kg|ml|l)\b/i.test(out)) out = out.replace(new RegExp(US_SRC, 'gi'), (m, a, b, unit, off, whole) => {
     const u = unit.toLowerCase().replace(/\./g, '').replace(/\s/g, ''); const rest = whole.slice(off + m.length, off + m.length + 60).toLowerCase();
     let k, mu;
     if (u.startsWith('cup')){ const d = DENSE.find(([re]) => re.test(rest)); k = d ? d[1] : 240; mu = d ? 'g' : 'ml'; }
