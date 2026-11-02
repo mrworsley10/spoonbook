@@ -216,7 +216,7 @@ async function photoCall(body){
   if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} throw { code: b?.error || (isNetErr(error) ? 'offline' : 'failed') }; }
   return data;
 }
-const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => d.photos || []);
+const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => Object.assign(d.photos || [], { site: d.site || 'Pexels' }));
 const useStockPhoto = id => photoCall({ action: 'use', id, household: household.id });
 
 /* ---------- sharing a recipe as a link ---------- */

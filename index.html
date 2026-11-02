@@ -1237,7 +1237,7 @@ function recipeView(){
   const chk = S.checked[r.id] || {};
   const scaleLabel = b ? `Serves ${S.scale[r.id] ?? b}` : `×${fmt(S.scale[r.id] ?? 1)}`;
   return `
-  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : phFill(r)}${shown && r.credits?.[shown] ? `<a class="credit" href="${esc(r.credits[shown].url || 'https://www.pexels.com')}" target="_blank" rel="noopener">Photo: ${esc(r.credits[shown].by || 'Pexels')} on Pexels</a>` : ''}
+  <div class="hero ph">${shown ? `<img src="${img(shown)}" alt="Photo of ${esc(r.title)}">` : phFill(r)}${shown && r.credits?.[shown] ? `<a class="credit" href="${esc(r.credits[shown].url || '#')}" target="_blank" rel="noopener">Photo: ${esc(r.credits[shown].by || r.credits[shown].site || 'stock')} on ${esc(r.credits[shown].site || 'Pexels')}</a>` : ''}
     <div class="bar"><a class="icon-btn" href="#book" aria-label="Back to the book">${I.back}</a>
       <span style="display:flex;gap:8px"><button class="icon-btn" data-act="copy" aria-label="Share this recipe">${I.share}</button>
       <button class="icon-btn" data-act="fav" ${S.canEdit ? '' : 'hidden'} aria-pressed="${!!r.favourite}" aria-label="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="color:${r.favourite ? 'var(--accent)' : 'inherit'}">${r.favourite ? I.heartF : I.heart}</button>
@@ -1827,13 +1827,13 @@ function stockSheet(){
       : ph.length ? ph.map(p => `<button class="stockpick" data-act="stockuse" data-id="${p.id}" aria-label="Use this photo${p.alt ? ': ' + esc(p.alt) : ''}"><img src="${esc(p.thumb)}" alt="" loading="lazy"><span>${esc(p.by)}</span></button>`).join('')
       : '<p class="hint" style="grid-column:1/-1">No photos found. Try simpler words, like “curry” or “pancakes”.</p>'}</div>
     ${ph && ph.length >= 12 * st.page ? '<button class="btn small" data-act="stockmore" style="align-self:center">More photos</button>' : ''}
-    <p class="hint" style="font-size:12px;margin:0">These are free photos of the kind of dish, not your actual one. <a href="https://www.pexels.com" target="_blank" rel="noopener">Photos provided by Pexels</a>.</p>
+    <p class="hint" style="font-size:12px;margin:0">These are free photos of the kind of dish, not your actual one. ${st.site === 'Pixabay' ? '<a href="https://pixabay.com" target="_blank" rel="noopener">Photos from Pixabay</a>' : '<a href="https://www.pexels.com" target="_blank" rel="noopener">Photos provided by Pexels</a>'}.</p>
     <button class="btn" data-act="closesheet">Cancel</button>`);
   const i = overlay.querySelector('#stockQ'); if (i) i.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); A.stocksearch(); } };
 }
 async function stockSearch(more){
   const st = S.stock;
-  try { const got = await Backend.findPhotos(st.q, st.page); if (S.stock !== st) return; st.photos = more ? [...(st.photos || []), ...got] : got; }
+  try { const got = await Backend.findPhotos(st.q, st.page); if (S.stock !== st) return; st.site = got.site || st.site; st.photos = more ? [...(st.photos || []), ...got] : [...got]; }
   catch (e) { if (S.stock !== st) return; st.photos = st.photos || [];
     stockSheet(); const m = overlay.querySelector('#stockMsg'); if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${e?.code === 'not_set_up' ? 'Finding photos isn’t switched on yet.' : e?.code === 'offline' ? 'No internet connection.' : e?.code === 'busy' ? 'Lots of people are searching. Try again in a few minutes.' : 'Couldn’t search just now. Try again.'}</p>`; return; }
   if (overlay.querySelector('#stockGrid')) stockSheet();
@@ -2255,7 +2255,7 @@ const A = {
     openSheet('Add a photo', `<h2>Add a photo</h2>
       <label class="opt" for="${k}Cam"><span class="ic">${I.cam}</span><span><b>Take a photo</b><span>Opens your camera</span></span></label>
       <label class="opt" for="${k}In"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>One you’ve already taken</span></span></label>
-      <button class="opt" data-act="stockfind" data-k="${k}"><span class="ic">${I.search}</span><span><b>Find a photo</b><span>Free photos of the dish from Pexels</span></span></button>
+      <button class="opt" data-act="stockfind" data-k="${k}"><span class="ic">${I.search}</span><span><b>Find a photo</b><span>Free photos of the dish from a stock photo library</span></span></button>
       <button class="btn" data-act="closesheet">Cancel</button>`); },
   stockfind(b){ const k = b.dataset.k;
     const t = k === 'cover' ? (document.getElementById('f-title')?.value || S.draft?.title || '') : (byId(S.id)?.title || '');
