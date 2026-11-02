@@ -1703,7 +1703,9 @@ function clipSheet(mode){
     <div class="actions" style="margin:0"><button class="btn primary" data-act="readpaste">Read recipe</button><button class="btn" data-act="sheet" data-mode="menu">Back</button></div>`;
   else if (S.sheet === 'photo') body = `<h2>Snap a page</h2>
     <p class="hint">Take a photo of a printed recipe, or pick a screenshot. Hold the phone straight above the page in good light. Next you’ll turn it the right way up and box just the recipe. If it runs over two pages, you can add the second. Handwriting doesn’t read well.</p>
-    <label class="opt" for="snapIn"><span class="ic">${I.cam}</span><span><b>Choose photo</b><span>Camera or photo library</span></span></label>
+    <label class="opt" for="snapCam"><span class="ic">${I.cam}</span><span><b>Take a photo</b><span>Opens your camera</span></span></label>
+    <input id="snapCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snap">
+    <label class="opt" for="snapIn"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>A photo or screenshot you already have. Pick two if it runs over two pages</span></span></label>
     <input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
     <label style="display:flex;gap:10px;align-items:center;font-size:15px"><input type="checkbox" id="snapKeep" style="width:20px;height:20px;accent-color:var(--accent)"> Use the picture as the recipe photo</label>
     <div id="aiMsg"></div>
@@ -1785,7 +1787,7 @@ function cropSheet(){
     <div class="cropwrap" id="cropWrap"><canvas id="cropCv"></canvas><div class="cropbox" id="cropBox"><i data-c="nw"></i><i data-c="ne"></i><i data-c="sw"></i><i data-c="se"></i></div></div>
     <div class="actions" style="margin:0;align-items:center"><button class="btn small" data-act="snaprot" data-d="-90" aria-label="Turn left">↺ Turn</button><button class="btn small" data-act="snaprot" data-d="90" aria-label="Turn right">Turn ↻</button>
       ${n > 1 ? `<span class="hint" style="margin:0 0 0 auto">Page ${sn.i + 1} of ${n}</span>` : ''}</div>
-    ${n < 4 && last ? `<label class="linkbtn" for="snapMore" style="align-self:flex-start;cursor:pointer">+ Recipe carries on? Add another page</label><input id="snapMore" type="file" accept="image/*" class="sr" data-chg="snapmore">` : ''}
+    ${n < 4 && last ? `<p class="hint" style="margin:0">Recipe carries on over the page? <label class="linkbtn" for="snapMoreCam" style="cursor:pointer">Take another photo</label> or <label class="linkbtn" for="snapMore" style="cursor:pointer">choose one</label></p><input id="snapMoreCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snapmore"><input id="snapMore" type="file" accept="image/*" class="sr" data-chg="snapmore">` : ''}
     <div id="aiMsg"></div>
     <button class="btn primary" data-act="snapnext">${last ? 'Read the recipe' : 'Next page'}</button>
     <button class="btn" data-act="${sn.i ? 'snapprev' : 'sheet'}" data-mode="photo">Back</button>`);
@@ -1822,7 +1824,7 @@ async function drawCrop(){
 }
 async function readLocally({ text, files, srcUrl, keepPhoto }){
   const msg = overlay.querySelector('#aiMsg');
-  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = true);
+  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = true);
   try {
     if (files){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
@@ -1844,7 +1846,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto }){
     S.draft = d; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
     toast(out.warnings.length ? out.warnings[0] + '. Fill in what’s missing, then save' : 'Check it over, then save');
   } catch (e) {
-    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = false);
+    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act="snapnext"],[data-act="snaprot"]').forEach(b => b.disabled = false);
     if (!overlay.querySelector('#aiMsg')) return;
     msg.innerHTML = `<p class="hint" style="color:var(--danger)">${
       e?.code === 'unreadable' ? 'Sorry, that photo didn’t read clearly, so nothing’s been filled in. Try: the box around just the recipe words (not the big photo), the page the right way up, and the phone held straight above it in good light. One page at a time works best.' :
