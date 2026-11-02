@@ -126,7 +126,7 @@ function parseRecipe(text){
   if (!out.serves){ const m = raw.join(' ').match(/(?:^|[^a-z])(?:serves|feeds)\s*(\d+(?:\s*[-–]\s*\d+)?)\b|\bfor\s+(\d+(?:\s*[-–]\s*\d+)?)\s+(?:people|persons|servings|adults)\b/i); if (m) out.serves = (m[1] || m[2]).replace(/\s+/g, ''); }
   out.steps = out.steps.map(l => l.replace(/^\d{1,2}\s*[.)]?\s+(?=[A-Z])/, ''));
   // scraps from a photo (smudges, page numbers, bits of pictures) that ended up as a step
-  out.steps = out.steps.filter(l => { const w = l.split(/\s+/).length; if (VERB.test(l)) return true; const toks = l.split(/\s+/), good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]+[.,;:!?)\]"'”’]*$|^\d/.test(t)).length; return w < 4 ? /[a-z]{3,}/.test(l) : good / toks.length >= 0.6; });
+  out.steps = out.steps.filter(l => { const w = l.split(/\s+/).length; if (VERB.test(l)) return true; const toks = l.split(/\s+/); if (toks.filter(t => /^[("'“‘]?[A-Za-z]{4,}/.test(t)).length < 2) return false; const good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]+[.,;:!?)\]"'”’]*$|^\d/.test(t)).length; return w < 4 ? /[a-z]{3,}/.test(l) : good / toks.length >= 0.6; });
   out.ingredients = out.ingredients.filter(l => l.length > 1 && l.length < 200);
   out.ingredients = out.ingredients.filter((l, k, a) => !isHead(l) || (a[k + 1] && !isHead(a[k + 1])));
   if (!out.ingredients.length) out.warnings.push('No ingredients found');
@@ -200,20 +200,98 @@ function splitColumns(lines, width){
       if (!ws.length) return;
       const conf = ws.reduce((a, w) => a + (w.confidence ?? 100), 0) / ws.length;
       if (ws.length <= 2 && conf < 60 && !/\d/.test(ws.map(w => w.text).join(''))) return;
-      cols[c].push({ text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) }); }); });
+      // a mark in the margin between paragraphs (no real word in it) would hide the gap between them
+      if (!ws.some(w => /[A-Za-z]{3,}|\d/.test(w.text))) return;
+      cols[c].push({ text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, w: ws[ws.length - 1].bbox.x1 - ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) }); }); });
   const asText = col => {
     if (!col.length) return '';
     // the usual distance from one line to the next
     const pitches = col.slice(1).map((l, i) => l.y0 - col[i].y0).filter(g => g > 0).sort((a, b) => a - b), pitch = pitches[Math.floor(pitches.length / 2)] || 40;
+    const widths = col.map(l => l.w).sort((a, b) => a - b), full = widths[Math.floor(widths.length * 0.8)] || 1;
     let out = col[0].text;
     for (let i = 1; i < col.length; i++){ const l = col[i], p = col[i - 1], step = l.y0 - p.y0;
       // a line set in further than the one above, not starting with an amount, carries on the line above
       if (l.x - p.x > width * 0.012 && !/^[\d½¼¾⅓⅔]/.test(l.text) && step < pitch * 1.4) out += ' ' + l.text;
       // a bigger space than usual starts a new paragraph
-      else out += (step > pitch * 1.5 ? '\n\n' : '\n') + l.text; }
+      // a short line ending a sentence, then a capital: the paragraph ended there even if the gap is small
+      else out += (step > pitch * 1.5 || (/[.!]$/.test(p.text) && /^[A-Z]/.test(l.text) && p.w < full * 0.72) ? '\n\n' : '\n') + l.text; }
     return out;
   };
   return asText(cols[0]) + '\n\n' + asText(cols[1]);
+}
+/* ---------- tidying words the photo reader got slightly wrong (no AI: a word list and a few rules) ---------- */
+const COOK_WORDS = new Set('oil salt sugar butter flour water onion onions garlic pepper stir boil heat cook pan oven bake fry chop slice dice mix add serve sauce cream milk egg eggs rice pasta stock lemon lime herbs spices cloves leaves ajwain allspice amaretti amchur anchovy andouille arborio asafoetida aubergine aubergines baharat balsamic balti bashed basmati beansprouts bechamel beetroot bhaji bhajis biryani blitz blitzed blitzing bouillon bouquet bourguignon braise braised brioche brisket bulgur buttermilk cacciatore cajun calvados cannellini capers caraway cardamom cardamoms casserole cassoulet cavolo chana chapati chapatis charred chermoula chilli chillies chipotle chorizo ciabatta cm colander coriander cornflour courgette courgettes couscous creme crumble cumin cupful cupfuls curd dal dauphinoise demerara deseed deseeded dhal dijon dopiaza edamame emmental enchilada enchiladas fajita fajitas falafel fan farfalle fenugreek feta filo focaccia fraiche freezer fridge frittata frying fusilli galangal garam gas gnocchi gochujang gratin gremolata gruyere guacamole halloumi halved harissa hob hoisin houmous hummus jalapeno jalapenos jalfrezi jollof kalonji karahi kashmiri kasoori katsu kedgeree keema kg kofta korma labneh laksa lardons lasagne lb lbs linguine madras makhani manchego mangetout marinade marinate marinated marinating masala mascarpone methi microwave mirin miso ml mm moussaka mozzarella naan nduja nigella orzo oz paella pan pancetta paneer panko paprika paratha parathas parmesan parmigiano passata pastry pecorino penne pesto pilaf pilau piri polenta porcini prosciutto puree pureed purees quartered quinoa ragu raita ramekin ramekins ramen ras rasam rigatoni risotto rogan roux saag sambal samosa samosas satay saucepan schnitzel semolina shakshuka shallot shallots sichuan sieve spatula sriracha stir-fry stroganoff sumac tadka tagine tagliatelle tahini tamarind tandoori tapenade tarka tbsp teriyaki tikka tofu tortilla tortillas tray traybake traybakes tsp turmeric tzatziki udon vindaloo wasabi whisk wok worcestershire yoghurt zaatar zest zested zesty'.split(' '));
+let WORDS = null;
+async function loadWords(){
+  if (WORDS) return WORDS;
+  try { const t = await (await fetch('words.txt')).text(); WORDS = new Set(t.split('\n')); COOK_WORDS.forEach(w => WORDS.add(w)); } catch { WORDS = null; }
+  return WORDS;
+}
+const has = w => WORDS.has(w) || COOK_WORDS.has(w);
+// the list holds base words, so "releases", "stirring" and "chopped" are checked by their stems too
+const known = w => has(w) || (w.length > 4 && (
+  (/s$/.test(w) && has(w.slice(0, -1))) || (/es$/.test(w) && has(w.slice(0, -2))) || (/ies$/.test(w) && has(w.slice(0, -3) + 'y')) ||
+  (/ed$/.test(w) && (has(w.slice(0, -2)) || has(w.slice(0, -1)) || (w[w.length - 3] === w[w.length - 4] && has(w.slice(0, -3))))) || (/ied$/.test(w) && has(w.slice(0, -3) + 'y')) ||
+  (/ing$/.test(w) && (has(w.slice(0, -3)) || has(w.slice(0, -3) + 'e') || (w[w.length - 4] === w[w.length - 5] && has(w.slice(0, -4))))) ||
+  (/ly$/.test(w) && has(w.slice(0, -2)))));
+const ABC = 'abcdefghijklmnopqrstuvwxyz';
+// letters the reader commonly mistakes for each other
+const LOOKALIKE = { c: 'deo', d: 'c', e: 'co', o: 'ceaq', l: 'it', i: 'lj', t: 'lf', h: 'bn', n: 'hmr', m: 'n', r: 'n', u: 'v', v: 'uy', a: 'oe', b: 'h', f: 't', g: 'q', q: 'g', s: '', y: 'v' };
+function oneOff(w){
+  const out = new Map(), add = (c, look) => { if (c !== w && known(c)) out.set(c, Math.max(out.get(c) || 0, look ? 2 : 1)); };
+  for (let i = 0; i <= w.length; i++){
+    if (i < w.length){ add(w.slice(0, i) + w.slice(i + 1));
+      for (const ch of ABC) if (ch !== w[i]) add(w.slice(0, i) + ch + w.slice(i + 1), (LOOKALIKE[w[i]] || '').includes(ch));
+      if (i < w.length - 1) add(w.slice(0, i) + w[i + 1] + w[i] + w.slice(i + 2)); }
+    for (const ch of ABC) add(w.slice(0, i) + ch + w.slice(i));
+  }
+  // "rn" read for "m", "cl" for "d", "ii" for "u"
+  [['rn', 'm'], ['ra', 'm'], ['m', 'rn'], ['ri', 'n'], ['cl', 'd'], ['ii', 'u'], ['vv', 'w'], ['li', 'h'], ['iri', 'm']].forEach(([a, b]) => { let k = w.indexOf(a); while (k >= 0){ const c = w.slice(0, k) + b + w.slice(k + a.length); if (known(c)) out.set(c, 2); k = w.indexOf(a, k + 1); } });
+  return out;
+}
+function bestOf(cands){
+  if (!cands.size) return null;
+  const list = [...cands].sort((a, b) => b[1] - a[1] || (COOK_WORDS.has(b[0]) - COOK_WORDS.has(a[0])));
+  const top = list.filter(x => x[1] === list[0][1]);
+  const cook = top.filter(x => COOK_WORDS.has(x[0]));
+  if (cook.length === 1) return cook[0][0];
+  return top.length === 1 ? top[0][0] : null;
+}
+const keepCase = (orig, fixed) => /^[A-Z]/.test(orig) ? fixed[0].toUpperCase() + fixed.slice(1) : fixed;
+function fixWords(text){
+  if (!WORDS) return text;
+  return String(text).split('\n').map(line => {
+    let toks = line.split(/ +/);
+    const out = [];
+    for (let i = 0; i < toks.length; i++){
+      let t = toks[i];
+      // stray marks: a lone symbol, or a lone letter that isn't a word
+      if (/^[_|¢~^•·‘'"`]+$/.test(t) || (/^[b-hj-zB-HJ-Z]$/.test(t) && out.length && i < toks.length - 1)) continue;
+      t = t.replace(/^[_|¢~^•·]+(?=[A-Za-z])/, '');
+      const m = t.match(/^([("'“‘]*)([A-Za-z]+)([.,;:!?)"'”’]*)$/);
+      if (!m || /\d/.test(t)){ out.push(t); continue; }
+      const [, pre, core, post] = m, low = core.toLowerCase();
+      if (known(low) || low.length < 3 || /^[A-Z]{2,}$/.test(core)){ out.push(t); continue; }
+      // a word broken in two: "remair ing" → "remaining"
+      const nx = toks[i + 1] && toks[i + 1].match(/^([a-z]+)([.,;:!?)]*)$/);
+      if (nx && !known(nx[1]) && !post){ const j = low + nx[1]; const f = known(j) ? j : bestOf(oneOff(j)); if (f){ out.push(pre + keepCase(core, f) + nx[2]); i++; continue; } }
+      // two words run together: "asieve" → "a sieve", "dothat" → "do that"
+      let split = null;
+      const LITTLE = /^(a|an|as|at|by|do|if|in|is|it|of|on|or|so|to|up|we|you|the|and|for|but|not|can|all|with|that|this|then|than|into|onto|until|from|over|each|your|them|they|will|very|well|when|once|also|just|more|some)$/;
+      let sc = -1;
+      for (let k = 1; k < low.length; k++){ const a = low.slice(0, k), b = low.slice(k);
+        if (!((a.length >= 2 || a === 'a') && b.length >= 2 && known(a) && known(b))) continue;
+        // prefer splits into everyday little words ("do that", not "dot hat")
+        const s = (LITTLE.test(a) ? 2 : 0) + (LITTLE.test(b) ? 2 : 0) + Math.min(a.length, b.length) / 10;
+        if ((LITTLE.test(a) || LITTLE.test(b) || (Math.min(a.length, b.length) >= 4 && has(a) && has(b))) && s > sc){ sc = s; split = [a, b]; } }
+      // one letter wrong or missing: "gooc" → "good"
+      const one = low.length >= 4 ? bestOf(oneOff(low)) : (() => { const c = [...oneOff(low)].filter(([w, s]) => s === 2 && COOK_WORDS.has(w)); return c.length === 1 ? c[0][0] : null; })();
+      if (one && (!split || oneOff(low).get(one) === 2)){ out.push(pre + keepCase(core, one) + post); continue; }
+      if (split){ out.push(pre + keepCase(core, split[0]) + ' ' + split[1] + post); continue; }
+      out.push(t);
+    }
+    return out.join(' ');
+  }).join('\n');
 }
 // of two ways of reading the same page, keep the one that makes the more sensible recipe
 function recipeScore(t){
@@ -256,7 +334,8 @@ async function readPhotos(pages, onProgress){
     const out = [];
     for (const p of pages) out.push(await readOne(worker, p, onProgress));
     const score = out.reduce((a, o) => a + o.score, 0) / out.length;
-    return { text: out.map(o => o.text).join('\n'), score, turned: out.map(o => o.rot) };
+    await loadWords();
+    return { text: fixWords(out.map(o => o.text).join('\n')), score, turned: out.map(o => o.rot) };
   } finally { await worker.terminate(); }
 }
 
@@ -401,5 +480,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { isHead, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { isHead, fixWords, loadWords, parseRecipe, readPhotos, prepImage, wordiness, splitColumns, bestReading, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();

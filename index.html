@@ -398,6 +398,7 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .cropbox i::after{content:"";position:absolute;inset:-14px}
 .ings li.inghead{padding:16px 0 4px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
 .ings li.inghead:first-child{padding-top:6px}
+.tipbox{border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:var(--bg)}.tipbox summary{cursor:pointer;font-weight:600;font-size:15px}.tipbox p{margin:8px 0;font-size:14px;color:var(--muted)}.tipbox p b{color:var(--fg)}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -1716,6 +1717,11 @@ function clipSheet(mode){
     <input id="snapCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snap">
     <label class="opt" for="snapIn"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>A photo or screenshot you already have. Pick two if it runs over two pages</span></span></label>
     <input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
+    <details class="tipbox"><summary>Want it word-perfect? Use your phone’s own text reader</summary>
+      <p>Your phone’s camera reads printed text even better than Spoonbook can. Copy the words with it, then paste them here.</p>
+      <p><b>iPhone:</b> point the camera at the page (or open the photo), tap the text icon <span aria-hidden="true">▤</span>, then <b>Select All</b> and <b>Copy</b>.</p>
+      <p><b>Android:</b> open the photo in Google Photos or the camera, tap <b>Lens</b>, then <b>Text</b>, <b>Select all</b> and <b>Copy</b>. You can also tap <b>Share</b> and pick Spoonbook.</p>
+      <button class="btn small" data-act="sheet" data-mode="paste">Paste the recipe</button></details>
     <div id="aiMsg"></div>
     <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
   else if (S.sheet === 'bulk') body = `<h2>Bring in lots at once</h2>
