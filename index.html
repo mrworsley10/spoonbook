@@ -76,7 +76,7 @@ svg{flex:none}
 
 /* top */
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.brand{font-family:var(--display);font-style:italic;font-size:26px;color:var(--accent);margin:0;font-weight:500}
+.brand{font-family:var(--display);font-style:italic;font-size:26px;color:var(--accent);margin:0;font-weight:500;text-decoration:none}
 .top .row{display:flex;gap:8px}
 .hello{font-family:var(--display);font-weight:500;font-size:clamp(36px,10vw,46px);line-height:1;letter-spacing:-.5px;margin:22px 0 18px}
 .hello em{color:var(--accent)}
@@ -926,7 +926,7 @@ window.addEventListener('hashchange', () => { parse(); render(true); window.scro
 
 /* ---------- views ---------- */
 function topBar(){
-  return `<div class="top"><p class="brand">Spoonbook</p><div class="row">
+  return `<div class="top"><a class="brand" href="#book" data-act="home" aria-label="Spoonbook: go to the Book page">Spoonbook</a><div class="row">
     <button class="icon-btn" data-act="more" aria-label="More options">${I.more}</button>
     ${S.canEdit ? `<button class="icon-btn solid" data-act="clip" aria-label="Add a recipe">${I.plus}</button>` : ''}</div></div>${offlineNote()}${viewNote()}`;
 }
@@ -1051,7 +1051,7 @@ function bookView(){
   return topBar() + `
   <h1 class="hello">${greeting()}</h1>
   ${installHtml()}${guideHtml() || newsHtml()}
-  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients${wide() ? '  ·  press /' : ''}" value="${esc(S.q)}" autocomplete="off"></label>
+  <label class="search">${I.search}<span class="sr">Search recipes</span><input id="q" type="search" enterkeyhint="search" placeholder="Search recipes or ingredients" value="${esc(S.q)}" autocomplete="off"></label>
   <a class="fridge-link" href="#fridge">What can I make with what’s in the fridge? →</a>
   <div id="picksWrap" ${S.q ? 'hidden' : ''}>
     <div class="picks" aria-label="${favs.length >= 3 ? 'Your favourites' : 'Ideas for tonight'}">
@@ -2105,6 +2105,7 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
+  home(){ if (S.sheet) closeSheet(); if (S.view !== 'book') go('#book'); else { S.q = ''; window.scrollTo({ top: 0, behavior: 'smooth' }); render(); } },
   async install(){
     if (!installEvt) return installSheet();
     const e = installEvt; installEvt = null;

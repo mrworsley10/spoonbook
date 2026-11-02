@@ -266,7 +266,7 @@ async function importBackup(file, progress){
 
 /* ---------- sign-in and cookbook screens ---------- */
 const app = () => document.getElementById('app');
-function screen(html){ app().innerHTML = `<div class="top"><p class="brand">Spoonbook</p></div>${html}`; document.getElementById('nav').hidden = true; }
+function screen(html){ app().innerHTML = `<div class="top"><a class="brand" href="./">Spoonbook</a></div>${html}`; document.getElementById('nav').hidden = true; }
 function msg(t, bad){ const m = document.getElementById('authMsg'); if (m){ m.textContent = t; m.style.color = bad ? 'var(--danger)' : 'var(--muted)'; } }
 
 // Google's own "G" mark, as Google asks sign-in buttons to show it
