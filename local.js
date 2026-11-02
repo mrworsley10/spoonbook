@@ -54,6 +54,8 @@ function parseRecipe(text){
     if (mode === 'skip') continue;
     if (JUNK.test(l)) continue;
     if (mode === null){ pre.push(l); preAt.push(para.has(i)); continue; }
+    // a new paragraph of sentences after the ingredient list is the method, even with no "Method" heading
+    if (mode === 'ing' && para.has(i) && out.ingredients.length >= 3 && !QTY.test(l) && !isHead(l) && raw[i + 1] && !QTY.test(raw[i + 1]) && !isHead(raw[i + 1]) && (l + raw[i + 1]).length > 50){ mode = 'step'; }
     if (mode === 'ing'){
       // long prose inside the ingredient list means the method has started without a heading
       if (isStep(l) && l.length > 60 && out.ingredients.length){ mode = 'step'; out.steps.push(l); continue; }
@@ -120,11 +122,15 @@ function parseRecipe(text){
     }
   }
   // Title: the first short line before the recipe proper that isn't chatter.
-  out.title = (pre.find(l => l.length >= 3 && l.length <= 80 && !/[.!?]$/.test(l) && !QTY.test(l) && !/^(by |recipe from|from |posted|updated|home|recipes?$)/i.test(l)) || '').replace(/\s*(recipe)$/i, '');
+  // the chatty paragraph before the recipe starts (a cookbook's introduction) is kept as the story
+  if (!out.intro && out.steps.length){ const t0 = pre.map(l => l.replace(/^[^A-Za-z]+/, '')); const prose = t0.filter((l, k) => /[a-z]{3,}/.test(l) && !QTY.test(l) && (l.split(' ').length >= 4 || (/^[a-z]/.test(l) && k && t0[k - 1].split(' ').length >= 4)));
+    const story = prose.join(' ').replace(/\s+/g, ' ').trim().replace(/^[a-z]\s+(?=[A-Z])/, ''); if (story.length > 60 && story.length < 1500) out.intro = story; }
+  const tt = l => l.replace(/^[\d|.:;\-–\s]{1,5}(?=[A-Z])/, '');
+  out.title = (pre.map(tt).find(l => l.length >= 3 && /[A-Za-z][a-z]{2,}/.test(l) && l.length <= 80 && !/[.!?]$/.test(l) && !QTY.test(l) && !/^(by |recipe from|from |posted|updated|home|recipes?$)/i.test(l)) || '').replace(/\s*(recipe)$/i, '').replace(/^\d{1,3}\s+(?=[A-Za-z])/, '');
   if (!out.totalMins && (out.prepMins || out.cookMins)) out.totalMins = (out.prepMins || 0) + (out.cookMins || 0);
   // "Serves 4" buried in an intro sentence; "1 Heat the oil…" numbered steps
   if (!out.serves){ const m = raw.join(' ').match(/(?:^|[^a-z])(?:serves|feeds)\s*(\d+(?:\s*[-–]\s*\d+)?)\b|\bfor\s+(\d+(?:\s*[-–]\s*\d+)?)\s+(?:people|persons|servings|adults)\b/i); if (m) out.serves = (m[1] || m[2]).replace(/\s+/g, ''); }
-  out.steps = out.steps.map(l => l.replace(/^\d{1,2}\s*[.)]?\s+(?=[A-Z])/, ''));
+  out.steps = out.steps.map(l => l.replace(/^\d{1,2}\s*[.)]?\s+(?=[A-Z])/, '').replace(/^[▲△►▶]\s*/, '').replace(/^A\s+(?=(In|Heat|Add|Mix|Place|Put|Stir|Pour|Cook|Bake|Fry|Make|Using|Meanwhile|Remove|Serve|Preheat|Combine|Whisk|Bring)\b)/, ''));
   // scraps from a photo (smudges, page numbers, bits of pictures) that ended up as a step
   out.steps = out.steps.filter(l => { const w = l.split(/\s+/).length; if (VERB.test(l)) return true; const toks = l.split(/\s+/); if (toks.filter(t => /^[("'“‘]?[A-Za-z]{4,}/.test(t)).length < 2) return false; const good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]+[.,;:!?)\]"'”’]*$|^\d/.test(t)).length; return w < 4 ? /[a-z]{3,}/.test(l) : good / toks.length >= 0.6; });
   out.ingredients = out.ingredients.filter(l => l.length > 1 && l.length < 200);
@@ -171,39 +177,68 @@ function wordiness(text){
 // so find the gap between the columns (it can lean a little if the photo was taken at an angle) and read
 // each column on its own: the left one first, then the right.
 function splitColumns(lines, width){
-  const ls = lines.filter(l => (l.words || []).length);
+  // leave out stray marks and scraps of pictures before looking for columns, so they can't fake a gap
+  const JUNKW = /^[_|\\/~^*•·:;.,'‘’"“”=&{}\[\]™©®-]+$/;
+  let ls = lines.map(l => ({ ...l, words: (l.words || []).filter(w => w.text && !JUNKW.test(w.text)) }))
+    .filter(l => l.words.some(w => /[A-Za-z]{3,}|\d/.test(w.text)));
   if (ls.length < 6 || !width) return null;
   const spaces = [];
   ls.forEach(l => { for (let i = 1; i < l.words.length; i++) spaces.push(l.words[i].bbox.x0 - l.words[i - 1].bbox.x1); });
   spaces.sort((a, b) => a - b);
   const med = spaces[Math.floor(spaces.length / 2)] || 10, minGap = Math.max(med * 3, width * 0.025);
-  const pts = [];
-  ls.forEach(l => { let best = null;
-    for (let i = 1; i < l.words.length; i++){ const g = l.words[i].bbox.x0 - l.words[i - 1].bbox.x1; if (!best || g > best.g) best = { g, x: (l.words[i].bbox.x0 + l.words[i - 1].bbox.x1) / 2 }; }
-    if (best && best.g >= minGap && best.x > width * 0.2 && best.x < width * 0.85) pts.push({ x: best.x, y: (l.words[0].bbox.y0 + l.words[0].bbox.y1) / 2 }); });
-  if (pts.length < 4 || pts.length < ls.length * 0.2) return null;
+  // headings in bigger print (the title) go first, whole, rather than being cut at a column gap
+  const hts = ls.flatMap(l => l.words.map(w => w.bbox.y1 - w.bbox.y0)).sort((a, b) => a - b), hMed = hts[Math.floor(hts.length / 2)] || 20;
+  const isBig = l => l.words.length <= 8 && l.words.reduce((a, w) => a + (w.bbox.y1 - w.bbox.y0), 0) / l.words.length > hMed * 1.45;
+  const heads = ls.filter(isBig); ls = ls.filter(l => !isBig(l));
   const fit = ps => { const n = ps.length, my = ps.reduce((a, p) => a + p.y, 0) / n, mx = ps.reduce((a, p) => a + p.x, 0) / n;
     const sxy = ps.reduce((a, p) => a + (p.y - my) * (p.x - mx), 0), syy = ps.reduce((a, p) => a + (p.y - my) ** 2, 0); const b = syy ? sxy / syy : 0; return { a: mx - b * my, b }; };
-  let f = fit(pts);
-  const kept = pts.filter(p => Math.abs(p.x - (f.a + f.b * p.y)) < width * 0.06);
-  if (kept.length < 4) return null;
-  f = fit(kept);
-  const cols = [[], []];
-  ls.forEach(l => { const y = (l.words[0].bbox.y0 + l.words[0].bbox.y1) / 2, gx = f.a + f.b * y, ws0 = l.words;
-    // only split a line where it actually has a gap at the gutter; a heading running across stays whole
-    let cut = -1;
-    for (let i = 1; i < ws0.length; i++) if (ws0[i].bbox.x0 - ws0[i - 1].bbox.x1 >= minGap * 0.6 && ws0[i - 1].bbox.x1 <= gx + width * 0.03 && ws0[i].bbox.x0 >= gx - width * 0.03){ cut = i; break; }
-    const parts = cut > 0 ? [ws0.slice(0, cut), ws0.slice(cut)] : ws0[0].bbox.x0 < gx - width * 0.02 ? [ws0, []] : [[], ws0];
-    parts.forEach((ws, c) => {
-      // a word or two the reader wasn't sure of, on their own, are usually smudges or bits of pictures
-      ws = ws.filter(w => !/^[_|\\/~^*•·:;'‘’"“”&{}\[\]-]+$/.test(w.text));
-      if (!ws.length) return;
-      const conf = ws.reduce((a, w) => a + (w.confidence ?? 100), 0) / ws.length;
-      if (ws.length <= 2 && conf < 60 && !/\d/.test(ws.map(w => w.text).join(''))) return;
-      // a mark in the margin between paragraphs (no real word in it) would hide the gap between them
-      if (!ws.some(w => /[A-Za-z]{3,}|\d/.test(w.text))) return;
-      cols[c].push({ text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, w: ws[ws.length - 1].bbox.x1 - ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) }); }); });
+  // find the clearest gap between columns in this stretch of the page, cut there, then look again on each side
+  // (some books have three columns: ingredients, then the method in two)
+  const cols = (rows, x0, x1, depth) => {
+    const span = x1 - x0, pts = [];
+    rows.forEach(ws => { let best = null;
+      const real = w => /[A-Za-z]{3,}/.test(w.text);
+      for (let i = 1; i < ws.length; i++){ const g = ws[i].bbox.x0 - ws[i - 1].bbox.x1, x = (ws[i].bbox.x0 + ws[i - 1].bbox.x1) / 2;
+        // a real gap between columns has words on both sides of it
+        if (x > x0 + span * 0.15 && x < x1 - span * 0.12 && ws.slice(0, i).some(real) && ws.slice(i).some(real) && (!best || g > best.g)) best = { g, x }; }
+      if (best && best.g >= minGap) pts.push({ x: best.x, y: (ws[0].bbox.y0 + ws[0].bbox.y1) / 2 }); });
+    if (depth > 2 || pts.length < 3 || pts.length < rows.length * 0.15) return [rows];
+    let f = fit(pts); const kept = pts.filter(p => Math.abs(p.x - (f.a + f.b * p.y)) < width * 0.05);
+    if (kept.length < 3) return [rows];
+    f = fit(kept);
+    // the gutter only runs as far up and down the page as the columns do
+    const yTop = Math.min(...kept.map(p => p.y)) - hMed * 3, yBot = Math.max(...kept.map(p => p.y)) + hMed * 3;
+    const L = [], R = [];
+    rows.forEach(ws => { const y = (ws[0].bbox.y0 + ws[0].bbox.y1) / 2, gx = f.a + f.b * y, inside = y >= yTop && y <= yBot;
+      // only cut a line where it actually has a gap at the gutter
+      let cut = -1;
+      let cg = 0;
+      for (let i = 1; i < ws.length; i++){ const g = ws[i].bbox.x0 - ws[i - 1].bbox.x1; if (g >= minGap * 0.6 && g > cg && ws[i - 1].bbox.x1 <= gx + width * 0.03 && ws[i].bbox.x0 >= gx - width * 0.03){ cut = i; cg = g; } }
+      // no clear gap right at the gutter but words on both sides: cut at the widest gap near it
+      if (cut < 0 && inside && ws[0].bbox.x0 < gx - width * 0.02 && ws[ws.length - 1].bbox.x1 > gx + width * 0.02){ let bd = Infinity;
+        for (let i = 1; i < ws.length; i++){ const g = ws[i].bbox.x0 - ws[i - 1].bbox.x1, c = (ws[i].bbox.x0 + ws[i - 1].bbox.x1) / 2, d = Math.abs(c - gx);
+          if (g >= med * 1.5 && d < width * 0.1 && d - g * 0.5 < bd){ bd = d - g * 0.5; cut = i; } } }
+      if (cut > 0){ L.push(ws.slice(0, cut)); R.push(ws.slice(cut)); }
+      else if (ws[ws.length - 1].bbox.x1 <= gx + width * 0.03) L.push(ws);
+      else if (ws[0].bbox.x0 >= gx - width * 0.03) R.push(ws);
+      else (ws[0].bbox.x0 < gx - width * 0.02 ? L : R).push(ws); });
+    if (L.length < 2 || R.length < 2) return [rows];
+    return [...cols(L, x0, f.a + f.b * (L[0][0].bbox.y0), depth + 1), ...cols(R, f.a + f.b * (R[0][0].bbox.y0), x1, depth + 1)];
+  };
+  const found = cols(ls.map(l => l.words), 0, width, 0);
+  if (found.length < 2) return null;
+  const clean = ws => {
+    // a word or two the reader wasn't sure of, on their own, are usually smudges or bits of pictures
+    ws = ws.filter(w => !/^[_|\\/~^*•·:;'‘’"“”&{}\[\]-]+$/.test(w.text));
+    if (!ws.length) return null;
+    const conf = ws.reduce((a, w) => a + (w.confidence ?? 100), 0) / ws.length;
+    if (ws.length <= 2 && conf < 60 && !/\d/.test(ws.map(w => w.text).join(''))) return null;
+    // a mark in the margin between paragraphs (no real word in it) would hide the gap between them
+    if (!ws.some(w => /[A-Za-z]{3,}|\d/.test(w.text))) return null;
+    return { text: ws.map(w => w.text).join(' '), x: ws[0].bbox.x0, w: ws[ws.length - 1].bbox.x1 - ws[0].bbox.x0, y0: Math.min(...ws.map(w => w.bbox.y0)), y1: Math.max(...ws.map(w => w.bbox.y1)) };
+  };
   const asText = col => {
+    col = col.map(clean).filter(Boolean).sort((a, b) => a.y0 - b.y0);
     if (!col.length) return '';
     // the usual distance from one line to the next
     const pitches = col.slice(1).map((l, i) => l.y0 - col[i].y0).filter(g => g > 0).sort((a, b) => a - b), pitch = pitches[Math.floor(pitches.length / 2)] || 40;
@@ -212,15 +247,16 @@ function splitColumns(lines, width){
     for (let i = 1; i < col.length; i++){ const l = col[i], p = col[i - 1], step = l.y0 - p.y0;
       // a line set in further than the one above, not starting with an amount, carries on the line above
       if (l.x - p.x > width * 0.012 && !/^[\d½¼¾⅓⅔]/.test(l.text) && step < pitch * 1.4) out += ' ' + l.text;
-      // a bigger space than usual starts a new paragraph
-      // a short line ending a sentence, then a capital: the paragraph ended there even if the gap is small
-      else out += (step > pitch * 1.5 || (/[.!]$/.test(p.text) && /^[A-Z]/.test(l.text) && p.w < full * 0.72) ? '\n\n' : '\n') + l.text; }
+      // a bigger space than usual, or a short line ending a sentence then a capital, starts a new paragraph
+      else out += ((step > pitch * 1.5 && (/[.!?:]$/.test(p.text) || /^[A-Z0-9"“‘(]/.test(l.text))) || (/[.!]$/.test(p.text) && /^[A-Z]/.test(l.text) && p.w < full * 0.72) ? '\n\n' : '\n') + l.text; }
     return out;
   };
-  return asText(cols[0]) + '\n\n' + asText(cols[1]);
+  // the biggest print first: that's the title
+  const hsz = l => l.words.reduce((a, w) => a + (w.bbox.y1 - w.bbox.y0), 0) / l.words.length;
+  return [[...heads].sort((a, b) => hsz(b) - hsz(a)).map(l => clean(l.words)).filter(Boolean).map(h => h.text).join('\n'), ...found.map(asText)].filter(Boolean).join('\n\n');
 }
 /* ---------- tidying words the photo reader got slightly wrong (no AI: a word list and a few rules) ---------- */
-const COOK_WORDS = new Set('oil salt sugar butter flour water onion onions garlic pepper stir boil heat cook pan oven bake fry chop slice dice mix add serve sauce cream milk egg eggs rice pasta stock lemon lime herbs spices cloves leaves ajwain allspice amaretti amchur anchovy andouille arborio asafoetida aubergine aubergines baharat balsamic balti bashed basmati beansprouts bechamel beetroot bhaji bhajis biryani blitz blitzed blitzing bouillon bouquet bourguignon braise braised brioche brisket bulgur buttermilk cacciatore cajun calvados cannellini capers caraway cardamom cardamoms casserole cassoulet cavolo chana chapati chapatis charred chermoula chilli chillies chipotle chorizo ciabatta cm colander coriander cornflour courgette courgettes couscous creme crumble cumin cupful cupfuls curd dal dauphinoise demerara deseed deseeded dhal dijon dopiaza edamame emmental enchilada enchiladas fajita fajitas falafel fan farfalle fenugreek feta filo focaccia fraiche freezer fridge frittata frying fusilli galangal garam gas gnocchi gochujang gratin gremolata gruyere guacamole halloumi halved harissa hob hoisin houmous hummus jalapeno jalapenos jalfrezi jollof kalonji karahi kashmiri kasoori katsu kedgeree keema kg kofta korma labneh laksa lardons lasagne lb lbs linguine madras makhani manchego mangetout marinade marinate marinated marinating masala mascarpone methi microwave mirin miso ml mm moussaka mozzarella naan nduja nigella orzo oz paella pan pancetta paneer panko paprika paratha parathas parmesan parmigiano passata pastry pecorino penne pesto pilaf pilau piri polenta porcini prosciutto puree pureed purees quartered quinoa ragu raita ramekin ramekins ramen ras rasam rigatoni risotto rogan roux saag sambal samosa samosas satay saucepan schnitzel semolina shakshuka shallot shallots sichuan sieve spatula sriracha stir-fry stroganoff sumac tadka tagine tagliatelle tahini tamarind tandoori tapenade tarka tbsp teriyaki tikka tofu tortilla tortillas tray traybake traybakes tsp turmeric tzatziki udon vindaloo wasabi whisk wok worcestershire yoghurt zaatar zest zested zesty'.split(' '));
+const COOK_WORDS = new Set('bhajia bhajias pakora pakoras tarka dhansak pasanda jalfrezi rogan josh phall pathia oil salt sugar butter flour water onion onions garlic pepper stir boil heat cook pan oven bake fry chop slice dice mix add serve sauce cream milk egg eggs rice pasta stock lemon lime herbs spices cloves leaves ajwain allspice amaretti amchur anchovy andouille arborio asafoetida aubergine aubergines baharat balsamic balti bashed basmati beansprouts bechamel beetroot bhaji bhajis biryani blitz blitzed blitzing bouillon bouquet bourguignon braise braised brioche brisket bulgur buttermilk cacciatore cajun calvados cannellini capers caraway cardamom cardamoms casserole cassoulet cavolo chana chapati chapatis charred chermoula chilli chillies chipotle chorizo ciabatta cm colander coriander cornflour courgette courgettes couscous creme crumble cumin cupful cupfuls curd dal dauphinoise demerara deseed deseeded dhal dijon dopiaza edamame emmental enchilada enchiladas fajita fajitas falafel fan farfalle fenugreek feta filo focaccia fraiche freezer fridge frittata frying fusilli galangal garam gas gnocchi gochujang gratin gremolata gruyere guacamole halloumi halved harissa hob hoisin houmous hummus jalapeno jalapenos jalfrezi jollof kalonji karahi kashmiri kasoori katsu kedgeree keema kg kofta korma labneh laksa lardons lasagne lb lbs linguine madras makhani manchego mangetout marinade marinate marinated marinating masala mascarpone methi microwave mirin miso ml mm moussaka mozzarella naan nduja nigella orzo oz paella pan pancetta paneer panko paprika paratha parathas parmesan parmigiano passata pastry pecorino penne pesto pilaf pilau piri polenta porcini prosciutto puree pureed purees quartered quinoa ragu raita ramekin ramekins ramen ras rasam rigatoni risotto rogan roux saag sambal samosa samosas satay saucepan schnitzel semolina shakshuka shallot shallots sichuan sieve spatula sriracha stir-fry stroganoff sumac tadka tagine tagliatelle tahini tamarind tandoori tapenade tarka tbsp teriyaki tikka tofu tortilla tortillas tray traybake traybakes tsp turmeric tzatziki udon vindaloo wasabi whisk wok worcestershire yoghurt zaatar zest zested zesty'.split(' '));
 let WORDS = null;
 async function loadWords(){
   if (WORDS) return WORDS;
@@ -272,6 +308,8 @@ function fixWords(text){
       if (!m || /\d/.test(t)){ out.push(t); continue; }
       const [, pre, core, post] = m, low = core.toLowerCase();
       if (known(low) || low.length < 3 || /^[A-Z]{2,}$/.test(core)){ out.push(t); continue; }
+      // a capital in the middle of a sentence is a name (India, Birmingham): leave it
+      if (/^[A-Z]/.test(core) && out.length && !/[.!?:]$/.test(out[out.length - 1])){ out.push(t); continue; }
       // a word broken in two: "remair ing" → "remaining"
       const nx = toks[i + 1] && toks[i + 1].match(/^([a-z]+)([.,;:!?)]*)$/);
       if (nx && !known(nx[1]) && !post){ const j = low + nx[1]; const f = known(j) ? j : bestOf(oneOff(j)); if (f){ out.push(pre + keepCase(core, f) + nx[2]); i++; continue; } }
@@ -307,7 +345,8 @@ function bestReading(texts){
   return ok.map(t => ({ t, s: recipeScore(t) })).sort((a, b) => b.s - a.s)[0].t;
 }
 // common slips when reading printed recipes
-const fixOcr = t => t.replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
+const fixOcr = t => t.replace(/^[a-z|.:;']\s+(?=[\d½¼¾‘’'])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
+  .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
 async function readOne(worker, page, onProgress){
