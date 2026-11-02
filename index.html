@@ -1827,7 +1827,7 @@ function stockSheet(){
       : ph.length ? ph.map(p => `<button class="stockpick" data-act="stockuse" data-id="${p.id}" aria-label="Use this photo${p.alt ? ': ' + esc(p.alt) : ''}"><img src="${esc(p.thumb)}" alt="" loading="lazy"><span>${esc(p.by)}</span></button>`).join('')
       : '<p class="hint" style="grid-column:1/-1">No photos found. Try simpler words, like “curry” or “pancakes”.</p>'}</div>
     ${ph && ph.length >= 12 * st.page ? '<button class="btn small" data-act="stockmore" style="align-self:center">More photos</button>' : ''}
-    <p class="hint" style="font-size:12px;margin:0">These are free photos of the kind of dish, not your actual one. ${st.site === 'Pixabay' ? '<a href="https://pixabay.com" target="_blank" rel="noopener">Photos from Pixabay</a>' : '<a href="https://www.pexels.com" target="_blank" rel="noopener">Photos provided by Pexels</a>'}.</p>
+    <p class="hint" style="font-size:12px;margin:0">These are free photos of the kind of dish, not your actual one. ${st.site === 'Pexels' ? '<a href="https://www.pexels.com" target="_blank" rel="noopener">Photos provided by Pexels</a>.' : st.site === 'Pixabay' ? '<a href="https://pixabay.com" target="_blank" rel="noopener">Photos from Pixabay</a>.' : ''}</p>
     <button class="btn" data-act="closesheet">Cancel</button>`);
   const i = overlay.querySelector('#stockQ'); if (i) i.onkeydown = e => { if (e.key === 'Enter'){ e.preventDefault(); A.stocksearch(); } };
 }

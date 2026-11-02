@@ -221,7 +221,7 @@ async function photoCall(body){
   if (error){ let b = {}; try { b = await error.context?.json?.(); } catch {} const st = error.context?.status; throw { code: b?.error || (isNetErr(error) ? 'offline' : st === 404 ? 'no_function' : st ? 'status_' + st : error.name === 'FunctionsFetchError' ? 'unreachable' : 'failed') }; }
   return data;
 }
-const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => Object.assign(d.photos || [], { site: d.site || 'Pexels' }));
+const findPhotos = (q, page = 1) => photoCall({ action: 'search', q, page }).then(d => Object.assign(d.photos || [], { site: d.site || '' }));
 const useStockPhoto = id => photoCall({ action: 'use', id, household: household.id });
 
 /* ---------- sharing a recipe as a link ---------- */
