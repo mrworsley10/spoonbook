@@ -346,7 +346,7 @@ function bestReading(texts){
   return ok.map(t => ({ t, s: recipeScore(t) })).sort((a, b) => b.s - a.s)[0].t;
 }
 // common slips when reading printed recipes
-const fixOcr = t => t.replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
+const fixOcr = t => t.replace(/(^|\s)[VY][ao]\s*[=—–-]+\s*[VYa]?[a2o](?=\s+(tsp|tbsp|cups?)\b)/g, '$1¼–½').replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
   .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
@@ -430,9 +430,25 @@ async function guessLayout(file, rot = 0){
     return { rot: best.rot, ing: box(ing), method: box(meth), title: info.title, serves: info.serves, intro: info.intro };
   } catch { return null; } finally { releaseWorker(); }
 }
-async function readArea(worker, file, rot, box, kind){
-  const { lines, cv, data } = await readLines(worker, file, { rot, box });
+async function readArea(worker, file, rot, box, kind, auto){
+  let { lines, cv, data } = await readLines(worker, file, { rot, box });
+  // a close-up taken sideways or upside down: try the other ways round
+  if (auto){ const sc = d => (d.confidence || 0) / 100 * 0.5 + wordiness(d.text) * 0.5; let s = sc(data);
+    for (const r of [90, 270, 180]){ if (s >= 0.6) break; const t = await readLines(worker, file, { rot: (rot + r) % 360, box }); const s2 = sc(t.data); if (s2 > s){ ({ lines, cv, data } = t); s = s2; } } }
   const JUNKW = /^[_|\\/~^*•·:;.,'‘’"“”=&{}\[\]™©®§$-]+$/;
+  // a close-up often catches the edge of the next column: keep only the column(s) that are what we're after
+  const d = splitColumns(lines, cv.width, true);
+  if (d && d.cols.length >= 2){
+    const isIng = s => QTY.test(s.text) && s.text.length < 75;
+    const stat = d.cols.map(c => ({ c, x0: Math.min(...c.map(s => s.x)), x1: Math.max(...c.map(s => s.x1)), ing: c.filter(isIng).length, len: c.reduce((a, s) => a + s.text.length, 0) / Math.max(1, c.length) }));
+    let keep;
+    if (kind === 'ing'){ const best = stat.reduce((a, b) => b.ing > a.ing ? b : a); keep = best.ing >= 2 ? [best] : stat; }
+    else keep = stat.filter(s => s.len >= 18 && s.ing / s.c.length < 0.5);
+    if (keep.length && keep.length < stat.length){
+      const inKeep = w => { const cx = (w.bbox.x0 + w.bbox.x1) / 2; return keep.some(k => cx >= k.x0 - 4 && cx <= k.x1 + 4); };
+      lines = lines.map(l => ({ ...l, words: (l.words || []).filter(inKeep) })).filter(l => l.words.length).map(l => ({ ...l, text: l.words.map(w => w.text).join(' ') }));
+    }
+  }
   const plain = lines.map(l => (l.words || []).length ? l.words.map(w => w.text).filter(t => !JUNKW.test(t)).join(' ') : l.text.trim()).filter(t => /[A-Za-z]{2,}|\d/.test(t)).join('\n');
   // the method keeps its paragraphs (one step each); an ingredient list is read line by line
   const text = kind === 'method' ? (splitColumns(lines, cv.width, false, true) || plain) : plain;
@@ -443,17 +459,23 @@ async function readBoxes(pages, onProgress){
   try {
     let ingText = '', methodText = '', scores = [];
     for (const p of pages){
-      if (p.ing){ const r = await readArea(worker, p.file, p.rot, p.ing, 'ing'); ingText += r.text + '\n'; scores.push(r.score); }
-      if (p.method){ const r = await readArea(worker, p.file, p.rot, p.method, 'method'); methodText += r.text + '\n\n'; scores.push(r.score); }
+      if (p.ing){ const r = await readArea(worker, p.file, p.rot, p.ing, 'ing', p.auto); ingText += r.text + '\n'; scores.push(r.score); }
+      if (p.method){ const r = await readArea(worker, p.file, p.rot, p.method, 'method', p.auto); methodText += r.text + '\n\n'; scores.push(r.score); }
     }
     await loadWords();
     ingText = fixWords(ingText); methodText = fixWords(methodText);
-    const ingredients = parseRecipe('Ingredients\n' + ingText).ingredients;
+    // a close-up of the ingredients often includes the recipe's name, "serves 4" and an "Ingredients" heading above the list
+    const top = parseRecipe(ingText), whole = parseRecipe(ingText + '\nMethod\n' + methodText);
+    const realT = t => { const ws = (String(t || '').toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length >= 3); return ws.length ? ws.filter(w => known(w)).length / ws.length : 0; };
+    const title = [top.title, whole.title].find(t => t && t.length <= 60 && t.split(/\s+/).length <= 7 && realT(t) >= 0.75 && !QTY.test(t) && !/[,;.]$/.test(t) && !/\b(the|a|an|of|and|to|with|in|for)$/i.test(t)) || '';
+    const lines = ingText.split('\n'), hi = lines.findIndex(l => HEAD_ING.test(l.trim()) && !/^for the /i.test(l.trim()));
+    if (hi > 0) ingText = lines.slice(hi + 1).join('\n');
+    const ingredients = parseRecipe('Ingredients\n' + ingText).ingredients.filter(l => !META.test(l) && l !== title);
     // the method: one step per paragraph when the page shows paragraphs, otherwise line by line
     const paras = methodText.split(/\n\s*\n/).map(p => p.split('\n').map(s => s.trim()).filter(Boolean)
       .reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '')).filter(Boolean);
     const steps = parseRecipe('Ingredients\nx\nMethod\n' + (paras.length > 1 ? paras.join('\n') : methodText)).steps;
-    return { ingredients, steps, score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
+    return { ingredients, steps, title, serves: whole.serves || top.serves || '', intro: '', score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
   } finally { releaseWorker(); }
 }
 async function readPhotos(pages, onProgress){

@@ -401,6 +401,14 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .ings li.inghead{padding:16px 0 4px;font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
 .ings li.inghead:first-child{padding-top:6px}
 .tipbox{border:1px solid var(--line);border-radius:14px;padding:10px 14px;background:var(--bg)}.tipbox summary{cursor:pointer;font-weight:600;font-size:15px}.tipbox p{margin:8px 0;font-size:14px;color:var(--muted)}.tipbox p b{color:var(--fg)}
+.shotpart{border:1px solid var(--line);border-radius:16px;padding:12px;display:flex;flex-direction:column;gap:10px;background:var(--bg)}
+.shotpart.done{border-color:color-mix(in srgb,var(--accent) 50%,var(--line))}
+.shothead{display:flex;gap:12px;align-items:flex-start}.shothead b{font-size:16px}
+.shotnum{flex:none;width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--on-accent);font-weight:700;display:flex;align-items:center;justify-content:center}
+.shotrow{display:flex;gap:8px;flex-wrap:wrap}.shotthumb{position:relative;width:76px;height:76px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.shotthumb img{width:100%;height:100%;object-fit:cover}.shotthumb .icon-btn{position:absolute;top:2px;right:2px;width:26px;height:26px;background:color-mix(in srgb,var(--bg) 80%,transparent)}
+.shotthumb .icon-btn svg{width:14px;height:14px}
+.shotpart label.btn{cursor:pointer;gap:6px}.shotpart label.btn svg{width:16px;height:16px}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -1713,19 +1721,25 @@ function clipSheet(mode){
     <label class="sr" for="pasteUrl">Link</label><input id="pasteUrl" type="url" placeholder="Link to the original (optional)" style="width:100%;height:46px;border:1px solid var(--line);border-radius:10px;background:var(--bg);padding:0 12px">
     <div id="aiMsg"></div>
     <div class="actions" style="margin:0"><button class="btn primary" data-act="readpaste">Read recipe</button><button class="btn" data-act="sheet" data-mode="menu">Back</button></div>`;
-  else if (S.sheet === 'photo') body = `<h2>Snap a page</h2>
-    <p class="hint">Take a photo of a printed recipe, or pick a screenshot. Hold the phone straight above the page in good light. Next you’ll turn it the right way up and box just the recipe. If it runs over two pages, you can add the second. Handwriting doesn’t read well.</p>
-    <label class="opt" for="snapCam"><span class="ic">${I.cam}</span><span><b>Take a photo</b><span>Opens your camera</span></span></label>
-    <input id="snapCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snap">
-    <label class="opt" for="snapIn"><span class="ic">${I.plus}</span><span><b>Choose from your photos</b><span>A photo or screenshot you already have. Pick two if it runs over two pages</span></span></label>
-    <input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
-    <details class="tipbox"><summary>Want it word-perfect? Use your phone’s own text reader</summary>
-      <p>Your phone’s camera reads printed text even better than Spoonbook can. Copy the words with it, then paste them here.</p>
-      <p><b>iPhone:</b> point the camera at the page (or open the photo), tap the text icon <span aria-hidden="true">▤</span>, then <b>Select All</b> and <b>Copy</b>.</p>
-      <p><b>Android:</b> open the photo in Google Photos or the camera, tap <b>Lens</b>, then <b>Text</b>, <b>Select all</b> and <b>Copy</b>. You can also tap <b>Share</b> and pick Spoonbook.</p>
-      <button class="btn small" data-act="sheet" data-mode="paste">Paste the recipe</button></details>
+  else if (S.sheet === 'photo'){ const sh = S.shots || (S.shots = { ing: [], method: [] });
+    const thumbs = (k) => sh[k].map((f, j) => `<span class="shotthumb"><img src="${f.url}" alt=""><button class="icon-btn" data-act="shotdel" data-k="${k}" data-j="${j}" aria-label="Remove this photo">${I.close}</button></span>`).join('');
+    const part = (k, n, title, tip) => `<div class="shotpart${sh[k].length ? ' done' : ''}"><div class="shothead"><span class="shotnum">${sh[k].length ? '✓' : n}</span><span><b>${title}</b><span class="hint" style="display:block;margin:0">${tip}</span></span></div>
+      ${sh[k].length ? `<div class="shotrow">${thumbs(k)}</div>` : ''}
+      ${sh[k].length < 3 ? `<div class="actions" style="margin:0"><label class="btn small${sh[k].length ? '' : ' primary'}" for="cam-${k}">${I.cam} ${sh[k].length ? 'Another photo' : 'Take a photo'}</label><label class="btn small" for="pick-${k}">Choose</label></div>
+      <input id="cam-${k}" type="file" accept="image/*" capture="environment" class="sr" data-chg="shot" data-k="${k}"><input id="pick-${k}" type="file" accept="image/*" class="sr" data-chg="shot" data-k="${k}">` : ''}</div>`;
+    body = `<h2>Snap a cookbook page</h2>
+    <p class="hint">Two close-up photos read best: one of the ingredients, one of the method. Get close so the words fill the photo, hold the phone straight above the page, in good light.</p>
+    <div class="field" style="margin:0"><label for="shotName">Recipe name</label><input id="shotName" value="${esc(sh.name || '')}" placeholder="e.g. Onion bhajias (or leave it for Spoonbook to find)" autocomplete="off"></div>
+    ${part('ing', 1, 'The ingredients', 'Just the ingredient list, close up')}
+    ${part('method', 2, 'The method', 'Just the steps. Long method? Add a second photo')}
     <div id="aiMsg"></div>
-    <button class="btn" data-act="sheet" data-mode="menu">Back</button>`;
+    <button class="btn primary" data-act="shotsread" ${sh.ing.length || sh.method.length ? '' : 'disabled'}>Read the recipe</button>
+    <details class="tipbox"><summary>Other ways</summary>
+      <p><b>Whole page in one photo:</b> <label class="linkbtn" for="snapCam" style="cursor:pointer">take one</label> or <label class="linkbtn" for="snapIn" style="cursor:pointer">choose one</label>, then box the ingredients and the method on it.</p>
+      <input id="snapCam" type="file" accept="image/*" capture="environment" class="sr" data-chg="snap"><input id="snapIn" type="file" accept="image/*" multiple class="sr" data-chg="snap">
+      <p><b>Word-perfect:</b> your phone’s own text reader is even better. On iPhone, point the camera at the page, tap the text icon <span aria-hidden="true">▤</span>, then Select All and Copy. On Android, use Google Lens, then Text, Select all and Copy. Then paste it here.</p>
+      <button class="btn small" data-act="sheet" data-mode="paste">Paste the recipe</button></details>
+    <button class="btn" data-act="sheet" data-mode="menu">Back</button>`; }
   else if (S.sheet === 'bulk') body = `<h2>Bring in lots at once</h2>
     <p class="hint">Pick saved emails (.eml), a whole email folder (.mbox), text or web page files, or an export from another recipe app (.zip, like ChefTap’s). Spoonbook reads each one on this phone, makes a recipe from it, and keeps any attached photo. Anything it isn’t sure about is marked “needs a check”.</p>
     <details class="hint"><summary style="cursor:pointer;color:var(--accent);font-weight:600">How do I save my emails as files?</summary>
@@ -1854,7 +1868,7 @@ async function drawCrop(key = 'box'){
 }
 async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
   const msg = overlay.querySelector('#aiMsg');
-  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"]').forEach(b => b.disabled = true);
+  overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"],[data-act^="shot"]').forEach(b => b.disabled = true);
   try {
     if (files){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Getting ready to read the photo… (the first time takes a little longer)</span></div>`;
@@ -1868,7 +1882,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Reading the words…</span></div>`;
       const r = await Local.readBoxes(boxes, pct => { const el = document.getElementById('ocrPct'); if (el && pct >= 0) el.textContent = `Reading the words… ${pct}%`; });
       if (r.score < 0.4 || (!r.ingredients.length && !r.steps.length)) throw { code: 'unreadable' };
-      out = { title: info?.title || '', serves: info?.serves || '', totalMins: null, ingredients: r.ingredients, steps: r.steps, intro: info?.intro || '', warnings: [] };
+      out = { title: info?.title || r.title || '', serves: info?.serves || r.serves || '', totalMins: null, ingredients: r.ingredients, steps: r.steps, intro: info?.intro || r.intro || '', warnings: [] };
       if (!out.title) out.warnings.push('Add a name for the recipe');
     } else out = Local.parseRecipe(text);
     if (!out.ingredients.length && !out.steps.length) throw { code: 'norecipe' };
@@ -1882,10 +1896,10 @@ async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
     d.category = guessCategory(d.title, d.ingredients);
     d.source = srcUrl || '';
     if (keepPhoto && files && S.canPhoto){ msg.innerHTML = `<div class="thinking"><span class="spin"></span>Saving the photo…</div>`; d.photo = await uploadPhoto(files[0].file || files[0]); }
-    S.draft = d; closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
+    S.draft = d; if (boxes && S.shots){ S.shots.ing.concat(S.shots.method).forEach(s => { try { URL.revokeObjectURL(s.url); } catch {} }); S.shots = null; } closeSheet(); go('add'); if (location.hash === '#add'){ parse(); render(true); }
     toast(out.warnings.length ? out.warnings[0] + '. Fill in what’s missing, then save' : 'Check it over, then save');
   } catch (e) {
-    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"]').forEach(b => b.disabled = false);
+    overlay.querySelectorAll('[data-act="readpaste"],#snapIn,#snapCam,[data-act^="snap"],[data-act^="shot"]').forEach(b => b.disabled = false);
     if (!overlay.querySelector('#aiMsg')) return;
     msg.innerHTML = `<p class="hint" style="color:var(--danger)">${
       e?.code === 'unreadable' ? 'Sorry, that photo didn’t read clearly, so nothing’s been filled in. Try: the boxes around just the words (not the pictures), the page the right way up, and the phone held straight above it in good light. One page at a time works best.' :
@@ -2199,6 +2213,11 @@ const A = {
     try { await navigator.clipboard.writeText(t); toast('List copied. Paste it into a message'); } catch { toast('Couldn’t copy the list'); }
   },
   people(){ peopleSheet(); },
+  shotdel(b){ const sh = S.shots; const f = sh[b.dataset.k].splice(+b.dataset.j, 1)[0]; try { URL.revokeObjectURL(f.url); } catch {} clipSheet('photo'); },
+  shotsread(){ const sh = S.shots; if (!sh || !(sh.ing.length || sh.method.length)) return;
+    // each close-up is read whole, as what it is: ingredients or method
+    const boxes = [...sh.ing.map(s => ({ file: s.file, rot: 0, ing: { x: 0, y: 0, w: 1, h: 1 }, auto: true })), ...sh.method.map(s => ({ file: s.file, rot: 0, method: { x: 0, y: 0, w: 1, h: 1 }, auto: true }))];
+    readLocally({ boxes, info: sh.name?.trim() ? { title: sh.name.trim() } : null }); },
   snaprot(b){ const sn = S.snap, pg = sn.pages[sn.i]; const d = +b.dataset.d;
     // turn the boxes with the picture
     const turn = o => o && (d > 0 ? { x: 1 - o.y - o.h, y: o.x, w: o.h, h: o.w } : { x: o.y, y: 1 - o.x - o.w, w: o.h, h: o.w });
@@ -2527,6 +2546,7 @@ document.addEventListener('drop', async e => {
 document.addEventListener('input', e => {
   if (e.target.id === 'fridgeIn'){ S.fridge = e.target.value; document.getElementById('fridgeList').innerHTML = fridgeResults(); return; }
   if (e.target.id === 'pickQ'){ document.getElementById('pickList').innerHTML = recipePickList(e.target.value); return; }
+  if (e.target.id === 'shotName' && S.shots){ S.shots.name = e.target.value; return; }
   if (e.target.id === 'sideQ'){ S.sideQ = e.target.value; document.getElementById('sideList').innerHTML = planSideList(); return; }
   if (e.target.id === 'q'){ S.q = e.target.value; const l = document.getElementById('list'); if (l) l.innerHTML = listHtml(); const p = document.getElementById('picksWrap'); if (p) p.hidden = !!S.q; const c = document.getElementById('bookCount'); if (c) c.textContent = bookCount(); }
 });
@@ -2564,6 +2584,11 @@ document.addEventListener('change', async e => {
     } catch (err) { toast(photoErr(err)); }
   }
   if (k === 'bulk' && t.files.length){ bulkImport([...t.files]); return; }
+  if (k === 'shot' && t.files.length){
+    const sh = S.shots || (S.shots = { ing: [], method: [] }), key = t.dataset.k;
+    [...t.files].slice(0, 3 - sh[key].length).forEach(f => sh[key].push({ file: f, url: URL.createObjectURL(f) }));
+    clipSheet('photo'); return;
+  }
   if (k === 'snap' && t.files.length){
     S.snap = { pages: [...t.files].slice(0, 4).map(f => ({ file: f, rot: 0, ing: null, method: null })), i: 0, stage: 'ing', info: null };
     cropSheet();
