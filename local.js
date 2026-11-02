@@ -42,6 +42,12 @@ function parseRecipe(text){
     }
     if (HEAD_ING.test(l)){ mode = 'ing'; continue; }
     if (HEAD_STEP.test(l)){ mode = 'step'; continue; }
+    // a "Cook's tip" or "Variation" box sits beside the recipe in many cookbooks: leave it out
+    if (/^(cook['’]?s tips?|tips?|variations?|notes?|serving suggestions?)\s*:?$/i.test(l)){ mode = 'skip'; continue; }
+    // printed steps often start "3 ▲" (read from a photo as "3 A"): that's the method
+    const mark = l.match(/^(\d{1,2})\s*[▲△►▶A]\s+(?=[A-Z])/);
+    if (mark && mode !== null){ l = l.slice(mark[0].length); mode = 'step'; out.steps.push(l); continue; }
+    if (mode === 'skip') continue;
     if (JUNK.test(l)) continue;
     if (mode === null){ pre.push(l); continue; }
     if (mode === 'ing'){
@@ -91,21 +97,51 @@ function loadTesseract(){
     document.head.appendChild(s);
   });
 }
-async function prepImage(file){
-  // larger, greyscale, higher-contrast pictures read much better
+// turns a photo into a clean picture for reading: turned the right way up, cut down to just the recipe,
+// larger, greyscale and higher-contrast
+async function prepImage(file, opt = {}){
   const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const k = Math.min(2, 2400 / Math.max(bmp.width, bmp.height));
-  const c = document.createElement('canvas'); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  const g = c.getContext('2d'); g.filter = 'grayscale(1) contrast(1.35)'; g.drawImage(bmp, 0, 0, c.width, c.height);
+  const rot = ((opt.rot || 0) % 360 + 360) % 360, side = rot === 90 || rot === 270;
+  const rw = side ? bmp.height : bmp.width, rh = side ? bmp.width : bmp.height;
+  const b = opt.box || { x: 0, y: 0, w: 1, h: 1 };
+  const cw = Math.max(1, b.w * rw), ch = Math.max(1, b.h * rh);
+  const k = Math.min(2.5, (opt.max || 2400) / Math.max(cw, ch));
+  const c = document.createElement('canvas'); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
+  const g = c.getContext('2d'); g.filter = 'grayscale(1) contrast(1.35)';
+  g.scale(k, k); g.translate(-b.x * rw, -b.y * rh);
+  g.translate(rw / 2, rh / 2); g.rotate(rot * Math.PI / 180); g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
   return c;
 }
-async function readPhotos(files, onProgress){
+// how much of this looks like real words: photos taken sideways or of pictures come out as gibberish
+function wordiness(text){
+  const toks = String(text).split(/\s+/).filter(Boolean);
+  if (toks.length < 8) return 0;
+  const good = toks.filter(t => /^[(\["'“‘]?[A-Za-z][a-z'’-]{1,}[.,;:!?)\]"'”’]*$|^\d+([.,/½¼¾-]\d+)?(g|kg|ml|l|oz|lb|tbsp|tsp)?[.,]?$|^[½¼¾⅓⅔]$/.test(t) && !/[A-Z]{2,}[a-z]+[A-Z]/.test(t)).length;
+  return good / toks.length;
+}
+// common slips when reading printed recipes
+const fixOcr = t => t.replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
+  .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
+async function readOne(worker, page, onProgress){
+  const file = page.file || page, base = { rot: page.rot || 0, box: page.box || null };
+  const go = async rot => { const { data } = await worker.recognize(await prepImage(file, { ...base, rot }));
+    // keep the lines it was reasonably sure of; scraps of pictures come out as low-confidence noise
+    const lines = (data.lines || []).filter(l => l.text.trim());
+    const text = lines.length ? lines.filter(l => l.confidence >= 45 || wordiness(l.text) >= 0.7).map(l => l.text.trimEnd()).join('\n') : data.text;
+    return { text: fixOcr(text), conf: data.confidence || 0, score: (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5, rot }; };
+  let best = await go(base.rot);
+  // looks like it's sideways or upside down: try the other ways round and keep the best
+  if (best.score < 0.6) for (const r of [90, 270, 180]){ onProgress?.(-1); const t = await go((base.rot + r) % 360); if (t.score > best.score) best = t; if (best.score >= 0.7) break; }
+  return best;
+}
+async function readPhotos(pages, onProgress){
   await loadTesseract();
   const worker = await Tesseract.createWorker('eng', 1, { logger: m => { if (m.status === 'recognizing text') onProgress?.(Math.round(m.progress * 100)); } });
   try {
-    let text = '';
-    for (const f of files){ const { data } = await worker.recognize(await prepImage(f)); text += data.text + '\n'; }
-    return text;
+    const out = [];
+    for (const p of pages) out.push(await readOne(worker, p, onProgress));
+    const score = out.reduce((a, o) => a + o.score, 0) / out.length;
+    return { text: out.map(o => o.text).join('\n'), score, turned: out.map(o => o.rot) };
   } finally { await worker.terminate(); }
 }
 
@@ -250,5 +286,5 @@ function nutrition(recipe){
   return { kcal: r(kcal), protein: r(p), fat: r(f), carbs: r(c), portions, portionsAssumed: !s, counted, total: lines.length, missed };
 }
 
-window.Local = { parseRecipe, readPhotos, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
+window.Local = { parseRecipe, readPhotos, prepImage, wordiness, combine, aisleOf, splitItem, num, nutrition, grams, matchFood };
 })();
