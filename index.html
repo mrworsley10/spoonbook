@@ -409,6 +409,7 @@ body.dragging [data-drop-day]{outline:2px dashed color-mix(in srgb,var(--accent)
 .shotthumb img{width:100%;height:100%;object-fit:cover}.shotthumb .icon-btn{position:absolute;top:2px;right:2px;width:26px;height:26px;background:color-mix(in srgb,var(--bg) 80%,transparent)}
 .shotthumb .icon-btn svg{width:14px;height:14px}
 .shotpart label.btn{cursor:pointer;gap:6px}.shotpart label.btn svg{width:16px;height:16px}
+.checkamts{border:1px solid color-mix(in srgb,var(--accent) 55%,var(--line));background:color-mix(in srgb,var(--accent) 10%,var(--surface));border-radius:12px;padding:10px 12px;margin:2px 0 8px;font-size:14px}.checkamts ul{margin:6px 0 0;padding-left:18px}.checkamts li{margin:2px 0}
 .guide{border:1px solid var(--line);background:var(--surface);border-radius:18px;padding:14px 16px;margin:4px 0 16px}
 .guide .ghead{display:flex;align-items:baseline;gap:10px;margin:0 0 8px}.guide .ghead b{font-size:17px}.guide .ghead .hint{flex:1;margin:0}
 .gbar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-bottom:6px}.gbar i{display:block;height:100%;background:var(--accent);border-radius:3px;transition:width .4s}
@@ -1356,7 +1357,7 @@ function editView(){
     </div>
     <fieldset class="tagset"><legend>Tags</legend><div class="chips">${TAGS.map(t => `<label class="chip"><input type="checkbox" class="sr" name="f-tag" value="${esc(t)}" ${(d.tags || []).includes(t) ? 'checked' : ''}>${esc(t)}</label>`).join('')}</div></fieldset>
     <div class="field"><label for="f-spice">How spicy?</label><select id="f-spice"><option value="">Not set</option>${SPICE.map((x, i) => `<option value="${i}" ${d.spice === i ? 'selected' : ''}>${i ? chillies(i) + ' ' : ''}${x}</option>`).join('')}</select></div>
-    <div class="field"><label for="f-ing">Ingredients — one per line</label><p class="hint" style="margin:-2px 0 6px;font-size:13px">To split them into groups, add a heading line ending in a colon, like <b>For the marinade:</b></p><textarea id="f-ing" rows="10">${esc((d.ingredients || []).join('\n'))}</textarea></div>
+    <div class="field"><label for="f-ing">Ingredients — one per line</label>${d.check?.length ? `<div class="checkamts" role="note"><b>Check these amounts against the book.</b> They were hard to read, and small fractions like ½ and ¼ are often misread.<ul>${d.check.map(l => `<li>${esc(l)}</li>`).join('')}</ul></div>` : ''}<p class="hint" style="margin:-2px 0 6px;font-size:13px">To split them into groups, add a heading line ending in a colon, like <b>For the marinade:</b></p><textarea id="f-ing" rows="10">${esc((d.ingredients || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-steps">Method — one step per line</label><textarea id="f-steps" rows="10">${esc((d.steps || []).join('\n'))}</textarea></div>
     <div class="field"><label for="f-src">Original link (optional)</label><input id="f-src" type="url" value="${esc(d.source || '')}" placeholder="https://"></div>
     <div class="field"><label for="f-best">Who makes it best? (optional)</label><input id="f-best" value="${esc(d.bestCook || '')}" placeholder="e.g. Heather, every time"></div>
@@ -1883,7 +1884,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
       msg.innerHTML = `<div class="thinking"><span class="spin"></span><span id="ocrPct">Reading the words…</span></div>`;
       const r = await Local.readBoxes(boxes, pct => { const el = document.getElementById('ocrPct'); if (el && pct >= 0) el.textContent = `Reading the words… ${pct}%`; });
       if (r.score < 0.4 || (!r.ingredients.length && !r.steps.length)) throw { code: 'unreadable' };
-      out = { title: info?.title || r.title || '', serves: info?.serves || r.serves || '', totalMins: null, ingredients: r.ingredients, steps: r.steps, intro: info?.intro || r.intro || '', warnings: [] };
+      out = { check: r.check || [], title: info?.title || r.title || '', serves: info?.serves || r.serves || '', totalMins: null, ingredients: r.ingredients, steps: r.steps, intro: info?.intro || r.intro || '', warnings: [] };
       if (!out.title) out.warnings.push('Add a name for the recipe');
     } else out = Local.parseRecipe(text);
     if (!out.ingredients.length && !out.steps.length) throw { code: 'norecipe' };
@@ -1893,6 +1894,7 @@ async function readLocally({ text, files, srcUrl, keepPhoto, boxes, info }){
     d.totalMins = out.totalMins || null;
     d.ingredients = out.ingredients;
     d.steps = out.steps;
+    d.check = out.check || [];
     if (out.intro && !d.story) d.story = out.intro.slice(0, 600);
     d.category = guessCategory(d.title, d.ingredients);
     d.source = srcUrl || '';

@@ -348,8 +348,8 @@ function bestReading(texts){
 // common slips when reading printed recipes
 // how the reader tends to see printed fractions: ½ as "V2", "Y2", "‘2", "%"; ¼ as "Va", "Y4", "‘/4"
 const UNIT_AFTER = '(?=\\s*(?:[-–—]\\s*\\S+\\s+)?(?:tsp|tbsp|teaspoons?|tablespoons?|cups?|kg|g|lb|lbs|oz|pints?|each|level|heaped|rounded)\\b)';
-const FRAC_HALF = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?2|\\/2|[VY][2zZo]|[VY]s|Y2|%|1\\/2)" + UNIT_AFTER, 'gm');
-const FRAC_QTR = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?4|\\/4|[VY][a4]|1\\/4)" + UNIT_AFTER, 'gm');
+const FRAC_HALF = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?2|[‘’'`]%|\\/2|[VYUvyu][2zZo]|[VY]s|%|1\\/2|l\\/2)" + UNIT_AFTER, 'gm');
+const FRAC_QTR = new RegExp("(^|\\s|\\d|[—–-])(?:[‘’'`]\\/?4|\\/4|[VYUvyu][a4A]|1\\/4|l\\/4)" + UNIT_AFTER, 'gm');
 const FRAC_3Q = new RegExp("(^|\\s|\\d|[—–-])(?:3\\/4|%4)" + UNIT_AFTER, 'gm');
 const fixFractions = t => t.replace(/(\d)\s*0[2z](?=\s*\/)/g, '$1 oz').replace(FRAC_3Q, '$1¾').replace(FRAC_QTR, '$1¼').replace(FRAC_HALF, '$1½')
   .replace(/(^|\s)1\/3(?=\s)/g, '$1⅓').replace(/(^|\s)2\/3(?=\s)/g, '$1⅔').replace(/(\d) ([½¼¾⅓⅔])/g, '$1$2').replace(/([½¼¾⅓⅔\d])\s*[—-]\s*(?=[½¼¾⅓⅔\d])/g, '$1–');
@@ -457,16 +457,20 @@ async function readArea(worker, file, rot, box, kind, auto){
     }
   }
   const plain = lines.map(l => (l.words || []).length ? l.words.map(w => w.text).filter(t => !JUNKW.test(t)).join(' ') : l.text.trim()).filter(t => /[A-Za-z]{2,}|\d/.test(t)).join('\n');
+  // amounts the reader wasn't sure of, or that looked like a garbled fraction: worth a second look
+  const unsure = kind === 'ing' ? lines.map(l => { const ws = (l.words || []).filter(w => !JUNKW.test(w.text)); const a = ws[0];
+    if (!a || !/^[\dVYUvyu%‘’'`\/½¼¾]/.test(a.text) || !/[a-z]{3,}/i.test(ws.slice(1).map(w => w.text).join(' '))) return null;
+    return (a.confidence < 70 || /^[VYUvyu%‘’'`\/]|^\d%|^\d?[\/%]/.test(a.text) || (/^\d$/.test(a.text) && ws[1] && /^(tsp|tbsp)$/i.test(ws[1].text) && a.confidence < 85)) ? ws.slice(1).map(w => w.text).join(' ') : null; }).filter(Boolean) : [];
   // the method keeps its paragraphs (one step each); an ingredient list is read line by line
   const text = kind === 'method' ? (splitColumns(lines, cv.width, false, true) || plain) : plain;
-  return { text: fixOcr(text), score: (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5 };
+  return { text: fixOcr(text), unsure, score: (data.confidence || 0) / 100 * 0.5 + wordiness(data.text) * 0.5 };
 }
 async function readBoxes(pages, onProgress){
   const worker = await getWorker(onProgress);
   try {
-    let ingText = '', methodText = '', scores = [];
+    let ingText = '', methodText = '', scores = [], unsure = [];
     for (const p of pages){
-      if (p.ing){ const r = await readArea(worker, p.file, p.rot, p.ing, 'ing', p.auto); ingText += r.text + '\n'; scores.push(r.score); }
+      if (p.ing){ const r = await readArea(worker, p.file, p.rot, p.ing, 'ing', p.auto); ingText += r.text + '\n'; scores.push(r.score); unsure.push(...r.unsure); }
       if (p.method){ const r = await readArea(worker, p.file, p.rot, p.method, 'method', p.auto); methodText += r.text + '\n\n'; scores.push(r.score); }
     }
     await loadWords();
@@ -477,12 +481,18 @@ async function readBoxes(pages, onProgress){
     const title = [top.title, whole.title].find(t => t && t.length <= 60 && t.split(/\s+/).length <= 7 && realT(t) >= 0.75 && !QTY.test(t) && !/[,;.]$/.test(t) && !/\b(the|a|an|of|and|to|with|in|for)$/i.test(t)) || '';
     const lines = ingText.split('\n'), hi = lines.findIndex(l => HEAD_ING.test(l.trim()) && !/^for the /i.test(l.trim()));
     if (hi > 0) ingText = lines.slice(hi + 1).join('\n');
-    const ingredients = parseRecipe('Ingredients\n' + ingText).ingredients.filter(l => !META.test(l) && l !== title);
+    // scraps that aren't words at all ("EE HCP TH pH at") are left out
+    const wordy = l => { if (isHead(l)) return true; const ws = (l.toLowerCase().match(/[a-z]{3,}/g) || []); return ws.length > 0 && ws.filter(w => known(w)).length / ws.length >= 0.5; };
+    const ingredients = parseRecipe('Ingredients\n' + ingText).ingredients.filter(l => !META.test(l) && l !== title && wordy(l));
+    const keyOf = s => (fixWords(String(s)).toLowerCase().match(/[a-z]{4,}/g) || []).slice(0, 3).join(' ');
+    const unsureKeys = unsure.map(keyOf).filter(Boolean);
+    const smallMeasure = l => /^([½¼¾⅓⅔]|\d[½¼¾]?|\d?[½¼¾][–-][½¼¾\d]|\d[–-]\d)\s*(tsp|tbsp|teaspoons?|tablespoons?|cups?)\b/i.test(l);
+    const check = [...new Set(ingredients)].filter(l => smallMeasure(l) && (() => { const k = keyOf(l.replace(/^[^a-z]*/i, '')); return k && unsureKeys.some(u => u === k || (u.length > 6 && k.startsWith(u.split(' ')[0]) && u.split(' ')[0].length > 4)); })());
     // the method: one step per paragraph when the page shows paragraphs, otherwise line by line
     const paras = methodText.split(/\n\s*\n/).map(p => p.split('\n').map(s => s.trim()).filter(Boolean)
       .reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '')).filter(Boolean);
     const steps = parseRecipe('Ingredients\nx\nMethod\n' + (paras.length > 1 ? paras.join('\n') : methodText)).steps;
-    return { ingredients, steps, title, serves: whole.serves || top.serves || '', intro: '', score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
+    return { ingredients, steps, check, title, serves: whole.serves || top.serves || '', intro: '', score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
   } finally { releaseWorker(); }
 }
 async function readPhotos(pages, onProgress){
