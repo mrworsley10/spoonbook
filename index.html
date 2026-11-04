@@ -324,6 +324,20 @@ nav.tabbar .badge{position:absolute;top:2px;left:calc(50% + 8px);min-width:18px;
 /* polish: book */
 .cats{display:flex;gap:8px;overflow-x:auto;margin:22px -16px 0;padding:0 16px 4px;scrollbar-width:none;scroll-padding-inline:16px}
 .cats::-webkit-scrollbar{display:none}
+/* sideways rows on a computer: arrows to click, and drag with the mouse */
+.hs{position:relative}
+.hs>.hsbtn{display:none}
+@media (hover:hover) and (pointer:fine){
+  .hs>.hsbtn{display:grid;place-items:center;position:absolute;top:50%;z-index:3;width:40px;height:40px;margin-top:-20px;border-radius:50%;border:1px solid var(--line);background:var(--surface);color:var(--fg);box-shadow:0 2px 10px rgba(0,0,0,.18);cursor:pointer;font-size:22px;line-height:1;padding:0;opacity:0;transition:opacity .15s}
+  .hs.cats-w>.hsbtn{width:32px;height:32px;margin-top:-16px;font-size:18px}
+  .hs>.hsbtn.l{left:-6px}.hs>.hsbtn.r{right:-6px}
+  .hs:hover>.hsbtn:not([hidden]),.hs>.hsbtn:focus-visible:not([hidden]){opacity:1}
+  .hs>.hsbtn[hidden]{display:none}
+  .hs.picks-w>.hsbtn{top:150px}
+  .hs>.picks,.hs>.cats,.hs>.strip{cursor:grab}
+  .hs>.dragging{cursor:grabbing;scroll-snap-type:none!important;user-select:none}
+  .hs>.dragging *{pointer-events:none}
+}
 .cats .chip{flex:none}
 .chip.filt{display:inline-flex;gap:6px;align-items:center;height:34px}
 .activef{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
@@ -2839,6 +2853,38 @@ Backend.start(async caps => {
   db.doc('lists/shopping').onSnapshot(s => { S.shop = s.exists ? s.data() : { items: [] }; if (S.view !== 'cook') render(); });
   db.doc('lists/plan').onSnapshot(s => { S.plan = s.exists ? s.data() : { days: {} }; if (S.view === 'plan' || S.view === 'book') render(); });
 });
+})();
+
+/* ---------- sideways rows (favourites, categories, photo strips): on a computer, add arrows and let the mouse drag them ---------- */
+(() => {
+  const SEL = '.picks, .cats, .strip';
+  const fine = matchMedia('(hover:hover) and (pointer:fine)');
+  const sync = row => { const w = row.parentElement; if (!w?.classList.contains('hs')) return; const max = row.scrollWidth - row.clientWidth - 2;
+    w.querySelector(':scope>.hsbtn.l').hidden = row.scrollLeft <= 2; w.querySelector(':scope>.hsbtn.r').hidden = max <= 0 || row.scrollLeft >= max; };
+  const fit = () => { document.querySelectorAll(SEL).forEach(row => {
+    if (!row.parentElement.classList.contains('hs')){
+      const w = document.createElement('div'); w.className = 'hs ' + [...row.classList].filter(c => /^(picks|cats|strip)$/.test(c)).map(c => c + '-w').join(' ');
+      row.before(w); w.append(row);
+      for (const [k, t, d] of [['l', '‹', -1], ['r', '›', 1]]){ const b = document.createElement('button'); b.type = 'button'; b.className = 'hsbtn ' + k; b.textContent = t; b.setAttribute('aria-label', d < 0 ? 'Scroll left' : 'Scroll right'); b.tabIndex = -1;
+        b.onclick = e => { e.stopPropagation(); row.scrollBy({ left: d * Math.max(200, row.clientWidth * .8), behavior: 'smooth' }); }; w.append(b); }
+      row.addEventListener('scroll', () => sync(row), { passive: true });
+    }
+    sync(row);
+  }); };
+  let queued = false; new MutationObserver(() => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; fit(); }); }).observe(document.body, { childList: true, subtree: true });
+  addEventListener('resize', () => document.querySelectorAll(SEL).forEach(sync)); fit();
+  // drag with the mouse (touch already scrolls by itself); a drag doesn't count as a click on what's underneath
+  let drag = null;
+  document.addEventListener('pointerdown', e => { if (e.pointerType !== 'mouse' || e.button !== 0 || !fine.matches) return; const row = e.target.closest?.(SEL); if (!row || row.scrollWidth <= row.clientWidth) return;
+    drag = { row, x: e.clientX, left: row.scrollLeft, moved: false }; });
+  document.addEventListener('pointermove', e => { if (!drag) return; const dx = e.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < 6) return; if (!drag.moved){ drag.moved = true; drag.row.classList.add('dragging'); }
+    drag.row.scrollLeft = drag.left - dx; });
+  const end = () => { if (!drag) return; const d = drag; drag = null; if (!d.moved) return;
+    d.row.classList.remove('dragging');
+    const stop = ev => { ev.stopPropagation(); ev.preventDefault(); }; addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => removeEventListener('click', stop, { capture: true }), 50); };
+  document.addEventListener('pointerup', end); document.addEventListener('pointercancel', end);
+  document.addEventListener('dragstart', e => { if (e.target.closest?.(SEL)) e.preventDefault(); });
 })();
 </script>
 
