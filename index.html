@@ -386,6 +386,12 @@ body:has(.scrim) .toast{bottom:auto;top:calc(16px + env(safe-area-inset-top,0px)
 .filllist .thumb{width:46px;height:46px;flex:none;border-radius:10px;overflow:hidden}.filllist .thumb img{width:100%;height:100%;object-fit:cover}
 .filllist .ft{flex:1;min-width:0}.filllist .ft b{display:block;font-family:var(--display);font-weight:500;font-size:17px;line-height:1.2}.filllist .ft .hint{margin:0;font-size:13px}
 .filllist .icon-btn{width:36px;height:36px;flex:none}
+.shoppick{list-style:none;margin:0 0 14px;padding:0}
+.shoppick li{border-bottom:1px solid var(--line)}
+.shoppick label{display:flex;gap:12px;align-items:flex-start;padding:11px 2px;cursor:pointer;font-size:16px}
+.shoppick input{width:22px;height:22px;margin:1px 0 0;accent-color:var(--accent);flex:none}
+.shoppick small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.shoppick .shead{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);padding:14px 2px 6px}
 .fillshop{display:flex;gap:10px;align-items:center;margin:6px 0;font-size:15px}.fillshop input{width:20px;height:20px;accent-color:var(--accent)}
 .planside{position:sticky;top:20px;align-self:start;border:1px solid var(--line);background:var(--surface);border-radius:20px;padding:14px;max-height:calc(100vh - 40px);display:flex;flex-direction:column}
 .search.small{height:42px;margin:0 0 8px}.search.small input{font-size:15px}
@@ -1424,6 +1430,28 @@ function shopMenu(){
     </div>
     <button class="btn" data-act="closesheet">Close</button>`);
 }
+function shopPickSheet(){
+  if (S.sheet) closeSheet();
+  const r = byId(S.id); if (!r) return; const f = factor(r);
+  const onList = new Set((S.shop.items || []).filter(i => !i.done).map(i => i.text.trim().toLowerCase()));
+  let rows = '', i = -1;
+  for (const l of r.ingredients || []){
+    if (isHead(l)){ rows += `<li class="shead">${esc(headText(l))}</li>`; continue; }
+    i++; const text = showLine(scaleLine(l, f)), staple = isStaple(l), dup = onList.has(text.trim().toLowerCase());
+    rows += `<li><label><input type="checkbox" data-chg="shoppick" data-i="${i}"${staple || dup ? '' : ' checked'}><span>${esc(text)}${staple ? '<small>In the cupboard</small>' : dup ? '<small>Already on the list</small>' : ''}</span></label></li>`;
+  }
+  openSheet('Add to shopping', `<h2>Add to shopping</h2>
+    <p class="hint">Untick anything you’ve already got.${f !== 1 ? ' Amounts are for the servings you picked.' : ''}</p>
+    <div style="text-align:right;margin:-4px 0 4px"><button class="linkbtn" data-act="shopall" type="button">Tick all / none</button></div>
+    <ul class="shoppick">${rows}</ul>
+    <button class="btn primary" data-act="shopadd" id="shopAddBtn"></button>
+    <button class="btn" data-act="closesheet">Cancel</button>`);
+  shopPickCount();
+}
+function shopPickCount(){
+  const n = overlay.querySelectorAll('.shoppick input:checked').length, b = overlay.querySelector('#shopAddBtn'); if (!b) return;
+  b.textContent = n ? `Add ${n} ${n === 1 ? 'item' : 'items'} to shopping` : 'Nothing ticked'; b.disabled = !n;
+}
 function pantrySheet(focus){
   const st = staples(), us = S.pantry?.usuals || [];
   const chip = (x, act) => `<button class="chip pchip" data-act="${act}" data-text="${esc(x)}" aria-label="Remove ${esc(x)}">${esc(x)} <span aria-hidden="true">×</span></button>`;
@@ -2068,14 +2096,15 @@ const A = {
     render(); toast('Photo removed');
   },
   async makecover(){ const r = byId(S.id); const pick = S.cover[r.id]; const rest = [r.photo, ...(r.photos || [])].filter(x => x && x !== pick); await patch(r.id, { photo: pick, photos: rest }); delete S.cover[r.id]; toast('Cover photo updated'); },
-  async toshop(){
-    guideMark('shop');
-    if (S.sheet) closeSheet();
-    const r = byId(S.id); const f = factor(r); const have = S.shop.items || [];
-    const lines = realIngs(r), skip = lines.filter(isStaple);
-    const add = lines.filter(l => !isStaple(l)).map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }));
-    await setShop([...have, ...add]);
-    toast(add.length + ' items added to shopping' + (skip.length ? ` · ${skip.length} left off as cupboard staples` : ''));
+  // Shop: pick which ingredients to add (cupboard staples and things already on the list start unticked)
+  toshop(){ guideMark('shop'); shopPickSheet(); },
+  shopall(){ const bs = [...overlay.querySelectorAll('.shoppick input')]; const on = !bs.every(b => b.checked); bs.forEach(b => b.checked = on); shopPickCount(); },
+  async shopadd(){
+    const r = byId(S.id); if (!r) return closeSheet(); const f = factor(r), lines = realIngs(r), have = S.shop.items || [];
+    const pick = [...overlay.querySelectorAll('.shoppick input:checked')].map(b => lines[+b.dataset.i]).filter(Boolean);
+    closeSheet(); if (!pick.length) return;
+    await setShop([...have, ...pick.map(l => ({ id: rid(), text: showLine(scaleLine(l, f)), from: r.title, done: false }))]);
+    toast(pick.length + (pick.length === 1 ? ' item' : ' items') + ' added to shopping');
   },
   async del(){
     if (!S.confirmDel){ S.confirmDel = true; render(); return; }
@@ -2589,7 +2618,7 @@ const A = {
   }
 };
 // things only editors can do; a viewer is told the cookbook is view only
-const EDIT_ACTS = new Set(['shopmenu','recipemenu','delmenu','clip','typein','readpaste','cliplink','fav','reviewed','editnote','savenote','makecover','delphoto','toshop','del','save','additem','clearDone','clearAll','aisle','made','madeid','rate','planpick','planon','planadd','planthis','unplan','shopweek','restore','purge','usual','addstaple','unstaple','addusual','unusual','pantry','kcal','samples','shoptick']);
+const EDIT_ACTS = new Set(['shopmenu','recipemenu','delmenu','clip','typein','readpaste','cliplink','fav','reviewed','editnote','savenote','makecover','delphoto','toshop','shopadd','del','save','additem','clearDone','clearAll','aisle','made','madeid','rate','planpick','planon','planadd','planthis','unplan','shopweek','restore','purge','usual','addstaple','unstaple','addusual','unusual','pantry','kcal','samples','shoptick']);
 document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const fn = A[b.dataset.act]; if (!fn) return;
@@ -2640,6 +2669,7 @@ document.addEventListener('change', async e => {
     catch (err) { if (m) m.innerHTML = `<p class="hint" style="color:var(--danger)">${esc(err?.message || 'The import didn’t work. Try again.')}</p>`; }
     return;
   }
+  if (k === 'shoppick'){ shopPickCount(); return; }
   if (k === 'sort'){ S.sort = t.value; ls.set('sb-sort', t.value); t.blur(); document.getElementById('list').innerHTML = listHtml(); return; }
   if (k === 'tick'){ buzz(); const key = t.dataset.rid || S.id; const m = S.checked[key] = S.checked[key] || {}; m[t.dataset.i] = t.checked; }
   if (k === 'shoptick'){ buzz(); await tickShop(t.dataset.id, t.checked, t.closest('li')); }
