@@ -161,10 +161,32 @@ async function prepImage(file, opt = {}){
   const cw = Math.max(1, b.w * rw), ch = Math.max(1, b.h * rh);
   const k = Math.min(opt.colour ? 1 : 2.5, (opt.max || 2400) / Math.max(cw, ch));
   const c = document.createElement('canvas'); c.width = Math.round(cw * k); c.height = Math.round(ch * k);
-  const g = c.getContext('2d'); if (!opt.colour) g.filter = 'grayscale(1) contrast(1.35)';
+  const g = c.getContext('2d', { willReadFrequently: true }); if (!opt.colour) g.filter = 'grayscale(1)';
   g.scale(k, k); g.translate(-b.x * rw, -b.y * rh);
   g.translate(rw / 2, rh / 2); g.rotate(rot * Math.PI / 180); g.drawImage(bmp, -bmp.width / 2, -bmp.height / 2);
+  if (!opt.colour) evenLight(c);
   return c;
+}
+// Shadows (a hand, the phone, the curve of the page) make part of the page darker, and the reader then loses the words
+// in them. Work out how bright the paper is in each part of the photo and even it out, so the page is evenly white.
+function evenLight(c){
+  const W = c.width, H = c.height; if (W < 50 || H < 50) return;
+  const g = c.getContext('2d'), img = g.getImageData(0, 0, W, H), d = img.data;
+  // a small copy of the page: each cell is the brightest the paper gets nearby (text is dark, so it drops out)
+  const sw = Math.max(8, Math.round(W / 24)), sh = Math.max(8, Math.round(H * sw / W)), cw = W / sw, chh = H / sh;
+  const avg = new Float32Array(sw * sh), cnt = new Uint32Array(sw * sh);
+  for (let y = 0; y < H; y += 2){ const cy = Math.min(sh - 1, (y / chh) | 0); for (let x = 0; x < W; x += 2){ const k = cy * sw + Math.min(sw - 1, (x / cw) | 0); avg[k] += d[(y * W + x) * 4]; cnt[k]++; } }
+  for (let k = 0; k < avg.length; k++) avg[k] = cnt[k] ? avg[k] / cnt[k] : 255;
+  const pass = (src, f) => { const o = new Float32Array(src.length); for (let y = 0; y < sh; y++) for (let x = 0; x < sw; x++){ let v = f === 'max' ? 0 : 0, n = 0;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++){ const yy = y + j, xx = x + i; if (yy < 0 || xx < 0 || yy >= sh || xx >= sw) continue; const s2 = src[yy * sw + xx]; if (f === 'max') v = Math.max(v, s2); else { v += s2; n++; } }
+    o[y * sw + x] = f === 'max' ? v : v / n; } return o; };
+  const bg = pass(pass(avg, 'blur'), 'max');
+  for (let y = 0; y < H; y++){ const fy = Math.max(0, Math.min(sh - 1.001, y / chh - .5)), y0 = fy | 0, ty = fy - y0;
+    for (let x = 0; x < W; x++){ const fx = Math.max(0, Math.min(sw - 1.001, x / cw - .5)), x0 = fx | 0, tx = fx - x0, k = y0 * sw + x0;
+      const b = (bg[k] * (1 - tx) + bg[k + 1] * tx) * (1 - ty) + (bg[k + sw] * (1 - tx) + bg[k + sw + 1] * tx) * ty;
+      let v = d[(y * W + x) * 4] / Math.max(b, 1) * 240; v = (v - 128) * 1.35 + 128; v = v < 0 ? 0 : v > 255 ? 255 : v;
+      const i = (y * W + x) * 4; d[i] = d[i + 1] = d[i + 2] = v; } }
+  g.setTransform(1, 0, 0, 1, 0, 0); g.filter = 'none'; g.putImageData(img, 0, 0);
 }
 // how much of this looks like real words: photos taken sideways or of pictures come out as gibberish
 function wordiness(text){
@@ -359,6 +381,7 @@ const fixFractions = t => t.replace(/^I(?=\s+(?:tsp|tbsp|cups?)\b)/gm, '1').repl
   .replace(LEAD_FRAC, m => /^[a-z]{2,3}$/i.test(m) && !/^(us|va|vz|ya|yo|ua|uz)$/i.test(m) ? m : guessFrac(m)).replace(/(^|\s)1\/3(?=\s)/g, '$1⅓').replace(/(^|\s)2\/3(?=\s)/g, '$1⅔').replace(/(\d) ([½¼¾⅓⅔])/g, '$1$2').replace(/([½¼¾⅓⅔\d])\s*[—-]\s*(?=[½¼¾⅓⅔\d])/g, '$1–');
 const fixOcr = t => fixFractions(t).replace(/(^|\s)[VY][ao]\s*[=—–-]+\s*[VYa]?[a2o](?=\s+(tsp|tbsp|cups?)\b)/g, '$1¼–½').replace(/^[a-z|.:;'’"”§\]\[]{1,2}\.?\s+(?=[\d½¼¾‘’'])/gm, '').replace(/^[B-HJ-Z§\]\[|ij]\s+(?=[a-z(])/gm, '').replace(/(^|\s)[‘’'`]\/?4(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1¼').replace(/(^|\s)[‘’'`]\/?2(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?|each)\b)/g, '$1½').replace(/(\d)\s*g[il](\d)/g, '$1 g/$2')
   .replace(/\b([Ii])na\b/g, '$1n a').replace(/\b([Oo])na\b/g, '$1n a').replace(/(^|\s)[VY]a\s*[—–-]\s*V2(?=\s)/g, '$1¼–½').replace(/(^|\s)V2(?=\s)/g, '$1½').replace(/(^|\s)Va(?=\s+(tsp|tbsp|cup))/g, '$1¼').replace(/\b(\d)%(?=\s+(tsp|tbsp|cups?|kg|g|lb|oz|pints?)\b)/g, '$1½')
+  .replace(/^[_—–~|-]+\d?(?=[A-Z][a-z])/gm, '').replace(/([.!?])\s+[a-z]$/gm, '$1').replace(/\bbay leat\b/gi, 'bay leaf').replace(/\b(\d+)m[!l1I|](?=[\s.,]|$)/g, '$1ml').replace(/^(\d{2,3})9(?=\s+[a-z]{3,})(?!\s+(?:x|by|cm|mm|ml|g|kg)\b)/gm, '$1g').replace(/\bIhe\b/g, 'The')
   .replace(/\bthsp\b/g, 'tbsp').replace(/\b(tbsp|tsp)(?=[a-z]{3,})/g, '$1 ')
   .replace(/^([IJl|])(?=\s*(tsp|tbsp|cup|kg|g|ml|large|medium|small)\b)/gm, '1');
 async function readOne(worker, page, onProgress){
@@ -441,6 +464,19 @@ async function guessLayout(file, rot = 0){
     return { rot: best.rot, ing: box(ing), method: box(meth), title: info.title, serves: info.serves, intro: info.intro };
   } catch { return null; } finally { releaseWorker(); }
 }
+// A close-up usually catches the ends of lines from the column next door ("is", "ind", "22") at the very edge of
+// the photo, set apart by a wide gap. Leave those scraps out.
+function trimMargins(lines, W){
+  const gaps = []; lines.forEach(l => { const ws = l.words || []; for (let i = 1; i < ws.length; i++) gaps.push(ws[i].bbox.x0 - ws[i - 1].bbox.x1); });
+  gaps.sort((a, b) => a - b); const med = gaps[Math.floor(gaps.length / 2)] || 10, big = Math.max(med * 3.5, W * 0.035);
+  const scrap = w => !/[A-Za-z]{3,}/.test(w.text) || w.text.replace(/[^A-Za-z]/g, '').length <= 3;
+  return lines.map(l => { let ws = [...(l.words || [])]; if (!ws.length) return l;
+    while (ws.length > 1 && scrap(ws[ws.length - 1]) && ws[ws.length - 1].bbox.x0 > W * 0.75 && ws[ws.length - 1].bbox.x0 - ws[ws.length - 2].bbox.x1 > big) ws.pop();
+    while (ws.length > 1 && scrap(ws[0]) && !/^[\d½¼¾⅓⅔]/.test(ws[0].text) && ws[0].bbox.x1 < W * 0.25 && ws[1].bbox.x0 - ws[0].bbox.x1 > big) ws.shift();
+    // a line that's only scraps right at the edge
+    if (ws.every(scrap) && (ws[0].bbox.x0 > W * 0.8 || ws[ws.length - 1].bbox.x1 < W * 0.2)) ws = [];
+    return ws.length === (l.words || []).length ? l : { ...l, words: ws, text: ws.map(w => w.text).join(' ') }; }).filter(l => (l.words || []).length);
+}
 async function readArea(worker, file, rot, box, kind, auto){
   let { lines, cv, data } = await readLines(worker, file, { rot, box });
   // a close-up taken sideways or upside down: try the other ways round
@@ -460,6 +496,7 @@ async function readArea(worker, file, rot, box, kind, auto){
       lines = lines.map(l => ({ ...l, words: (l.words || []).filter(inKeep) })).filter(l => l.words.length).map(l => ({ ...l, text: l.words.map(w => w.text).join(' ') }));
     }
   }
+  lines = trimMargins(lines, cv.width);
   const plain = lines.map(l => (l.words || []).length ? l.words.map(w => w.text).filter(t => !JUNKW.test(t)).join(' ') : l.text.trim()).filter(t => /[A-Za-z]{2,}|\d/.test(t)).join('\n');
   // amounts the reader wasn't sure of, or that looked like a garbled fraction: worth a second look
   const unsure = kind === 'ing' ? lines.map(l => { const ws = (l.words || []).filter(w => !JUNKW.test(w.text)); const a = ws[0];
@@ -482,7 +519,20 @@ async function readBoxes(pages, onProgress){
     // a close-up of the ingredients often includes the recipe's name, "serves 4" and an "Ingredients" heading above the list
     const top = parseRecipe(ingText), whole = parseRecipe(ingText + '\nMethod\n' + methodText);
     const realT = t => { const ws = (String(t || '').toLowerCase().match(/[a-z]+/g) || []).filter(w => w.length >= 3); return ws.length ? ws.filter(w => known(w)).length / ws.length : 0; };
-    const title = [top.title, whole.title].find(t => t && t.length <= 60 && t.split(/\s+/).length <= 7 && realT(t) >= 0.75 && !QTY.test(t) && !/[,;.]$/.test(t) && !/\b(the|a|an|of|and|to|with|in|for)$/i.test(t)) || '';
+    // the method photo often has the recipe's name and a chatty introduction above the steps
+    let paras0 = methodText.split(/\n\s*\n/).map(p => p.split('\n').map(x => x.trim()).filter(Boolean)).filter(p => p.length);
+    let mTitle = '', intro = '';
+    const tidyT = t => t.replace(/^(?:\S{1,2}\s+)+(?=[A-Za-z‘'’]{3,})/, '').replace(/^[^A-Za-z]+/, '').trim();
+    paras0 = paras0.map(p => p.filter(l => /[A-Za-z]{3,}/.test(l))).filter(p => p.length);
+    const short = l => l.split(/\s+/).length <= 7 && !/[.,;:]$/.test(l) && !QTY.test(l) && !VERB.test(tidyT(l));
+    // a heading on its own (the name in bigger print), or as the first line of the first paragraph
+    if (paras0.length > 1 && paras0[0].every(short) && paras0[0].length <= 2){ mTitle = tidyT(paras0[0].reduce((a, b) => b.length > a.length ? b : a)); paras0 = paras0.slice(1); }
+    else if (paras0.length > 1 && paras0[0].length > 1 && short(paras0[0][0])){ mTitle = tidyT(paras0[0][0]); paras0[0] = paras0[0].slice(1); }
+    if (paras0.length > 1){ const first = paras0[0].join(' '); const lead = first.replace(/^[^A-Za-z]*(?:[A-Z]\s+(?=[A-Z][a-z]))?/, ''), numbered = paras0.slice(1).some(p => /^\W*2\s*[.)▲△►▶A]?\s/.test(p[0])); if (!numbered && !VERB.test(lead) && !VERB.test(tidyT(first)) && !/^\W*\d{1,2}\s*[.)▲△►▶A]?\s/.test(first) && first.length > 50){ intro = tidyT(first).replace(/^[Ii]?he\b/, 'The'); paras0 = paras0.slice(1); } }
+    methodText = paras0.map(p => p.join('\n')).join('\n\n');
+    const okTitle = t => t && t.length <= 60 && t.split(/\s+/).length <= 7 && realT(t) >= 0.75 && !QTY.test(t) && !/\d/.test(t) && /^[A-Z‘'“]/.test(t) && !/[,;.()]/.test(t) && !/\b(the|a|an|of|and|to|with|in|for)$/i.test(t);
+    const cap = t => t ? t.charAt(0).toUpperCase() + t.slice(1) : t;
+    const title = [top.title, whole.title].find(okTitle) || (mTitle && realT(mTitle) >= 0.6 ? cap(mTitle) : '');
     const lines = ingText.split('\n'), hi = lines.findIndex(l => HEAD_ING.test(l.trim()) && !/^for the /i.test(l.trim()));
     if (hi > 0) ingText = lines.slice(hi + 1).join('\n');
     // scraps that aren't words at all ("EE HCP TH pH at") are left out
@@ -496,7 +546,7 @@ async function readBoxes(pages, onProgress){
     const paras = methodText.split(/\n\s*\n/).map(p => p.split('\n').map(s => s.trim()).filter(Boolean)
       .reduce((a, l) => !a ? l : /[a-z][-–]$/.test(a) && /^[a-z]/.test(l) ? a.replace(/[-–]$/, '') + l : a + ' ' + l, '')).filter(Boolean);
     const steps = parseRecipe('Ingredients\nx\nMethod\n' + (paras.length > 1 ? paras.join('\n') : methodText)).steps;
-    return { ingredients, steps, check, title, serves: whole.serves || top.serves || '', intro: '', score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
+    return { ingredients, steps, check, title, serves: whole.serves || top.serves || '', intro, score: scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0 };
   } finally { releaseWorker(); }
 }
 async function readPhotos(pages, onProgress){
